@@ -13,6 +13,15 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: [
+          "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto",
+          "Helvetica Neue", "Arial", "sans-serif",
+        ],
+        mono: [
+          "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", "monospace",
+        ],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -47,6 +56,14 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        "surface-elevated": "hsl(var(--surface-elevated))",
+        substrate: {
+          open: "hsl(var(--substrate-open))",
+          active: "hsl(var(--substrate-active))",
+          complete: "hsl(var(--substrate-complete))",
+          blocked: "hsl(var(--substrate-blocked))",
+          locked: "hsl(var(--substrate-locked))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -65,20 +82,12 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
         },
       },
       animation: {
