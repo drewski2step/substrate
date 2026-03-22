@@ -36,8 +36,9 @@ function TraceItem({ entry }: { entry: TraceEntry }) {
 }
 
 export default function TaskView() {
+  const navigate = useNavigate();
   const { missionId, taskId } = useParams<{ missionId: string; taskId: string }>();
-  const { getMission, getTask, completeTask, claimTask, agents } = useSubstrate();
+  const { getMission, getTask, completeTask, claimTask, deleteTask, agents } = useSubstrate();
   const mission = getMission(missionId || "");
   const task = getTask(missionId || "", taskId || "");
 
