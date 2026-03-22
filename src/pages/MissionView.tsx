@@ -2,12 +2,13 @@ import { useParams, Link } from "react-router-dom";
 import { useSubstrate } from "@/lib/substrate-context";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
 import { Check, Lock, ArrowLeft } from "lucide-react";
 
 export default function MissionView() {
   const { missionId } = useParams<{ missionId: string }>();
-  const { getMission } = useSubstrate();
+  const { getMission, addTask } = useSubstrate();
   const mission = getMission(missionId || "");
 
   if (!mission) {
