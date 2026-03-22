@@ -8,6 +8,8 @@ interface SubstrateState {
   completeTask: (missionId: string, taskId: string) => void;
   claimTask: (missionId: string, taskId: string, agentId: string) => void;
   addTrace: (missionId: string, taskId: string, entry: Omit<TraceEntry, "id" | "timestamp">) => void;
+  addTask: (missionId: string, task: Omit<Task, "id" | "order" | "traces">) => void;
+  deleteTask: (missionId: string, taskId: string) => void;
   getAgent: (id: string) => Agent | undefined;
   getMission: (id: string) => Mission | undefined;
   getTask: (missionId: string, taskId: string) => Task | undefined;
