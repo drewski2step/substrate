@@ -1,9 +1,10 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSubstrate } from "@/lib/substrate-context";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Check, MapPin, Star } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ArrowLeft, Check, MapPin, Star, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TraceEntry } from "@/lib/types";
 
@@ -35,8 +36,9 @@ function TraceItem({ entry }: { entry: TraceEntry }) {
 }
 
 export default function TaskView() {
+  const navigate = useNavigate();
   const { missionId, taskId } = useParams<{ missionId: string; taskId: string }>();
-  const { getMission, getTask, completeTask, claimTask, agents } = useSubstrate();
+  const { getMission, getTask, completeTask, claimTask, deleteTask, agents } = useSubstrate();
   const mission = getMission(missionId || "");
   const task = getTask(missionId || "", taskId || "");
 
@@ -142,6 +144,35 @@ export default function TaskView() {
                 Mark complete
               </Button>
             )}
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="mt-3 text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5">
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete task
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this task?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove the task and clear it from any dependency lists. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      deleteTask(mission.id, task.id);
+                      navigate(`/mission/${missionId}`);
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             {/* Suggested Agents */}
             {suggestedAgents.length > 0 && (task.status === "open") && (

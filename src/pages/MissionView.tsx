@@ -2,12 +2,13 @@ import { useParams, Link } from "react-router-dom";
 import { useSubstrate } from "@/lib/substrate-context";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
 import { Check, Lock, ArrowLeft } from "lucide-react";
 
 export default function MissionView() {
   const { missionId } = useParams<{ missionId: string }>();
-  const { getMission } = useSubstrate();
+  const { getMission, addTask } = useSubstrate();
   const mission = getMission(missionId || "");
 
   if (!mission) {
@@ -47,7 +48,10 @@ export default function MissionView() {
         </div>
 
         <div className="mt-10 animate-fade-in-up-delay-1">
-          <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-4">Task graph</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Task graph</h2>
+            <CreateTaskDialog missionId={mission.id} existingTasks={mission.tasks} onCreateTask={addTask} />
+          </div>
           <div className="space-y-0">
             {mission.tasks.map((task, i) => {
               const isLocked = task.status === "locked";
