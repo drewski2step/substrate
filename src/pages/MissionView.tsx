@@ -48,7 +48,10 @@ export default function MissionView() {
         </div>
 
         <div className="mt-10 animate-fade-in-up-delay-1">
-          <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-4">Task graph</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Task graph</h2>
+            <CreateTaskDialog missionId={mission.id} existingTasks={mission.tasks} onCreateTask={addTask} />
+          </div>
           <div className="space-y-0">
             {mission.tasks.map((task, i) => {
               const isLocked = task.status === "locked";
