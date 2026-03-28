@@ -10,6 +10,7 @@ interface SubstrateState {
   addTrace: (missionId: string, taskId: string, entry: Omit<TraceEntry, "id" | "timestamp">) => void;
   addTask: (missionId: string, task: Omit<Task, "id" | "order" | "traces">) => void;
   deleteTask: (missionId: string, taskId: string) => void;
+  updateTask: (missionId: string, taskId: string, updates: Partial<Pick<Task, "requiredAgentType" | "locationRadius" | "assignedAgentId" | "assignedAgentName" | "dependencies">>) => void;
   getAgent: (id: string) => Agent | undefined;
   getMission: (id: string) => Mission | undefined;
   getTask: (missionId: string, taskId: string) => Task | undefined;
@@ -150,6 +151,16 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  const updateTask = useCallback((missionId: string, taskId: string, updates: Partial<Pick<Task, "requiredAgentType" | "locationRadius" | "assignedAgentId" | "assignedAgentName" | "dependencies">>) => {
+    setMissions((prev) =>
+      prev.map((m) =>
+        m.id !== missionId
+          ? m
+          : { ...m, tasks: m.tasks.map((t) => (t.id !== taskId ? t : { ...t, ...updates })) }
+      )
+    );
+  }, []);
+
   const deleteTask = useCallback((missionId: string, taskId: string) => {
     setMissions((prev) =>
       prev.map((m) => {
@@ -173,7 +184,7 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <SubstrateContext.Provider value={{ missions, agents, completeTask, claimTask, addTrace, addTask, deleteTask, getAgent, getMission, getTask }}>
+    <SubstrateContext.Provider value={{ missions, agents, completeTask, claimTask, addTrace, addTask, deleteTask, updateTask, getAgent, getMission, getTask }}>
       {children}
     </SubstrateContext.Provider>
   );
