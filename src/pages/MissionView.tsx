@@ -55,57 +55,58 @@ export default function MissionView() {
           <div className="space-y-0">
             {mission.tasks.map((task, i) => {
               const isLocked = task.status === "locked";
+              const statusStyles = {
+                complete: "border-l-substrate-complete bg-muted/40 border-border",
+                active: "border-l-substrate-active bg-substrate-active/5 border-substrate-active/20",
+                open: "border-l-substrate-open bg-substrate-open/5 border-substrate-open/20 animate-pulse-subtle",
+                blocked: "border-l-substrate-blocked bg-substrate-blocked/5 border-substrate-blocked/20",
+                locked: "border-l-substrate-locked bg-muted/20 border-border/40",
+              };
               return (
-                <div key={task.id}>
-                  {i > 0 && (
-                    <div className="ml-4 w-px h-4 bg-border" />
+                <Link
+                  key={task.id}
+                  to={isLocked ? "#" : `/mission/${mission.id}/task/${task.id}`}
+                  className={cn(
+                    "block border border-l-4 px-4 py-3 transition-all first:rounded-t-lg last:rounded-b-lg -mt-px first:mt-0",
+                    statusStyles[task.status],
+                    isLocked ? "cursor-default opacity-60" : "hover:bg-card hover:shadow-sm active:scale-[0.998] cursor-pointer"
                   )}
-                  <Link
-                    to={isLocked ? "#" : `/mission/${mission.id}/task/${task.id}`}
-                    className={cn(
-                      "block border rounded-lg p-4 transition-all",
-                      isLocked
-                        ? "border-border/50 bg-muted/30 cursor-default"
-                        : "border-border hover:bg-card hover:shadow-sm active:scale-[0.998] cursor-pointer",
-                      task.status === "open" && "animate-pulse-subtle"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "w-5 h-5 rounded-full border flex items-center justify-center shrink-0",
-                          task.status === "complete" && "bg-foreground border-foreground",
-                          task.status === "locked" && "border-substrate-locked bg-muted/50",
-                          task.status === "open" && "border-substrate-open",
-                          task.status === "active" && "border-substrate-active bg-substrate-active/10",
-                          task.status === "blocked" && "border-substrate-blocked"
-                        )}
-                      >
-                        {task.status === "complete" && <Check className="w-3 h-3 text-primary-foreground" />}
-                        {task.status === "locked" && <Lock className="w-2.5 h-2.5 text-substrate-locked" />}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={cn(
+                        "w-5 h-5 rounded-full border flex items-center justify-center shrink-0",
+                        task.status === "complete" && "bg-foreground border-foreground",
+                        task.status === "locked" && "border-substrate-locked bg-muted/50",
+                        task.status === "open" && "border-substrate-open bg-substrate-open/10",
+                        task.status === "active" && "border-substrate-active bg-substrate-active/10",
+                        task.status === "blocked" && "border-substrate-blocked bg-substrate-blocked/10"
+                      )}
+                    >
+                      {task.status === "complete" && <Check className="w-3 h-3 text-primary-foreground" />}
+                      {task.status === "locked" && <Lock className="w-2.5 h-2.5 text-substrate-locked" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("text-sm font-medium", isLocked && "text-muted-foreground")}>
+                          {task.title}
+                        </span>
+                        <StatusBadge status={task.status} />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className={cn("text-sm font-medium", isLocked && "text-muted-foreground")}>
-                            {task.title}
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-xs text-muted-foreground">{task.requiredAgentType}</span>
+                        {task.assignedAgentName && (
+                          <span className="text-xs text-muted-foreground">→ {task.assignedAgentName}</span>
+                        )}
+                        {task.status === "complete" && task.traces.length > 0 && (
+                          <span className="text-xs text-muted-foreground italic truncate max-w-xs">
+                            {task.traces[task.traces.length - 1].content.slice(0, 60)}…
                           </span>
-                          <StatusBadge status={task.status} />
-                        </div>
-                        <div className="flex items-center gap-3 mt-0.5">
-                          <span className="text-xs text-muted-foreground">{task.requiredAgentType}</span>
-                          {task.assignedAgentName && (
-                            <span className="text-xs text-muted-foreground">→ {task.assignedAgentName}</span>
-                          )}
-                          {task.status === "complete" && task.traces.length > 0 && (
-                            <span className="text-xs text-muted-foreground italic truncate max-w-xs">
-                              {task.traces[task.traces.length - 1].content.slice(0, 60)}…
-                            </span>
-                          )}
-                        </div>
+                        )}
                       </div>
                     </div>
-                  </Link>
-                </div>
+                  </div>
+                </Link>
               );
             })}
           </div>
