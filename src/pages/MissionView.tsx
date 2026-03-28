@@ -3,10 +3,12 @@ import { useSubstrate } from "@/lib/substrate-context";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
+import { AddSuccessorDialog } from "@/components/AddSuccessorDialog";
 import { cn } from "@/lib/utils";
-import { Check, Lock, ArrowLeft } from "lucide-react";
+import { Check, Lock, ArrowLeft, CheckCircle2, Plus } from "lucide-react";
 import { Task } from "@/lib/types";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 const statusBg: Record<string, string> = {
   complete: "bg-muted/60 border-substrate-complete/40",
