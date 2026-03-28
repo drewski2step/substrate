@@ -4,7 +4,102 @@ import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
-import { Check, Lock, ArrowLeft } from "lucide-react";
+import { Check, Lock, ArrowLeft, ArrowUp } from "lucide-react";
+import { Task } from "@/lib/types";
+
+const statusBg: Record<string, string> = {
+  complete: "bg-muted/60 border-substrate-complete/40",
+  active: "bg-substrate-active/8 border-substrate-active/30",
+  open: "bg-substrate-open/8 border-substrate-open/30",
+  blocked: "bg-substrate-blocked/8 border-substrate-blocked/30",
+  locked: "bg-muted/20 border-substrate-locked/30",
+};
+
+const statusAccent: Record<string, string> = {
+  complete: "bg-substrate-complete",
+  active: "bg-substrate-active",
+  open: "bg-substrate-open",
+  blocked: "bg-substrate-blocked",
+  locked: "bg-substrate-locked",
+};
+
+function TaskBlock({ task, mission, tasks }: { task: Task; mission: { id: string }; tasks: Task[] }) {
+  const isLocked = task.status === "locked";
+  const deps = task.dependencies
+    .map((id) => tasks.find((t) => t.id === id))
+    .filter(Boolean) as Task[];
+
+  return (
+    <div className="flex flex-col items-center">
+      {/* Connector line going up to this block */}
+      {deps.length > 0 && (
+        <div className="flex flex-col items-center mb-1">
+          <ArrowUp className="w-3 h-3 text-border" />
+          <div className="w-px h-4 bg-border" />
+          {deps.length > 1 && (
+            <div className="flex items-center gap-1 mb-1">
+              {deps.map((d) => (
+                <span
+                  key={d.id}
+                  className={cn(
+                    "w-2 h-2 rounded-full",
+                    d.status === "complete" ? "bg-substrate-complete" : "bg-border"
+                  )}
+                  title={d.title}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <Link
+        to={isLocked ? "#" : `/mission/${mission.id}/task/${task.id}`}
+        className={cn(
+          "relative w-full max-w-md border-2 rounded-lg px-4 py-3 transition-all",
+          statusBg[task.status],
+          isLocked
+            ? "cursor-default opacity-50"
+            : "hover:shadow-md hover:scale-[1.01] active:scale-[0.99] cursor-pointer",
+          task.status === "open" && "animate-pulse-subtle"
+        )}
+      >
+        {/* Top accent bar */}
+        <div className={cn("absolute top-0 left-3 right-3 h-0.5 rounded-b", statusAccent[task.status])} />
+
+        <div className="flex items-center gap-3 pt-1">
+          <div
+            className={cn(
+              "w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0",
+              task.status === "complete" && "bg-foreground border-foreground",
+              task.status === "locked" && "border-substrate-locked bg-muted/50",
+              task.status === "open" && "border-substrate-open bg-substrate-open/10",
+              task.status === "active" && "border-substrate-active bg-substrate-active/10",
+              task.status === "blocked" && "border-substrate-blocked bg-substrate-blocked/10"
+            )}
+          >
+            {task.status === "complete" && <Check className="w-3 h-3 text-primary-foreground" />}
+            {task.status === "locked" && <Lock className="w-2.5 h-2.5 text-substrate-locked" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className={cn("text-sm font-semibold", isLocked && "text-muted-foreground")}>
+                {task.title}
+              </span>
+              <StatusBadge status={task.status} />
+            </div>
+            <div className="flex items-center gap-3 mt-0.5">
+              <span className="text-xs text-muted-foreground">{task.requiredAgentType}</span>
+              {task.assignedAgentName && (
+                <span className="text-xs text-muted-foreground">→ {task.assignedAgentName}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </Link>
+    </div>
+  );
+}
 
 export default function MissionView() {
   const { missionId } = useParams<{ missionId: string }>();
@@ -24,6 +119,9 @@ export default function MissionView() {
 
   const complete = mission.tasks.filter((t) => t.status === "complete").length;
   const pct = Math.round((complete / mission.tasks.length) * 100);
+
+  // Reverse tasks so they stack upward — first task at the bottom
+  const reversedTasks = [...mission.tasks].reverse();
 
   return (
     <div className="min-h-screen bg-background">
@@ -48,67 +146,21 @@ export default function MissionView() {
         </div>
 
         <div className="mt-10 animate-fade-in-up-delay-1">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Task graph</h2>
             <CreateTaskDialog missionId={mission.id} existingTasks={mission.tasks} onCreateTask={addTask} />
           </div>
-          <div className="space-y-0">
-            {mission.tasks.map((task, i) => {
-              const isLocked = task.status === "locked";
-              const statusStyles = {
-                complete: "border-l-substrate-complete bg-muted/40 border-border",
-                active: "border-l-substrate-active bg-substrate-active/5 border-substrate-active/20",
-                open: "border-l-substrate-open bg-substrate-open/5 border-substrate-open/20 animate-pulse-subtle",
-                blocked: "border-l-substrate-blocked bg-substrate-blocked/5 border-substrate-blocked/20",
-                locked: "border-l-substrate-locked bg-muted/20 border-border/40",
-              };
-              return (
-                <Link
-                  key={task.id}
-                  to={isLocked ? "#" : `/mission/${mission.id}/task/${task.id}`}
-                  className={cn(
-                    "block border border-l-4 px-4 py-3 transition-all first:rounded-t-lg last:rounded-b-lg -mt-px first:mt-0",
-                    statusStyles[task.status],
-                    isLocked ? "cursor-default opacity-60" : "hover:bg-card hover:shadow-sm active:scale-[0.998] cursor-pointer"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        "w-5 h-5 rounded-full border flex items-center justify-center shrink-0",
-                        task.status === "complete" && "bg-foreground border-foreground",
-                        task.status === "locked" && "border-substrate-locked bg-muted/50",
-                        task.status === "open" && "border-substrate-open bg-substrate-open/10",
-                        task.status === "active" && "border-substrate-active bg-substrate-active/10",
-                        task.status === "blocked" && "border-substrate-blocked bg-substrate-blocked/10"
-                      )}
-                    >
-                      {task.status === "complete" && <Check className="w-3 h-3 text-primary-foreground" />}
-                      {task.status === "locked" && <Lock className="w-2.5 h-2.5 text-substrate-locked" />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className={cn("text-sm font-medium", isLocked && "text-muted-foreground")}>
-                          {task.title}
-                        </span>
-                        <StatusBadge status={task.status} />
-                      </div>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className="text-xs text-muted-foreground">{task.requiredAgentType}</span>
-                        {task.assignedAgentName && (
-                          <span className="text-xs text-muted-foreground">→ {task.assignedAgentName}</span>
-                        )}
-                        {task.status === "complete" && task.traces.length > 0 && (
-                          <span className="text-xs text-muted-foreground italic truncate max-w-xs">
-                            {task.traces[task.traces.length - 1].content.slice(0, 60)}…
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+
+          {/* Flowchart — stacks upward, foundation at bottom */}
+          <div className="flex flex-col items-center gap-2">
+            {reversedTasks.map((task) => (
+              <TaskBlock key={task.id} task={task} mission={mission} tasks={mission.tasks} />
+            ))}
+
+            {/* Base label */}
+            <div className="mt-2 px-3 py-1 bg-muted rounded text-xs text-muted-foreground font-medium">
+              Foundation ↑
+            </div>
           </div>
         </div>
       </main>
