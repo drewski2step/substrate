@@ -4,8 +4,9 @@ import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
-import { Check, Lock, ArrowLeft, ArrowUp } from "lucide-react";
+import { Check, Lock, ArrowLeft } from "lucide-react";
 import { Task } from "@/lib/types";
+import { useMemo } from "react";
 
 const statusBg: Record<string, string> = {
   complete: "bg-muted/60 border-substrate-complete/40",
@@ -23,81 +24,145 @@ const statusAccent: Record<string, string> = {
   locked: "bg-substrate-locked",
 };
 
-function TaskBlock({ task, mission, tasks }: { task: Task; mission: { id: string }; tasks: Task[] }) {
+/** Compute the depth of each task in the dependency DAG */
+function computeDepths(tasks: Task[]): Map<string, number> {
+  const depths = new Map<string, number>();
+  const taskMap = new Map(tasks.map((t) => [t.id, t]));
+
+  function getDepth(id: string): number {
+    if (depths.has(id)) return depths.get(id)!;
+    const task = taskMap.get(id);
+    if (!task || task.dependencies.length === 0) {
+      depths.set(id, 0);
+      return 0;
+    }
+    const maxDepDep = Math.max(...task.dependencies.map((depId) => getDepth(depId)));
+    const d = maxDepDep + 1;
+    depths.set(id, d);
+    return d;
+  }
+
+  tasks.forEach((t) => getDepth(t.id));
+  return depths;
+}
+
+/** Group tasks into horizontal tiers by depth */
+function buildTiers(tasks: Task[]): Task[][] {
+  const depths = computeDepths(tasks);
+  const maxDepth = Math.max(0, ...Array.from(depths.values()));
+  const tiers: Task[][] = Array.from({ length: maxDepth + 1 }, () => []);
+
+  tasks.forEach((task) => {
+    const d = depths.get(task.id) ?? 0;
+    tiers[d].push(task);
+  });
+
+  return tiers;
+}
+
+function TaskBlock({ task, missionId }: { task: Task; missionId: string }) {
   const isLocked = task.status === "locked";
-  const deps = task.dependencies
-    .map((id) => tasks.find((t) => t.id === id))
-    .filter(Boolean) as Task[];
 
   return (
-    <div className="flex flex-col items-center">
-      {/* Connector line going up to this block */}
-      {deps.length > 0 && (
-        <div className="flex flex-col items-center mb-1">
-          <ArrowUp className="w-3 h-3 text-border" />
-          <div className="w-px h-4 bg-border" />
-          {deps.length > 1 && (
-            <div className="flex items-center gap-1 mb-1">
-              {deps.map((d) => (
-                <span
-                  key={d.id}
-                  className={cn(
-                    "w-2 h-2 rounded-full",
-                    d.status === "complete" ? "bg-substrate-complete" : "bg-border"
-                  )}
-                  title={d.title}
-                />
-              ))}
-            </div>
+    <Link
+      to={isLocked ? "#" : `/mission/${missionId}/task/${task.id}`}
+      className={cn(
+        "relative border-2 rounded-lg px-4 py-3 transition-all w-48 shrink-0",
+        statusBg[task.status],
+        isLocked
+          ? "cursor-default opacity-50"
+          : "hover:shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
+        task.status === "open" && "animate-pulse-subtle"
+      )}
+    >
+      <div className={cn("absolute top-0 left-3 right-3 h-0.5 rounded-b", statusAccent[task.status])} />
+
+      <div className="flex items-center gap-2 pt-1">
+        <div
+          className={cn(
+            "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
+            task.status === "complete" && "bg-foreground border-foreground",
+            task.status === "locked" && "border-substrate-locked bg-muted/50",
+            task.status === "open" && "border-substrate-open bg-substrate-open/10",
+            task.status === "active" && "border-substrate-active bg-substrate-active/10",
+            task.status === "blocked" && "border-substrate-blocked bg-substrate-blocked/10"
+          )}
+        >
+          {task.status === "complete" && <Check className="w-3 h-3 text-primary-foreground" />}
+          {task.status === "locked" && <Lock className="w-2.5 h-2.5 text-substrate-locked" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={cn("text-xs font-semibold leading-tight", isLocked && "text-muted-foreground")}>
+              {task.title}
+            </span>
+            <StatusBadge status={task.status} />
+          </div>
+          <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5">
+            {task.requiredAgentType}
+          </span>
+          {task.assignedAgentName && (
+            <span className="text-[10px] text-muted-foreground">→ {task.assignedAgentName}</span>
           )}
         </div>
-      )}
+      </div>
+    </Link>
+  );
+}
 
-      <Link
-        to={isLocked ? "#" : `/mission/${mission.id}/task/${task.id}`}
-        className={cn(
-          "relative w-full max-w-md border-2 rounded-lg px-4 py-3 transition-all",
-          statusBg[task.status],
-          isLocked
-            ? "cursor-default opacity-50"
-            : "hover:shadow-md hover:scale-[1.01] active:scale-[0.99] cursor-pointer",
-          task.status === "open" && "animate-pulse-subtle"
-        )}
-      >
-        {/* Top accent bar */}
-        <div className={cn("absolute top-0 left-3 right-3 h-0.5 rounded-b", statusAccent[task.status])} />
+/** SVG connector lines between tiers */
+function TierConnectors({
+  tierAbove,
+  tierBelow,
+  tasks,
+}: {
+  tierAbove: Task[];
+  tierBelow: Task[];
+  tasks: Task[];
+}) {
+  // For each task in tierAbove, draw lines down to its dependencies in tierBelow
+  const lines: { fromIdx: number; toIdx: number; fromCount: number; toCount: number; complete: boolean }[] = [];
 
-        <div className="flex items-center gap-3 pt-1">
-          <div
-            className={cn(
-              "w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0",
-              task.status === "complete" && "bg-foreground border-foreground",
-              task.status === "locked" && "border-substrate-locked bg-muted/50",
-              task.status === "open" && "border-substrate-open bg-substrate-open/10",
-              task.status === "active" && "border-substrate-active bg-substrate-active/10",
-              task.status === "blocked" && "border-substrate-blocked bg-substrate-blocked/10"
-            )}
-          >
-            {task.status === "complete" && <Check className="w-3 h-3 text-primary-foreground" />}
-            {task.status === "locked" && <Lock className="w-2.5 h-2.5 text-substrate-locked" />}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className={cn("text-sm font-semibold", isLocked && "text-muted-foreground")}>
-                {task.title}
-              </span>
-              <StatusBadge status={task.status} />
-            </div>
-            <div className="flex items-center gap-3 mt-0.5">
-              <span className="text-xs text-muted-foreground">{task.requiredAgentType}</span>
-              {task.assignedAgentName && (
-                <span className="text-xs text-muted-foreground">→ {task.assignedAgentName}</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </Link>
-    </div>
+  tierAbove.forEach((task, fromIdx) => {
+    task.dependencies.forEach((depId) => {
+      const toIdx = tierBelow.findIndex((t) => t.id === depId);
+      if (toIdx !== -1) {
+        const depTask = tierBelow[toIdx];
+        lines.push({
+          fromIdx,
+          toIdx,
+          fromCount: tierAbove.length,
+          toCount: tierBelow.length,
+          complete: depTask.status === "complete",
+        });
+      }
+    });
+  });
+
+  if (lines.length === 0) return null;
+
+  const width = Math.max(tierAbove.length, tierBelow.length) * 208;
+  const height = 32;
+
+  return (
+    <svg width={width} height={height} className="shrink-0 overflow-visible" style={{ minWidth: width }}>
+      {lines.map((line, i) => {
+        const fromX = (line.fromIdx + 0.5) * (width / line.fromCount);
+        const toX = (line.toIdx + 0.5) * (width / line.toCount);
+        return (
+          <line
+            key={i}
+            x1={fromX}
+            y1={0}
+            x2={toX}
+            y2={height}
+            stroke={line.complete ? "hsl(var(--substrate-complete))" : "hsl(var(--border))"}
+            strokeWidth={line.complete ? 2 : 1.5}
+            strokeDasharray={line.complete ? undefined : "4 3"}
+          />
+        );
+      })}
+    </svg>
   );
 }
 
@@ -105,6 +170,8 @@ export default function MissionView() {
   const { missionId } = useParams<{ missionId: string }>();
   const { getMission, addTask } = useSubstrate();
   const mission = getMission(missionId || "");
+
+  const tiers = useMemo(() => (mission ? buildTiers(mission.tasks) : []), [mission]);
 
   if (!mission) {
     return (
@@ -120,8 +187,8 @@ export default function MissionView() {
   const complete = mission.tasks.filter((t) => t.status === "complete").length;
   const pct = Math.round((complete / mission.tasks.length) * 100);
 
-  // Reverse tasks so they stack upward — first task at the bottom
-  const reversedTasks = [...mission.tasks].reverse();
+  // Reverse tiers so depth 0 (no deps) is at the bottom
+  const reversedTiers = [...tiers].reverse();
 
   return (
     <div className="min-h-screen bg-background">
@@ -151,15 +218,40 @@ export default function MissionView() {
             <CreateTaskDialog missionId={mission.id} existingTasks={mission.tasks} onCreateTask={addTask} />
           </div>
 
-          {/* Flowchart — stacks upward, foundation at bottom */}
-          <div className="flex flex-col items-center gap-2">
-            {reversedTasks.map((task) => (
-              <TaskBlock key={task.id} task={task} mission={mission} tasks={mission.tasks} />
-            ))}
+          {/* Flowchart — tiers stack upward, scroll horizontally if needed */}
+          <div className="overflow-x-auto pb-4">
+            <div className="flex flex-col items-center gap-0 min-w-fit">
+              {reversedTiers.map((tier, tierIdx) => {
+                // tierIdx 0 = highest depth (top), last = depth 0 (bottom)
+                const actualDepth = tiers.length - 1 - tierIdx;
+                const nextTierBelow = tierIdx < reversedTiers.length - 1 ? reversedTiers[tierIdx + 1] : null;
 
-            {/* Base label */}
-            <div className="mt-2 px-3 py-1 bg-muted rounded text-xs text-muted-foreground font-medium">
-              Foundation ↑
+                return (
+                  <div key={actualDepth} className="flex flex-col items-center">
+                    {/* Tier row */}
+                    <div className="flex items-start justify-center gap-3">
+                      {tier.map((task) => (
+                        <TaskBlock key={task.id} task={task} missionId={mission.id} />
+                      ))}
+                    </div>
+
+                    {/* Connector lines to tier below */}
+                    {nextTierBelow && (
+                      <div className="flex justify-center py-0">
+                        <TierConnectors
+                          tierAbove={tier}
+                          tierBelow={nextTierBelow}
+                          tasks={mission.tasks}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              <div className="mt-3 px-3 py-1 bg-muted rounded text-xs text-muted-foreground font-medium">
+                Foundation
+              </div>
             </div>
           </div>
         </div>
