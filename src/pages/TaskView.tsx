@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSubstrate } from "@/lib/substrate-context";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Check, MapPin, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, MapPin, Pencil, Star, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TraceEntry } from "@/lib/types";
 
@@ -38,9 +40,12 @@ function TraceItem({ entry }: { entry: TraceEntry }) {
 export default function TaskView() {
   const navigate = useNavigate();
   const { missionId, taskId } = useParams<{ missionId: string; taskId: string }>();
-  const { getMission, getTask, completeTask, claimTask, deleteTask, agents } = useSubstrate();
+  const { getMission, getTask, completeTask, claimTask, deleteTask, updateTask, agents } = useSubstrate();
   const mission = getMission(missionId || "");
   const task = getTask(missionId || "", taskId || "");
+
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   if (!mission || !task) {
     return (
@@ -96,32 +101,87 @@ export default function TaskView() {
             <p className="text-sm text-muted-foreground mt-3 leading-relaxed">{task.description}</p>
 
             <div className="mt-6 space-y-3">
-              <div className="flex items-center gap-2 text-xs">
+              {/* Agent type - editable */}
+              <div className="flex items-center gap-2 text-xs group">
                 <span className="text-muted-foreground w-24">Agent type</span>
-                <span className="font-medium">{task.requiredAgentType}</span>
-              </div>
-              {task.locationRadius && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-muted-foreground w-24">Location</span>
-                  <span className="font-medium flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    {task.locationRadius}
+                {editingField === "agentType" ? (
+                  <div className="flex items-center gap-1">
+                    <Input className="h-6 text-xs w-40" value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { updateTask(mission.id, task.id, { requiredAgentType: editValue }); setEditingField(null); } if (e.key === "Escape") setEditingField(null); }} autoFocus />
+                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { updateTask(mission.id, task.id, { requiredAgentType: editValue }); setEditingField(null); }}><Check className="w-3 h-3" /></Button>
+                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setEditingField(null)}><X className="w-3 h-3" /></Button>
+                  </div>
+                ) : (
+                  <span className="font-medium cursor-pointer hover:text-primary flex items-center gap-1" onClick={() => { setEditValue(task.requiredAgentType); setEditingField("agentType"); }}>
+                    {task.requiredAgentType}
+                    <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                   </span>
-                </div>
-              )}
-              {task.assignedAgentName && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-muted-foreground w-24">Assigned</span>
-                  <Link to={`/agent/${task.assignedAgentId}`} className="font-medium hover:underline">
-                    {task.assignedAgentName}
-                  </Link>
-                </div>
-              )}
-              {task.dependencies.length > 0 && (
-                <div className="flex items-start gap-2 text-xs">
-                  <span className="text-muted-foreground w-24 shrink-0">Depends on</span>
-                  <div className="flex flex-wrap gap-1">
-                    {task.dependencies.map((depId) => {
+                )}
+              </div>
+
+              {/* Location - editable */}
+              <div className="flex items-center gap-2 text-xs group">
+                <span className="text-muted-foreground w-24">Location</span>
+                {editingField === "location" ? (
+                  <div className="flex items-center gap-1">
+                    <Input className="h-6 text-xs w-40" value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { updateTask(mission.id, task.id, { locationRadius: editValue || undefined }); setEditingField(null); } if (e.key === "Escape") setEditingField(null); }} autoFocus />
+                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { updateTask(mission.id, task.id, { locationRadius: editValue || undefined }); setEditingField(null); }}><Check className="w-3 h-3" /></Button>
+                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setEditingField(null)}><X className="w-3 h-3" /></Button>
+                  </div>
+                ) : (
+                  <span className="font-medium cursor-pointer hover:text-primary flex items-center gap-1" onClick={() => { setEditValue(task.locationRadius || ""); setEditingField("location"); }}>
+                    <MapPin className="w-3 h-3" />
+                    {task.locationRadius || "Not set"}
+                    <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                  </span>
+                )}
+              </div>
+
+              {/* Assigned - editable */}
+              <div className="flex items-center gap-2 text-xs group">
+                <span className="text-muted-foreground w-24">Assigned</span>
+                {editingField === "assigned" ? (
+                  <div className="flex flex-col gap-1">
+                    {agents.map((agent) => (
+                      <Button key={agent.id} variant={task.assignedAgentId === agent.id ? "default" : "outline"} size="sm" className="h-6 text-xs justify-start" onClick={() => { updateTask(mission.id, task.id, { assignedAgentId: agent.id, assignedAgentName: agent.name }); setEditingField(null); }}>
+                        {agent.name}
+                      </Button>
+                    ))}
+                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { updateTask(mission.id, task.id, { assignedAgentId: undefined, assignedAgentName: undefined }); setEditingField(null); }}>Unassign</Button>
+                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setEditingField(null)}>Cancel</Button>
+                  </div>
+                ) : (
+                  <span className="font-medium cursor-pointer hover:text-primary flex items-center gap-1" onClick={() => setEditingField("assigned")}>
+                    {task.assignedAgentName ? (
+                      <Link to={`/agent/${task.assignedAgentId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+                        {task.assignedAgentName}
+                      </Link>
+                    ) : "Unassigned"}
+                    <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                  </span>
+                )}
+              </div>
+
+              {/* Dependencies - editable */}
+              <div className="flex items-start gap-2 text-xs group">
+                <span className="text-muted-foreground w-24 shrink-0">Depends on</span>
+                {editingField === "deps" ? (
+                  <div className="flex flex-col gap-1">
+                    {mission.tasks.filter((t) => t.id !== task.id).map((t) => {
+                      const isSelected = task.dependencies.includes(t.id);
+                      return (
+                        <Button key={t.id} variant={isSelected ? "default" : "outline"} size="sm" className="h-6 text-xs justify-start" onClick={() => {
+                          const newDeps = isSelected ? task.dependencies.filter((d) => d !== t.id) : [...task.dependencies, t.id];
+                          updateTask(mission.id, task.id, { dependencies: newDeps });
+                        }}>
+                          {isSelected && <Check className="w-3 h-3 mr-1" />}{t.title}
+                        </Button>
+                      );
+                    })}
+                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setEditingField(null)}>Done</Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-1 cursor-pointer" onClick={() => setEditingField("deps")}>
+                    {task.dependencies.length > 0 ? task.dependencies.map((depId) => {
                       const dep = mission.tasks.find((t) => t.id === depId);
                       return (
                         <span key={depId} className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-muted rounded text-xs">
@@ -129,10 +189,11 @@ export default function TaskView() {
                           {dep?.title || depId}
                         </span>
                       );
-                    })}
+                    }) : <span className="text-muted-foreground">None</span>}
+                    <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity mt-0.5" />
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {task.status === "active" && (
