@@ -207,8 +207,9 @@ function TierConnectors({
 
 export default function MissionView() {
   const { missionId } = useParams<{ missionId: string }>();
-  const { getMission, addTask } = useSubstrate();
+  const { getMission, addTask, completeTask } = useSubstrate();
   const mission = getMission(missionId || "");
+  const [successorParent, setSuccessorParent] = useState<Task | null>(null);
 
   const tiers = useMemo(() => (mission ? buildTiers(mission.tasks) : []), [mission]);
 
@@ -226,8 +227,11 @@ export default function MissionView() {
   const complete = mission.tasks.filter((t) => t.status === "complete").length;
   const pct = Math.round((complete / mission.tasks.length) * 100);
 
-  // Reverse tiers so depth 0 (no deps) is at the bottom
   const reversedTiers = [...tiers].reverse();
+
+  const handleComplete = (taskId: string) => {
+    completeTask(mission.id, taskId);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -257,24 +261,26 @@ export default function MissionView() {
             <CreateTaskDialog missionId={mission.id} existingTasks={mission.tasks} onCreateTask={addTask} />
           </div>
 
-          {/* Flowchart — tiers stack upward, scroll horizontally if needed */}
           <div className="overflow-x-auto pb-4">
             <div className="flex flex-col items-center gap-0 min-w-fit">
               {reversedTiers.map((tier, tierIdx) => {
-                // tierIdx 0 = highest depth (top), last = depth 0 (bottom)
                 const actualDepth = tiers.length - 1 - tierIdx;
                 const nextTierBelow = tierIdx < reversedTiers.length - 1 ? reversedTiers[tierIdx + 1] : null;
 
                 return (
                   <div key={actualDepth} className="flex flex-col items-center">
-                    {/* Tier row */}
                     <div className="flex items-start justify-center gap-3">
                       {tier.map((task) => (
-                        <TaskBlock key={task.id} task={task} missionId={mission.id} />
+                        <TaskBlock
+                          key={task.id}
+                          task={task}
+                          missionId={mission.id}
+                          onComplete={handleComplete}
+                          onAddSuccessor={setSuccessorParent}
+                        />
                       ))}
                     </div>
 
-                    {/* Connector lines to tier below */}
                     {nextTierBelow && (
                       <div className="flex justify-center py-0">
                         <TierConnectors
@@ -294,6 +300,16 @@ export default function MissionView() {
             </div>
           </div>
         </div>
+
+        {successorParent && (
+          <AddSuccessorDialog
+            open={!!successorParent}
+            onOpenChange={(v) => { if (!v) setSuccessorParent(null); }}
+            parentTask={successorParent}
+            missionId={mission.id}
+            onCreateTask={addTask}
+          />
+        )}
       </main>
     </div>
   );
