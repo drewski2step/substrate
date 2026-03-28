@@ -3,10 +3,12 @@ import { useSubstrate } from "@/lib/substrate-context";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
+import { AddSuccessorDialog } from "@/components/AddSuccessorDialog";
 import { cn } from "@/lib/utils";
-import { Check, Lock, ArrowLeft } from "lucide-react";
+import { Check, Lock, ArrowLeft, CheckCircle2, Plus } from "lucide-react";
 import { Task } from "@/lib/types";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 const statusBg: Record<string, string> = {
   complete: "bg-muted/60 border-substrate-complete/40",
@@ -60,53 +62,90 @@ function buildTiers(tasks: Task[]): Task[][] {
   return tiers;
 }
 
-function TaskBlock({ task, missionId }: { task: Task; missionId: string }) {
+function TaskBlock({
+  task,
+  missionId,
+  onComplete,
+  onAddSuccessor,
+}: {
+  task: Task;
+  missionId: string;
+  onComplete: (taskId: string) => void;
+  onAddSuccessor: (task: Task) => void;
+}) {
   const isLocked = task.status === "locked";
+  const canComplete = task.status === "active" || task.status === "open";
 
   return (
-    <Link
-      to={isLocked ? "#" : `/mission/${missionId}/task/${task.id}`}
-      className={cn(
-        "relative border-2 rounded-lg px-4 py-3 transition-all w-48 shrink-0",
-        statusBg[task.status],
-        isLocked
-          ? "cursor-default opacity-50"
-          : "hover:shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
-        task.status === "open" && "animate-pulse-subtle"
-      )}
-    >
-      <div className={cn("absolute top-0 left-3 right-3 h-0.5 rounded-b", statusAccent[task.status])} />
+    <div className="relative group w-48 shrink-0">
+      <Link
+        to={isLocked ? "#" : `/mission/${missionId}/task/${task.id}`}
+        className={cn(
+          "relative border-2 rounded-lg px-4 py-3 transition-all block",
+          statusBg[task.status],
+          isLocked
+            ? "cursor-default opacity-50"
+            : "hover:shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
+          task.status === "open" && "animate-pulse-subtle"
+        )}
+      >
+        <div className={cn("absolute top-0 left-3 right-3 h-0.5 rounded-b", statusAccent[task.status])} />
 
-      <div className="flex items-center gap-2 pt-1">
-        <div
-          className={cn(
-            "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
-            task.status === "complete" && "bg-foreground border-foreground",
-            task.status === "locked" && "border-substrate-locked bg-muted/50",
-            task.status === "open" && "border-substrate-open bg-substrate-open/10",
-            task.status === "active" && "border-substrate-active bg-substrate-active/10",
-            task.status === "blocked" && "border-substrate-blocked bg-substrate-blocked/10"
-          )}
-        >
-          {task.status === "complete" && <Check className="w-3 h-3 text-primary-foreground" />}
-          {task.status === "locked" && <Lock className="w-2.5 h-2.5 text-substrate-locked" />}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className={cn("text-xs font-semibold leading-tight", isLocked && "text-muted-foreground")}>
-              {task.title}
-            </span>
-            <StatusBadge status={task.status} />
+        <div className="flex items-center gap-2 pt-1">
+          <div
+            className={cn(
+              "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
+              task.status === "complete" && "bg-foreground border-foreground",
+              task.status === "locked" && "border-substrate-locked bg-muted/50",
+              task.status === "open" && "border-substrate-open bg-substrate-open/10",
+              task.status === "active" && "border-substrate-active bg-substrate-active/10",
+              task.status === "blocked" && "border-substrate-blocked bg-substrate-blocked/10"
+            )}
+          >
+            {task.status === "complete" && <Check className="w-3 h-3 text-primary-foreground" />}
+            {task.status === "locked" && <Lock className="w-2.5 h-2.5 text-substrate-locked" />}
           </div>
-          <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5">
-            {task.requiredAgentType}
-          </span>
-          {task.assignedAgentName && (
-            <span className="text-[10px] text-muted-foreground">→ {task.assignedAgentName}</span>
-          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={cn("text-xs font-semibold leading-tight", isLocked && "text-muted-foreground")}>
+                {task.title}
+              </span>
+              <StatusBadge status={task.status} />
+            </div>
+            <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5">
+              {task.requiredAgentType}
+            </span>
+            {task.assignedAgentName && (
+              <span className="text-[10px] text-muted-foreground">→ {task.assignedAgentName}</span>
+            )}
+          </div>
         </div>
+      </Link>
+
+      {/* Action buttons — visible on hover */}
+      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        {canComplete && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onComplete(task.id); }}
+            className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-substrate-open text-[10px] font-medium text-white shadow-sm hover:bg-substrate-open/80 transition-colors"
+            title="Mark complete"
+          >
+            <CheckCircle2 className="w-3 h-3" />
+            Done
+          </button>
+        )}
+        {!isLocked && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onAddSuccessor(task); }}
+            className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-accent text-[10px] font-medium text-accent-foreground shadow-sm hover:bg-accent/80 transition-colors"
+            title="Add successor task"
+          >
+            <Plus className="w-3 h-3" />
+            Next
+          </button>
+        )}
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -168,8 +207,9 @@ function TierConnectors({
 
 export default function MissionView() {
   const { missionId } = useParams<{ missionId: string }>();
-  const { getMission, addTask } = useSubstrate();
+  const { getMission, addTask, completeTask } = useSubstrate();
   const mission = getMission(missionId || "");
+  const [successorParent, setSuccessorParent] = useState<Task | null>(null);
 
   const tiers = useMemo(() => (mission ? buildTiers(mission.tasks) : []), [mission]);
 
@@ -187,8 +227,11 @@ export default function MissionView() {
   const complete = mission.tasks.filter((t) => t.status === "complete").length;
   const pct = Math.round((complete / mission.tasks.length) * 100);
 
-  // Reverse tiers so depth 0 (no deps) is at the bottom
   const reversedTiers = [...tiers].reverse();
+
+  const handleComplete = (taskId: string) => {
+    completeTask(mission.id, taskId);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -218,24 +261,26 @@ export default function MissionView() {
             <CreateTaskDialog missionId={mission.id} existingTasks={mission.tasks} onCreateTask={addTask} />
           </div>
 
-          {/* Flowchart — tiers stack upward, scroll horizontally if needed */}
           <div className="overflow-x-auto pb-4">
             <div className="flex flex-col items-center gap-0 min-w-fit">
               {reversedTiers.map((tier, tierIdx) => {
-                // tierIdx 0 = highest depth (top), last = depth 0 (bottom)
                 const actualDepth = tiers.length - 1 - tierIdx;
                 const nextTierBelow = tierIdx < reversedTiers.length - 1 ? reversedTiers[tierIdx + 1] : null;
 
                 return (
                   <div key={actualDepth} className="flex flex-col items-center">
-                    {/* Tier row */}
                     <div className="flex items-start justify-center gap-3">
                       {tier.map((task) => (
-                        <TaskBlock key={task.id} task={task} missionId={mission.id} />
+                        <TaskBlock
+                          key={task.id}
+                          task={task}
+                          missionId={mission.id}
+                          onComplete={handleComplete}
+                          onAddSuccessor={setSuccessorParent}
+                        />
                       ))}
                     </div>
 
-                    {/* Connector lines to tier below */}
                     {nextTierBelow && (
                       <div className="flex justify-center py-0">
                         <TierConnectors
@@ -255,6 +300,16 @@ export default function MissionView() {
             </div>
           </div>
         </div>
+
+        {successorParent && (
+          <AddSuccessorDialog
+            open={!!successorParent}
+            onOpenChange={(v) => { if (!v) setSuccessorParent(null); }}
+            parentTask={successorParent}
+            missionId={mission.id}
+            onCreateTask={addTask}
+          />
+        )}
       </main>
     </div>
   );
