@@ -63,6 +63,8 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
                       action: "completed" as const,
                       content: "Task marked as complete.",
                       timestamp: new Date().toISOString(),
+                      dependencies: [],
+                      subTraces: [],
                     },
                   ],
                 }
