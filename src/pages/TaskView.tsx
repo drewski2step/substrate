@@ -272,34 +272,44 @@ export default function TaskView() {
             )}
           </div>
 
-          {/* Right panel — Trace */}
+          {/* Right panel — Trace Flowchart */}
           <div className="lg:col-span-3 animate-fade-in-up-delay-1">
             <div className="border border-border rounded-lg p-5">
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Trace</h3>
-              <p className="text-xs text-muted-foreground mb-4">Chronological record of actions on this task.</p>
+              <p className="text-xs text-muted-foreground mb-4">Modular flowchart of actions. Click a node to expand sub-traces.</p>
 
-              {task.traces.length > 0 ? (
-                <div className="divide-y divide-border">
-                  {task.traces.map((entry) => (
-                    <TraceItem key={entry.id} entry={entry} />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground py-4">No trace entries yet.</p>
-              )}
+              <TraceFlowchart
+                traces={task.traces}
+                missionId={mission.id}
+                taskId={task.id}
+                onAddTrace={(parentPath, entry) => {
+                  const fullEntry = { ...entry, taskId: task.id };
+                  if (parentPath.length === 0) {
+                    // Add to top-level traces via addTrace in context
+                    addSubTrace(mission.id, task.id, [], fullEntry);
+                  } else {
+                    addSubTrace(mission.id, task.id, parentPath, fullEntry);
+                  }
+                }}
+                onUpdateTraceDeps={(traceId, deps) => {
+                  updateTraceInTask(mission.id, task.id, traceId, { dependencies: deps });
+                }}
+              />
 
               {upstreamTraces.length > 0 && (
-                <>
-                  <div className="border-t border-border mt-4 pt-4">
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Upstream context</h4>
-                    <p className="text-xs text-muted-foreground mb-3">Trace from dependency tasks — the substrate state informing this work.</p>
-                    <div className={cn("divide-y divide-border", task.traces.length > 0 && "opacity-70")}>
-                      {upstreamTraces.map((entry) => (
-                        <TraceItem key={entry.id} entry={entry} />
-                      ))}
-                    </div>
+                <div className="border-t border-border mt-6 pt-4">
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Upstream context</h4>
+                  <p className="text-xs text-muted-foreground mb-3">Trace from dependency tasks.</p>
+                  <div className={cn("opacity-70")}>
+                    <TraceFlowchart
+                      traces={upstreamTraces}
+                      missionId={mission.id}
+                      taskId={task.id}
+                      onAddTrace={() => {}}
+                      onUpdateTraceDeps={() => {}}
+                    />
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>
