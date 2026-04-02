@@ -52,22 +52,22 @@ export function AddSuccessorDialog({ open, onOpenChange, parentTask, missionId, 
         <DialogHeader>
           <DialogTitle className="text-base">Add successor to "{parentTask.title}"</DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-muted-foreground">This task will depend on <strong>{parentTask.title}</strong> and appear above it in the flowchart.</p>
+        <p className="text-xs text-muted-foreground">This trace will depend on <strong>{parentTask.title}</strong> and appear above it in the graph.</p>
         <div className="space-y-3 mt-2">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Title</label>
+            <label className="text-xs text-muted-foreground mb-1 block font-mono">Title</label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Install kitchen cabinets" />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+            <label className="text-xs text-muted-foreground mb-1 block font-mono">Description</label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What needs to be done?" rows={3} />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Required agent type</label>
+            <label className="text-xs text-muted-foreground mb-1 block font-mono">Required agent type</label>
             <Input value={requiredAgentType} onChange={(e) => setRequiredAgentType(e.target.value)} placeholder="e.g. licensed electrician" />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Location radius (optional)</label>
+            <label className="text-xs text-muted-foreground mb-1 block font-mono">Location radius (optional)</label>
             <Input value={locationRadius} onChange={(e) => setLocationRadius(e.target.value)} placeholder="e.g. Denver, CO — 25mi" />
           </div>
           <Button onClick={handleCreate} disabled={!title.trim() || !requiredAgentType.trim()} className="w-full mt-2" size="sm">

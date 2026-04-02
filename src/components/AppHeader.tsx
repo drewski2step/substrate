@@ -7,15 +7,15 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
       <div className="mx-auto max-w-5xl flex items-center justify-between px-6 h-14">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-5 h-5 rounded-sm bg-foreground group-hover:scale-95 transition-transform" />
-          <span className="text-sm font-semibold tracking-tight">Substrate</span>
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <div className="w-5 h-5 rounded-sm bg-primary group-hover:scale-95 transition-transform" />
+          <span className="text-sm font-semibold tracking-tight font-mono uppercase">Substrate</span>
         </Link>
         <nav className="flex items-center gap-6">
           <Link
             to="/"
             className={cn(
-              "text-sm transition-colors",
+              "text-sm font-mono transition-colors",
               location.pathname === "/" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -24,7 +24,7 @@ export function AppHeader() {
           <Link
             to="/agents"
             className={cn(
-              "text-sm transition-colors",
+              "text-sm font-mono transition-colors",
               location.pathname.startsWith("/agents") ? "text-foreground" : "text-muted-foreground hover:text-foreground"
             )}
           >

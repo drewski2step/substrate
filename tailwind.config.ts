@@ -15,11 +15,11 @@ export default {
     extend: {
       fontFamily: {
         sans: [
-          "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto",
+          "Space Grotesk", "-apple-system", "BlinkMacSystemFont", "Segoe UI",
           "Helvetica Neue", "Arial", "sans-serif",
         ],
         mono: [
-          "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", "monospace",
+          "JetBrains Mono", "SF Mono", "Fira Code", "monospace",
         ],
       },
       colors: {

@@ -26,7 +26,7 @@ export default function TaskView() {
       <div className="min-h-screen bg-background">
         <AppHeader />
         <main className="mx-auto max-w-5xl px-6 py-12">
-          <p className="text-muted-foreground">Task not found.</p>
+          <p className="text-muted-foreground">Trace not found.</p>
         </main>
       </div>
     );
@@ -58,7 +58,7 @@ export default function TaskView() {
         <div className="animate-fade-in-up">
           <Link
             to={`/mission/${missionId}`}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-6"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mb-6 font-mono"
           >
             <ArrowLeft className="w-3 h-3" />
             {mission.title}
@@ -77,7 +77,7 @@ export default function TaskView() {
             <div className="mt-6 space-y-3">
               {/* Agent type - editable */}
               <div className="flex items-center gap-2 text-xs group">
-                <span className="text-muted-foreground w-24">Agent type</span>
+                <span className="text-muted-foreground w-24 font-mono">Agent type</span>
                 {editingField === "agentType" ? (
                   <div className="flex items-center gap-1">
                     <Input className="h-6 text-xs w-40" value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { updateTask(mission.id, task.id, { requiredAgentType: editValue }); setEditingField(null); } if (e.key === "Escape") setEditingField(null); }} autoFocus />
@@ -94,7 +94,7 @@ export default function TaskView() {
 
               {/* Location - editable */}
               <div className="flex items-center gap-2 text-xs group">
-                <span className="text-muted-foreground w-24">Location</span>
+                <span className="text-muted-foreground w-24 font-mono">Location</span>
                 {editingField === "location" ? (
                   <div className="flex items-center gap-1">
                     <Input className="h-6 text-xs w-40" value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { updateTask(mission.id, task.id, { locationRadius: editValue || undefined }); setEditingField(null); } if (e.key === "Escape") setEditingField(null); }} autoFocus />
@@ -112,7 +112,7 @@ export default function TaskView() {
 
               {/* Assigned - editable */}
               <div className="flex items-center gap-2 text-xs group">
-                <span className="text-muted-foreground w-24">Assigned</span>
+                <span className="text-muted-foreground w-24 font-mono">Assigned</span>
                 {editingField === "assigned" ? (
                   <div className="flex flex-col gap-1">
                     {agents.map((agent) => (
@@ -137,7 +137,7 @@ export default function TaskView() {
 
               {/* Dependencies - editable */}
               <div className="flex items-start gap-2 text-xs group">
-                <span className="text-muted-foreground w-24 shrink-0">Depends on</span>
+                <span className="text-muted-foreground w-24 shrink-0 font-mono">Depends on</span>
                 {editingField === "deps" ? (
                   <div className="flex flex-col gap-1">
                     {mission.tasks.filter((t) => t.id !== task.id).map((t) => {
@@ -158,7 +158,7 @@ export default function TaskView() {
                     {task.dependencies.length > 0 ? task.dependencies.map((depId) => {
                       const dep = mission.tasks.find((t) => t.id === depId);
                       return (
-                        <span key={depId} className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-muted rounded text-xs">
+                        <span key={depId} className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-muted rounded text-xs font-mono">
                           {dep?.status === "complete" && <Check className="w-2.5 h-2.5" />}
                           {dep?.title || depId}
                         </span>
@@ -184,14 +184,14 @@ export default function TaskView() {
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="sm" className="mt-3 text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5">
                   <Trash2 className="w-3.5 h-3.5" />
-                  Delete task
+                  Delete trace
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this task?</AlertDialogTitle>
+                  <AlertDialogTitle>Delete this trace?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will remove the task and clear it from any dependency lists. This action cannot be undone.
+                    This will remove the trace and clear it from any dependency lists. This action cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -212,20 +212,20 @@ export default function TaskView() {
             {/* Suggested Agents */}
             {suggestedAgents.length > 0 && (task.status === "open") && (
               <div className="mt-8">
-                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Suggested agents</h3>
+                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 font-mono">Suggested agents</h3>
                 <div className="space-y-2">
                   {suggestedAgents.map((agent) => (
                     <div key={agent.id} className="flex items-center justify-between border border-border rounded-lg p-3">
                       <div>
-                        <Link to={`/agent/${agent.id}`} className="text-sm font-medium hover:underline">
+                        <Link to={`/agent/${agent.id}`} className="text-sm font-medium hover:underline hover:text-primary">
                           {agent.name}
                         </Link>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground flex items-center gap-1 font-mono">
                             <Star className="w-3 h-3" />
                             {agent.reputationScore}
                           </span>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground flex items-center gap-1 font-mono">
                             <MapPin className="w-3 h-3" />
                             {agent.location}
                           </span>
@@ -245,11 +245,11 @@ export default function TaskView() {
             )}
           </div>
 
-          {/* Right panel — Trace Flowchart */}
+          {/* Right panel — Sub-Trace Flowchart */}
           <div className="lg:col-span-3 animate-fade-in-up-delay-1">
             <div className="border border-border rounded-lg p-5">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Trace</h3>
-              <p className="text-xs text-muted-foreground mb-4">Modular flowchart of actions. Click a node to expand sub-traces.</p>
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 font-mono">Sub-traces</h3>
+              <p className="text-xs text-muted-foreground mb-4">Modular flowchart of actions. Click a node to expand deeper traces.</p>
 
               <TraceFlowchart
                 traces={task.traces}
@@ -258,7 +258,6 @@ export default function TaskView() {
                 onAddTrace={(parentPath, entry) => {
                   const fullEntry = { ...entry, taskId: task.id };
                   if (parentPath.length === 0) {
-                    // Add to top-level traces via addTrace in context
                     addSubTrace(mission.id, task.id, [], fullEntry);
                   } else {
                     addSubTrace(mission.id, task.id, parentPath, fullEntry);
@@ -271,8 +270,8 @@ export default function TaskView() {
 
               {upstreamTraces.length > 0 && (
                 <div className="border-t border-border mt-6 pt-4">
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Upstream context</h4>
-                  <p className="text-xs text-muted-foreground mb-3">Trace from dependency tasks.</p>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 font-mono">Upstream context</h4>
+                  <p className="text-xs text-muted-foreground mb-3">Traces from dependency nodes.</p>
                   <div className={cn("opacity-70")}>
                     <TraceFlowchart
                       traces={upstreamTraces}
