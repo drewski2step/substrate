@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSubstrate } from "@/lib/substrate-context";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { TraceFlowchart } from "@/components/TraceFlowchart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -10,37 +11,10 @@ import { ArrowLeft, Check, MapPin, Pencil, Star, Trash2, X } from "lucide-react"
 import { cn } from "@/lib/utils";
 import { TraceEntry } from "@/lib/types";
 
-function TraceItem({ entry }: { entry: TraceEntry }) {
-  const actionLabels: Record<string, string> = {
-    claimed: "claimed",
-    updated: "updated",
-    completed: "completed",
-    note: "noted",
-    blocked: "blocked",
-    unblocked: "unblocked",
-  };
-
-  return (
-    <div className="flex gap-3 py-3">
-      <div className="w-1.5 h-1.5 rounded-full bg-border mt-2 shrink-0" />
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium">{entry.agentName}</span>
-          <span className="text-xs text-muted-foreground">{actionLabels[entry.action] || entry.action}</span>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {new Date(entry.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-          </span>
-        </div>
-        <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{entry.content}</p>
-      </div>
-    </div>
-  );
-}
-
 export default function TaskView() {
   const navigate = useNavigate();
   const { missionId, taskId } = useParams<{ missionId: string; taskId: string }>();
-  const { getMission, getTask, completeTask, claimTask, deleteTask, updateTask, agents } = useSubstrate();
+  const { getMission, getTask, completeTask, claimTask, deleteTask, updateTask, updateTraceInTask, addSubTrace, agents } = useSubstrate();
   const mission = getMission(missionId || "");
   const task = getTask(missionId || "", taskId || "");
 
@@ -271,34 +245,44 @@ export default function TaskView() {
             )}
           </div>
 
-          {/* Right panel — Trace */}
+          {/* Right panel — Trace Flowchart */}
           <div className="lg:col-span-3 animate-fade-in-up-delay-1">
             <div className="border border-border rounded-lg p-5">
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Trace</h3>
-              <p className="text-xs text-muted-foreground mb-4">Chronological record of actions on this task.</p>
+              <p className="text-xs text-muted-foreground mb-4">Modular flowchart of actions. Click a node to expand sub-traces.</p>
 
-              {task.traces.length > 0 ? (
-                <div className="divide-y divide-border">
-                  {task.traces.map((entry) => (
-                    <TraceItem key={entry.id} entry={entry} />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground py-4">No trace entries yet.</p>
-              )}
+              <TraceFlowchart
+                traces={task.traces}
+                missionId={mission.id}
+                taskId={task.id}
+                onAddTrace={(parentPath, entry) => {
+                  const fullEntry = { ...entry, taskId: task.id };
+                  if (parentPath.length === 0) {
+                    // Add to top-level traces via addTrace in context
+                    addSubTrace(mission.id, task.id, [], fullEntry);
+                  } else {
+                    addSubTrace(mission.id, task.id, parentPath, fullEntry);
+                  }
+                }}
+                onUpdateTraceDeps={(traceId, deps) => {
+                  updateTraceInTask(mission.id, task.id, traceId, { dependencies: deps });
+                }}
+              />
 
               {upstreamTraces.length > 0 && (
-                <>
-                  <div className="border-t border-border mt-4 pt-4">
-                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Upstream context</h4>
-                    <p className="text-xs text-muted-foreground mb-3">Trace from dependency tasks — the substrate state informing this work.</p>
-                    <div className={cn("divide-y divide-border", task.traces.length > 0 && "opacity-70")}>
-                      {upstreamTraces.map((entry) => (
-                        <TraceItem key={entry.id} entry={entry} />
-                      ))}
-                    </div>
+                <div className="border-t border-border mt-6 pt-4">
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Upstream context</h4>
+                  <p className="text-xs text-muted-foreground mb-3">Trace from dependency tasks.</p>
+                  <div className={cn("opacity-70")}>
+                    <TraceFlowchart
+                      traces={upstreamTraces}
+                      missionId={mission.id}
+                      taskId={task.id}
+                      onAddTrace={() => {}}
+                      onUpdateTraceDeps={() => {}}
+                    />
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>

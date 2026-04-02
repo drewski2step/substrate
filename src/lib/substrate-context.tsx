@@ -11,6 +11,8 @@ interface SubstrateState {
   addTask: (missionId: string, task: Omit<Task, "id" | "order" | "traces">) => void;
   deleteTask: (missionId: string, taskId: string) => void;
   updateTask: (missionId: string, taskId: string, updates: Partial<Pick<Task, "requiredAgentType" | "locationRadius" | "assignedAgentId" | "assignedAgentName" | "dependencies">>) => void;
+  updateTraceInTask: (missionId: string, taskId: string, traceId: string, updates: Partial<Pick<TraceEntry, "dependencies">>) => void;
+  addSubTrace: (missionId: string, taskId: string, parentTracePath: string[], entry: Omit<TraceEntry, "id" | "timestamp">) => void;
   getAgent: (id: string) => Agent | undefined;
   getMission: (id: string) => Mission | undefined;
   getTask: (missionId: string, taskId: string) => Task | undefined;
@@ -63,6 +65,8 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
                       action: "completed" as const,
                       content: "Task marked as complete.",
                       timestamp: new Date().toISOString(),
+                      dependencies: [],
+                      subTraces: [],
                     },
                   ],
                 }
@@ -103,6 +107,8 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
                           action: "claimed" as const,
                           content: `${agent.name} claimed this task.`,
                           timestamp: new Date().toISOString(),
+                          dependencies: [],
+                          subTraces: [],
                         },
                       ],
                     }
@@ -127,7 +133,7 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
                       ...t,
                       traces: [
                         ...t.traces,
-                        { ...entry, id: `tr-${Date.now()}`, timestamp: new Date().toISOString() },
+                        { ...entry, id: `tr-${Date.now()}`, timestamp: new Date().toISOString(), dependencies: [], subTraces: [] },
                       ],
                     }
               ),
@@ -176,6 +182,54 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  const updateTraceInTask = useCallback((missionId: string, taskId: string, traceId: string, updates: Partial<Pick<TraceEntry, "dependencies">>) => {
+    setMissions((prev) =>
+      prev.map((m) =>
+        m.id !== missionId
+          ? m
+          : {
+              ...m,
+              tasks: m.tasks.map((t) =>
+                t.id !== taskId
+                  ? t
+                  : { ...t, traces: t.traces.map((tr) => (tr.id !== traceId ? tr : { ...tr, ...updates })) }
+              ),
+            }
+      )
+    );
+  }, []);
+
+  const insertSubTrace = (traces: TraceEntry[], path: string[], newEntry: TraceEntry): TraceEntry[] => {
+    if (path.length === 0) return [...traces, newEntry];
+    return traces.map((tr) => {
+      if (tr.id === path[0]) {
+        return { ...tr, subTraces: insertSubTrace(tr.subTraces, path.slice(1), newEntry) };
+      }
+      return tr;
+    });
+  };
+
+  const addSubTrace = useCallback((missionId: string, taskId: string, parentTracePath: string[], entry: Omit<TraceEntry, "id" | "timestamp">) => {
+    setMissions((prev) =>
+      prev.map((m) =>
+        m.id !== missionId
+          ? m
+          : {
+              ...m,
+              tasks: m.tasks.map((t) => {
+                if (t.id !== taskId) return t;
+                const newEntry: TraceEntry = {
+                  ...entry,
+                  id: `tr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  timestamp: new Date().toISOString(),
+                };
+                return { ...t, traces: insertSubTrace(t.traces, parentTracePath, newEntry) };
+              }),
+            }
+      )
+    );
+  }, []);
+
   const getAgent = useCallback((id: string) => agents.find((a) => a.id === id), [agents]);
   const getMission = useCallback((id: string) => missions.find((m) => m.id === id), [missions]);
   const getTask = useCallback(
@@ -184,7 +238,7 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <SubstrateContext.Provider value={{ missions, agents, completeTask, claimTask, addTrace, addTask, deleteTask, updateTask, getAgent, getMission, getTask }}>
+    <SubstrateContext.Provider value={{ missions, agents, completeTask, claimTask, addTrace, addTask, deleteTask, updateTask, updateTraceInTask, addSubTrace, getAgent, getMission, getTask }}>
       {children}
     </SubstrateContext.Provider>
   );
