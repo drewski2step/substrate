@@ -105,6 +105,8 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
                           action: "claimed" as const,
                           content: `${agent.name} claimed this task.`,
                           timestamp: new Date().toISOString(),
+                          dependencies: [],
+                          subTraces: [],
                         },
                       ],
                     }
