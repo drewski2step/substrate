@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { Task, TaskStatus } from "@/lib/types";
 
@@ -63,35 +62,35 @@ export function CreateTaskDialog({ missionId, existingTasks, onCreateTask }: Cre
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5">
+        <Button variant="outline" size="sm" className="gap-1.5 font-mono">
           <Plus className="w-3.5 h-3.5" />
-          Add task
+          Add trace
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base">New task</DialogTitle>
+          <DialogTitle className="text-base">New trace</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 mt-2">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Title</label>
+            <label className="text-xs text-muted-foreground mb-1 block font-mono">Title</label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Install kitchen cabinets" />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+            <label className="text-xs text-muted-foreground mb-1 block font-mono">Description</label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What needs to be done?" rows={3} />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Required agent type</label>
+            <label className="text-xs text-muted-foreground mb-1 block font-mono">Required agent type</label>
             <Input value={requiredAgentType} onChange={(e) => setRequiredAgentType(e.target.value)} placeholder="e.g. licensed electrician" />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Location radius (optional)</label>
+            <label className="text-xs text-muted-foreground mb-1 block font-mono">Location radius (optional)</label>
             <Input value={locationRadius} onChange={(e) => setLocationRadius(e.target.value)} placeholder="e.g. Denver, CO — 25mi" />
           </div>
           {existingTasks.length > 0 && (
             <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">Dependencies (optional)</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block font-mono">Dependencies (optional)</label>
               <div className="space-y-1 max-h-32 overflow-y-auto">
                 {existingTasks.map((t) => (
                   <label key={t.id} className="flex items-center gap-2 text-xs cursor-pointer py-1 px-1 rounded hover:bg-muted/50">
@@ -108,7 +107,7 @@ export function CreateTaskDialog({ missionId, existingTasks, onCreateTask }: Cre
             </div>
           )}
           <Button onClick={handleCreate} disabled={!title.trim() || !requiredAgentType.trim()} className="w-full mt-2" size="sm">
-            Create task
+            Create trace
           </Button>
         </div>
       </DialogContent>

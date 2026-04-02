@@ -26,7 +26,7 @@ export default function AgentProfile() {
         <div className="animate-fade-in-up">
           <Link
             to="/agents"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-6"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mb-6 font-mono"
           >
             <ArrowLeft className="w-3 h-3" />
             Agents
@@ -43,12 +43,12 @@ export default function AgentProfile() {
             <div>
               <h1 className="text-xl font-semibold">{agent.name}</h1>
               <div className="flex items-center gap-3 mt-1">
-                <span className="text-xs text-muted-foreground capitalize">{agent.type}</span>
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <span className="text-xs text-muted-foreground capitalize font-mono">{agent.type}</span>
+                <span className="text-xs text-muted-foreground flex items-center gap-1 font-mono">
                   <MapPin className="w-3 h-3" />
                   {agent.location}
                 </span>
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <span className="text-xs text-muted-foreground flex items-center gap-1 font-mono">
                   <Star className="w-3 h-3" />
                   {agent.reputationScore} reputation
                 </span>
@@ -57,10 +57,10 @@ export default function AgentProfile() {
           </div>
 
           <div className="mt-6">
-            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Skills</h3>
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 font-mono">Skills</h3>
             <div className="flex flex-wrap gap-1.5">
               {agent.skills.map((skill) => (
-                <span key={skill} className="px-2 py-0.5 text-xs bg-muted rounded border border-border">
+                <span key={skill} className="px-2 py-0.5 text-xs bg-muted rounded border border-border font-mono">
                   {skill}
                 </span>
               ))}
@@ -69,8 +69,8 @@ export default function AgentProfile() {
         </div>
 
         <div className="mt-10 animate-fade-in-up-delay-1">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-4">
-            Completed tasks ({agent.completedTasks.length})
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-4 font-mono">
+            Completed traces ({agent.completedTasks.length})
           </h3>
           <div className="space-y-2">
             {agent.completedTasks.map((ct) => (
@@ -78,9 +78,9 @@ export default function AgentProfile() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium">{ct.taskTitle}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{ct.missionTitle}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 font-mono">{ct.missionTitle}</p>
                   </div>
-                  <span className="text-xs text-muted-foreground tabular-nums">
+                  <span className="text-xs text-muted-foreground tabular-nums font-mono">
                     {new Date(ct.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </span>
                 </div>

@@ -26,7 +26,6 @@ const statusAccent: Record<string, string> = {
   locked: "bg-substrate-locked",
 };
 
-/** Compute the depth of each task in the dependency DAG */
 function computeDepths(tasks: Task[]): Map<string, number> {
   const depths = new Map<string, number>();
   const taskMap = new Map(tasks.map((t) => [t.id, t]));
@@ -48,7 +47,6 @@ function computeDepths(tasks: Task[]): Map<string, number> {
   return depths;
 }
 
-/** Group tasks into horizontal tiers by depth */
 function buildTiers(tasks: Task[]): Task[][] {
   const depths = computeDepths(tasks);
   const maxDepth = Math.max(0, ...Array.from(depths.values()));
@@ -62,7 +60,7 @@ function buildTiers(tasks: Task[]): Task[][] {
   return tiers;
 }
 
-function TaskBlock({
+function TraceBlock({
   task,
   missionId,
   onComplete,
@@ -85,7 +83,7 @@ function TaskBlock({
           statusBg[task.status],
           isLocked
             ? "cursor-default opacity-50"
-            : "hover:shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
+            : "hover:shadow-lg hover:shadow-primary/5 hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
           task.status === "open" && "animate-pulse-subtle"
         )}
       >
@@ -95,7 +93,7 @@ function TaskBlock({
           <div
             className={cn(
               "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
-              task.status === "complete" && "bg-foreground border-foreground",
+              task.status === "complete" && "bg-primary border-primary",
               task.status === "locked" && "border-substrate-locked bg-muted/50",
               task.status === "open" && "border-substrate-open bg-substrate-open/10",
               task.status === "active" && "border-substrate-active bg-substrate-active/10",
@@ -112,11 +110,11 @@ function TaskBlock({
               </span>
               <StatusBadge status={task.status} />
             </div>
-            <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5">
+            <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5 font-mono">
               {task.requiredAgentType}
             </span>
             {task.assignedAgentName && (
-              <span className="text-[10px] text-muted-foreground">→ {task.assignedAgentName}</span>
+              <span className="text-[10px] text-muted-foreground font-mono">→ {task.assignedAgentName}</span>
             )}
           </div>
         </div>
@@ -127,7 +125,7 @@ function TaskBlock({
         {canComplete && (
           <button
             onClick={(e) => { e.stopPropagation(); onComplete(task.id); }}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-substrate-open text-[10px] font-medium text-white shadow-sm hover:bg-substrate-open/80 transition-colors"
+            className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-substrate-open text-[10px] font-medium text-primary-foreground shadow-sm hover:bg-substrate-open/80 transition-colors"
             title="Mark complete"
           >
             <CheckCircle2 className="w-3 h-3" />
@@ -138,7 +136,7 @@ function TaskBlock({
           <button
             onClick={(e) => { e.stopPropagation(); onAddSuccessor(task); }}
             className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-accent text-[10px] font-medium text-accent-foreground shadow-sm hover:bg-accent/80 transition-colors"
-            title="Add successor task"
+            title="Add successor trace"
           >
             <Plus className="w-3 h-3" />
             Next
@@ -149,7 +147,6 @@ function TaskBlock({
   );
 }
 
-/** SVG connector lines between tiers */
 function TierConnectors({
   tierAbove,
   tierBelow,
@@ -159,7 +156,6 @@ function TierConnectors({
   tierBelow: Task[];
   tasks: Task[];
 }) {
-  // For each task in tierAbove, draw lines down to its dependencies in tierBelow
   const lines: { fromIdx: number; toIdx: number; fromCount: number; toCount: number; complete: boolean }[] = [];
 
   tierAbove.forEach((task, fromIdx) => {
@@ -238,7 +234,7 @@ export default function MissionView() {
       <AppHeader />
       <main className="mx-auto max-w-5xl px-6 py-12">
         <div className="animate-fade-in-up">
-          <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-6">
+          <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mb-6 font-mono">
             <ArrowLeft className="w-3 h-3" />
             Missions
           </Link>
@@ -248,16 +244,16 @@ export default function MissionView() {
             <p className="text-xs text-muted-foreground mt-2 font-mono">{mission.location}</p>
           )}
           <div className="flex items-center gap-3 mt-4">
-            <div className="w-32 h-1.5 bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-foreground rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+            <div className="w-32 h-1 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
-            <span className="text-xs text-muted-foreground tabular-nums">{pct}% complete</span>
+            <span className="text-xs text-muted-foreground tabular-nums font-mono">{pct}% complete</span>
           </div>
         </div>
 
         <div className="mt-10 animate-fade-in-up-delay-1">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Task graph</h2>
+            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider font-mono">Trace graph</h2>
             <CreateTaskDialog missionId={mission.id} existingTasks={mission.tasks} onCreateTask={addTask} />
           </div>
 
@@ -271,7 +267,7 @@ export default function MissionView() {
                   <div key={actualDepth} className="flex flex-col items-center">
                     <div className="flex items-start justify-center gap-3">
                       {tier.map((task) => (
-                        <TaskBlock
+                        <TraceBlock
                           key={task.id}
                           task={task}
                           missionId={mission.id}
@@ -294,7 +290,7 @@ export default function MissionView() {
                 );
               })}
 
-              <div className="mt-3 px-3 py-1 bg-muted rounded text-xs text-muted-foreground font-medium">
+              <div className="mt-3 px-3 py-1 bg-muted rounded text-xs text-muted-foreground font-medium font-mono">
                 Foundation
               </div>
             </div>
