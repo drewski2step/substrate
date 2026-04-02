@@ -11,33 +11,6 @@ import { ArrowLeft, Check, MapPin, Pencil, Star, Trash2, X } from "lucide-react"
 import { cn } from "@/lib/utils";
 import { TraceEntry } from "@/lib/types";
 
-function TraceItem({ entry }: { entry: TraceEntry }) {
-  const actionLabels: Record<string, string> = {
-    claimed: "claimed",
-    updated: "updated",
-    completed: "completed",
-    note: "noted",
-    blocked: "blocked",
-    unblocked: "unblocked",
-  };
-
-  return (
-    <div className="flex gap-3 py-3">
-      <div className="w-1.5 h-1.5 rounded-full bg-border mt-2 shrink-0" />
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium">{entry.agentName}</span>
-          <span className="text-xs text-muted-foreground">{actionLabels[entry.action] || entry.action}</span>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {new Date(entry.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-          </span>
-        </div>
-        <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{entry.content}</p>
-      </div>
-    </div>
-  );
-}
-
 export default function TaskView() {
   const navigate = useNavigate();
   const { missionId, taskId } = useParams<{ missionId: string; taskId: string }>();
