@@ -11,6 +11,8 @@ interface SubstrateState {
   addTask: (missionId: string, task: Omit<Task, "id" | "order" | "traces">) => void;
   deleteTask: (missionId: string, taskId: string) => void;
   updateTask: (missionId: string, taskId: string, updates: Partial<Pick<Task, "requiredAgentType" | "locationRadius" | "assignedAgentId" | "assignedAgentName" | "dependencies">>) => void;
+  updateTraceInTask: (missionId: string, taskId: string, traceId: string, updates: Partial<Pick<TraceEntry, "dependencies">>) => void;
+  addSubTrace: (missionId: string, taskId: string, parentTracePath: string[], entry: Omit<TraceEntry, "id" | "timestamp">) => void;
   getAgent: (id: string) => Agent | undefined;
   getMission: (id: string) => Mission | undefined;
   getTask: (missionId: string, taskId: string) => Task | undefined;
