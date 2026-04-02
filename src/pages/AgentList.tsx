@@ -20,7 +20,7 @@ export default function AgentList() {
             <Link
               key={agent.id}
               to={`/agent/${agent.id}`}
-              className="block border border-border rounded-lg p-4 hover:bg-card transition-colors active:scale-[0.998]"
+              className="block border border-border rounded-lg p-4 hover:bg-card hover:border-primary/30 transition-all active:scale-[0.998]"
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
