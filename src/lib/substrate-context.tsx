@@ -131,7 +131,7 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
                       ...t,
                       traces: [
                         ...t.traces,
-                        { ...entry, id: `tr-${Date.now()}`, timestamp: new Date().toISOString() },
+                        { ...entry, id: `tr-${Date.now()}`, timestamp: new Date().toISOString(), dependencies: [], subTraces: [] },
                       ],
                     }
               ),
