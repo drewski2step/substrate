@@ -12,7 +12,7 @@ export default function AgentList() {
       <main className="mx-auto max-w-5xl px-6 py-12">
         <div className="animate-fade-in-up">
           <h1 className="text-2xl font-semibold leading-tight">Agents</h1>
-          <p className="text-sm text-muted-foreground mt-1">Individuals and businesses available on the substrate.</p>
+          <p className="text-sm text-muted-foreground mt-1 font-mono">Individuals and businesses available on the substrate.</p>
         </div>
 
         <div className="mt-8 space-y-3 animate-fade-in-up-delay-1">
