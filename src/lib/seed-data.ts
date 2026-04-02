@@ -43,26 +43,26 @@ export const seedAgents: Agent[] = [
 
 const traces: Record<string, TraceEntry[]> = {
   "t-001": [
-    { id: "tr-001", taskId: "t-001", agentId: "a-001", agentName: "Marcus Rivera", action: "claimed", content: "Claiming survey task. I have a licensed surveyor subcontractor.", timestamp: "2026-02-01T08:00:00Z" },
-    { id: "tr-002", taskId: "t-001", agentId: "a-001", agentName: "Marcus Rivera", action: "updated", content: "Survey crew scheduled for Feb 5. Property boundaries confirmed with county records.", timestamp: "2026-02-03T10:00:00Z" },
-    { id: "tr-003", taskId: "t-001", agentId: "a-001", agentName: "Marcus Rivera", action: "completed", content: "Survey complete. Lot is 0.28 acres, 75×160 ft. No encroachments. Setbacks: 25ft front, 5ft sides, 15ft rear. Plat filed with county.", timestamp: "2026-02-06T15:00:00Z" },
+    { id: "tr-001", taskId: "t-001", agentId: "a-001", agentName: "Marcus Rivera", action: "claimed", content: "Claiming survey task. I have a licensed surveyor subcontractor.", timestamp: "2026-02-01T08:00:00Z", dependencies: [], subTraces: [] },
+    { id: "tr-002", taskId: "t-001", agentId: "a-001", agentName: "Marcus Rivera", action: "updated", content: "Survey crew scheduled for Feb 5. Property boundaries confirmed with county records.", timestamp: "2026-02-03T10:00:00Z", dependencies: ["tr-001"], subTraces: [] },
+    { id: "tr-003", taskId: "t-001", agentId: "a-001", agentName: "Marcus Rivera", action: "completed", content: "Survey complete. Lot is 0.28 acres, 75×160 ft. No encroachments. Setbacks: 25ft front, 5ft sides, 15ft rear. Plat filed with county.", timestamp: "2026-02-06T15:00:00Z", dependencies: ["tr-002"], subTraces: [] },
   ],
   "t-002": [
-    { id: "tr-004", taskId: "t-002", agentId: "a-001", agentName: "Marcus Rivera", action: "claimed", content: "Handling permit applications. Will need survey results from Task 1.", timestamp: "2026-02-07T08:00:00Z" },
-    { id: "tr-005", taskId: "t-002", agentId: "a-001", agentName: "Marcus Rivera", action: "updated", content: "Submitted building permit application to Denver DOTI. Reference #BLD-2026-04821. Estimated 10 business day review.", timestamp: "2026-02-08T11:00:00Z" },
-    { id: "tr-006", taskId: "t-002", agentId: "a-001", agentName: "Marcus Rivera", action: "completed", content: "Building permit approved. Electrical and plumbing sub-permits also cleared. Construction can begin.", timestamp: "2026-02-22T14:30:00Z" },
+    { id: "tr-004", taskId: "t-002", agentId: "a-001", agentName: "Marcus Rivera", action: "claimed", content: "Handling permit applications. Will need survey results from Task 1.", timestamp: "2026-02-07T08:00:00Z", dependencies: [], subTraces: [] },
+    { id: "tr-005", taskId: "t-002", agentId: "a-001", agentName: "Marcus Rivera", action: "updated", content: "Submitted building permit application to Denver DOTI. Reference #BLD-2026-04821. Estimated 10 business day review.", timestamp: "2026-02-08T11:00:00Z", dependencies: ["tr-004"], subTraces: [] },
+    { id: "tr-006", taskId: "t-002", agentId: "a-001", agentName: "Marcus Rivera", action: "completed", content: "Building permit approved. Electrical and plumbing sub-permits also cleared. Construction can begin.", timestamp: "2026-02-22T14:30:00Z", dependencies: ["tr-005"], subTraces: [] },
   ],
   "t-003": [
-    { id: "tr-007", taskId: "t-003", agentId: "a-003", agentName: "Front Range Concrete", action: "claimed", content: "We can pour the foundation. Need to confirm soil report and footing specs.", timestamp: "2026-02-23T07:00:00Z" },
-    { id: "tr-008", taskId: "t-003", agentId: "a-003", agentName: "Front Range Concrete", action: "updated", content: "Excavation complete. Footings dug per structural engineer spec — 24\" wide, 36\" deep for frost line. Rebar placed.", timestamp: "2026-02-28T16:00:00Z" },
-    { id: "tr-009", taskId: "t-003", agentId: "a-003", agentName: "Front Range Concrete", action: "completed", content: "Foundation poured and cured. 2,800 sq ft slab on grade with stem walls. Passed foundation inspection.", timestamp: "2026-03-08T12:00:00Z" },
+    { id: "tr-007", taskId: "t-003", agentId: "a-003", agentName: "Front Range Concrete", action: "claimed", content: "We can pour the foundation. Need to confirm soil report and footing specs.", timestamp: "2026-02-23T07:00:00Z", dependencies: [], subTraces: [] },
+    { id: "tr-008", taskId: "t-003", agentId: "a-003", agentName: "Front Range Concrete", action: "updated", content: "Excavation complete. Footings dug per structural engineer spec — 24\" wide, 36\" deep for frost line. Rebar placed.", timestamp: "2026-02-28T16:00:00Z", dependencies: ["tr-007"], subTraces: [] },
+    { id: "tr-009", taskId: "t-003", agentId: "a-003", agentName: "Front Range Concrete", action: "completed", content: "Foundation poured and cured. 2,800 sq ft slab on grade with stem walls. Passed foundation inspection.", timestamp: "2026-03-08T12:00:00Z", dependencies: ["tr-008"], subTraces: [] },
   ],
   "t-004": [
-    { id: "tr-010", taskId: "t-004", agentId: "a-001", agentName: "Marcus Rivera", action: "claimed", content: "Starting framing. Lumber order placed with 84 Lumber — delivery scheduled March 12.", timestamp: "2026-03-10T08:00:00Z" },
-    { id: "tr-011", taskId: "t-004", agentId: "a-001", agentName: "Marcus Rivera", action: "updated", content: "First floor walls up. Starting second floor joists tomorrow. Crew of 4 on site.", timestamp: "2026-03-15T17:00:00Z" },
+    { id: "tr-010", taskId: "t-004", agentId: "a-001", agentName: "Marcus Rivera", action: "claimed", content: "Starting framing. Lumber order placed with 84 Lumber — delivery scheduled March 12.", timestamp: "2026-03-10T08:00:00Z", dependencies: [], subTraces: [] },
+    { id: "tr-011", taskId: "t-004", agentId: "a-001", agentName: "Marcus Rivera", action: "updated", content: "First floor walls up. Starting second floor joists tomorrow. Crew of 4 on site.", timestamp: "2026-03-15T17:00:00Z", dependencies: ["tr-010"], subTraces: [] },
   ],
   "t-005": [
-    { id: "tr-012", taskId: "t-005", agentId: "a-002", agentName: "Volt Electric LLC", action: "claimed", content: "Ready for rough-in once framing passes inspection. Reviewing electrical plans.", timestamp: "2026-03-16T09:00:00Z" },
+    { id: "tr-012", taskId: "t-005", agentId: "a-002", agentName: "Volt Electric LLC", action: "claimed", content: "Ready for rough-in once framing passes inspection. Reviewing electrical plans.", timestamp: "2026-03-16T09:00:00Z", dependencies: [], subTraces: [] },
   ],
 };
 

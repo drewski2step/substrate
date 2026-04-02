@@ -10,6 +10,8 @@ export interface TraceEntry {
   action: "claimed" | "updated" | "completed" | "note" | "blocked" | "unblocked";
   content: string;
   timestamp: string;
+  dependencies: string[]; // IDs of other traces this depends on
+  subTraces: TraceEntry[]; // recursive sub-traces
 }
 
 export interface Task {
