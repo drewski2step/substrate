@@ -100,10 +100,10 @@ function TraceNode({
       >
         <div className="flex items-center gap-2 mb-1">
           <div className={cn("w-2 h-2 rounded-full shrink-0", actionDot[trace.action] || "bg-muted-foreground")} />
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground font-mono">
             {trace.action}
           </span>
-          <span className="text-[10px] text-muted-foreground tabular-nums ml-auto">
+          <span className="text-[10px] text-muted-foreground tabular-nums ml-auto font-mono">
             {new Date(trace.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </span>
         </div>
