@@ -108,7 +108,7 @@ function TraceNode({
           </span>
         </div>
         <p className="text-xs leading-relaxed text-foreground/80 line-clamp-3">{trace.content}</p>
-        <div className="text-[10px] text-muted-foreground mt-1">{trace.agentName}</div>
+        <div className="text-[10px] text-muted-foreground mt-1 font-mono">{trace.agentName}</div>
 
         {/* Sub-trace indicator */}
         <div className="flex items-center gap-1 mt-1.5">

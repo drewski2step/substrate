@@ -33,15 +33,15 @@ export default function AgentList() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">{agent.name}</p>
                   <div className="flex items-center gap-3 mt-0.5">
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1 font-mono">
                       <MapPin className="w-3 h-3" />
                       {agent.location}
                     </span>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1 font-mono">
                       <Star className="w-3 h-3" />
                       {agent.reputationScore}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground font-mono">
                       {agent.completedTasks.length} completed
                     </span>
                   </div>
