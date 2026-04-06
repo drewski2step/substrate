@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { TraceEntry } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Check, ChevronDown, ChevronRight, GitBranch, Plus } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, GitBranch, Lock, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/StatusBadge";
 
 interface TraceFlowchartProps {
   traces: TraceEntry[];
@@ -18,55 +19,124 @@ interface TraceFlowchartProps {
   onUpdateTraceDeps: (traceId: string, deps: string[]) => void;
 }
 
-const actionColors: Record<string, string> = {
-  claimed: "border-primary/40 bg-primary/5",
-  updated: "border-accent/40 bg-accent/5",
-  completed: "border-green-500/40 bg-green-500/5",
-  note: "border-muted-foreground/30 bg-muted/50",
-  blocked: "border-destructive/40 bg-destructive/5",
-  unblocked: "border-primary/40 bg-primary/5",
+/* ─── action → visual mapping ─── */
+const actionStatus: Record<string, string> = {
+  claimed: "active",
+  updated: "active",
+  completed: "complete",
+  note: "open",
+  blocked: "blocked",
+  unblocked: "open",
 };
 
-const actionDot: Record<string, string> = {
-  claimed: "bg-primary",
-  updated: "bg-accent-foreground",
-  completed: "bg-green-500",
-  note: "bg-muted-foreground",
-  blocked: "bg-destructive",
-  unblocked: "bg-primary",
+const statusBg: Record<string, string> = {
+  complete: "bg-muted/60 border-substrate-complete/40",
+  active: "bg-substrate-active/8 border-substrate-active/30",
+  open: "bg-substrate-open/8 border-substrate-open/30",
+  blocked: "bg-substrate-blocked/8 border-substrate-blocked/30",
+  locked: "bg-muted/20 border-substrate-locked/30",
 };
 
-function computeTraceTiers(traces: TraceEntry[]): TraceEntry[][] {
-  if (traces.length === 0) return [];
-  const depthMap = new Map<string, number>();
+const statusAccent: Record<string, string> = {
+  complete: "bg-substrate-complete",
+  active: "bg-substrate-active",
+  open: "bg-substrate-open",
+  blocked: "bg-substrate-blocked",
+  locked: "bg-substrate-locked",
+};
 
-  function getDepth(trace: TraceEntry, visited: Set<string>): number {
-    if (depthMap.has(trace.id)) return depthMap.get(trace.id)!;
-    if (visited.has(trace.id)) return 0;
-    visited.add(trace.id);
-    let maxDep = -1;
-    for (const depId of trace.dependencies) {
-      const dep = traces.find((t) => t.id === depId);
-      if (dep) maxDep = Math.max(maxDep, getDepth(dep, visited));
+/* ─── tier computation (same algo as MissionView) ─── */
+function computeDepths(traces: TraceEntry[]): Map<string, number> {
+  const depths = new Map<string, number>();
+  const traceMap = new Map(traces.map((t) => [t.id, t]));
+
+  function getDepth(id: string): number {
+    if (depths.has(id)) return depths.get(id)!;
+    const trace = traceMap.get(id);
+    if (!trace || trace.dependencies.length === 0) {
+      depths.set(id, 0);
+      return 0;
     }
-    const d = maxDep + 1;
-    depthMap.set(trace.id, d);
+    const maxDep = Math.max(
+      ...trace.dependencies
+        .filter((depId) => traceMap.has(depId))
+        .map((depId) => getDepth(depId))
+    );
+    const d = (maxDep === -Infinity ? 0 : maxDep) + 1;
+    depths.set(id, d);
     return d;
   }
 
-  traces.forEach((t) => getDepth(t, new Set()));
-
-  const tierMap = new Map<number, TraceEntry[]>();
-  traces.forEach((t) => {
-    const d = depthMap.get(t.id) || 0;
-    if (!tierMap.has(d)) tierMap.set(d, []);
-    tierMap.get(d)!.push(t);
-  });
-
-  const sorted = Array.from(tierMap.keys()).sort((a, b) => a - b);
-  return sorted.map((k) => tierMap.get(k)!);
+  traces.forEach((t) => getDepth(t.id));
+  return depths;
 }
 
+function buildTiers(traces: TraceEntry[]): TraceEntry[][] {
+  if (traces.length === 0) return [];
+  const depths = computeDepths(traces);
+  const maxDepth = Math.max(0, ...Array.from(depths.values()));
+  const tiers: TraceEntry[][] = Array.from({ length: maxDepth + 1 }, () => []);
+  traces.forEach((trace) => {
+    const d = depths.get(trace.id) ?? 0;
+    tiers[d].push(trace);
+  });
+  return tiers;
+}
+
+/* ─── SVG connectors (identical to MissionView) ─── */
+function TierConnectors({
+  tierAbove,
+  tierBelow,
+}: {
+  tierAbove: TraceEntry[];
+  tierBelow: TraceEntry[];
+}) {
+  const lines: { fromIdx: number; toIdx: number; fromCount: number; toCount: number; complete: boolean }[] = [];
+
+  tierAbove.forEach((trace, fromIdx) => {
+    trace.dependencies.forEach((depId) => {
+      const toIdx = tierBelow.findIndex((t) => t.id === depId);
+      if (toIdx !== -1) {
+        const depTrace = tierBelow[toIdx];
+        lines.push({
+          fromIdx,
+          toIdx,
+          fromCount: tierAbove.length,
+          toCount: tierBelow.length,
+          complete: depTrace.action === "completed",
+        });
+      }
+    });
+  });
+
+  if (lines.length === 0) return null;
+
+  const width = Math.max(tierAbove.length, tierBelow.length) * 196;
+  const height = 32;
+
+  return (
+    <svg width={width} height={height} className="shrink-0 overflow-visible" style={{ minWidth: width }}>
+      {lines.map((line, i) => {
+        const fromX = (line.fromIdx + 0.5) * (width / line.fromCount);
+        const toX = (line.toIdx + 0.5) * (width / line.toCount);
+        return (
+          <line
+            key={i}
+            x1={fromX}
+            y1={0}
+            x2={toX}
+            y2={height}
+            stroke={line.complete ? "hsl(var(--substrate-complete))" : "hsl(var(--border))"}
+            strokeWidth={line.complete ? 2 : 1.5}
+            strokeDasharray={line.complete ? undefined : "4 3"}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+/* ─── Trace node block (mirrors TraceBlock from MissionView) ─── */
 function TraceNode({
   trace,
   allTraces,
@@ -88,43 +158,85 @@ function TraceNode({
 }) {
   const [expanded, setExpanded] = useState(false);
   const hasSubTraces = trace.subTraces.length > 0;
+  const status = actionStatus[trace.action] || "open";
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="relative group w-48 shrink-0">
       <div
         className={cn(
-          "relative border rounded-lg px-3 py-2 min-w-[180px] max-w-[240px] transition-all group cursor-pointer",
-          actionColors[trace.action] || "border-border bg-card"
+          "relative border-2 rounded-lg px-4 py-3 transition-all cursor-pointer",
+          statusBg[status],
+          "hover:shadow-lg hover:shadow-primary/5 hover:scale-[1.02] active:scale-[0.98]",
+          status === "open" && "animate-pulse-subtle"
         )}
-        onClick={() => hasSubTraces && setExpanded(!expanded)}
+        onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex items-center gap-2 mb-1">
-          <div className={cn("w-2 h-2 rounded-full shrink-0", actionDot[trace.action] || "bg-muted-foreground")} />
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground font-mono">
-            {trace.action}
-          </span>
-          <span className="text-[10px] text-muted-foreground tabular-nums ml-auto font-mono">
-            {new Date(trace.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-          </span>
+        {/* Top accent bar */}
+        <div className={cn("absolute top-0 left-3 right-3 h-0.5 rounded-b", statusAccent[status])} />
+
+        <div className="flex items-center gap-2 pt-1">
+          <div
+            className={cn(
+              "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
+              status === "complete" && "bg-primary border-primary",
+              status === "locked" && "border-substrate-locked bg-muted/50",
+              status === "open" && "border-substrate-open bg-substrate-open/10",
+              status === "active" && "border-substrate-active bg-substrate-active/10",
+              status === "blocked" && "border-substrate-blocked bg-substrate-blocked/10"
+            )}
+          >
+            {status === "complete" && <Check className="w-3 h-3 text-primary-foreground" />}
+            {status === "locked" && <Lock className="w-2.5 h-2.5 text-substrate-locked" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-semibold leading-tight uppercase tracking-wider">
+                {trace.action}
+              </span>
+              <span className="text-[10px] text-muted-foreground tabular-nums font-mono">
+                {new Date(trace.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </span>
+            </div>
+            <p className="text-[11px] text-foreground/80 leading-tight mt-0.5 line-clamp-2">{trace.content}</p>
+            <span className="text-[10px] text-muted-foreground font-mono">{trace.agentName}</span>
+          </div>
         </div>
-        <p className="text-xs leading-relaxed text-foreground/80 line-clamp-3">{trace.content}</p>
-        <div className="text-[10px] text-muted-foreground mt-1 font-mono">{trace.agentName}</div>
 
         {/* Sub-trace indicator */}
-        <div className="flex items-center gap-1 mt-1.5">
-          {hasSubTraces && (
-            <button className="flex items-center gap-0.5 text-[10px] text-primary hover:text-primary/80 transition-colors">
+        {hasSubTraces && (
+          <div className="flex items-center gap-1 mt-1.5">
+            <span className="flex items-center gap-0.5 text-[10px] text-primary">
               {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
               <GitBranch className="w-3 h-3" />
-              <span>{trace.subTraces.length} sub-trace{trace.subTraces.length !== 1 ? "s" : ""}</span>
-            </button>
-          )}
-        </div>
+              {trace.subTraces.length} sub-trace{trace.subTraces.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Expanded sub-trace flowchart */}
-      {expanded && hasSubTraces && (
-        <div className="ml-4 mt-2 pl-3 border-l-2 border-dashed border-primary/20">
+      {/* Action buttons — visible on hover */}
+      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(true);
+          }}
+          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-accent text-[10px] font-medium text-accent-foreground shadow-sm hover:bg-accent/80 transition-colors"
+          title="Expand sub-traces"
+        >
+          <GitBranch className="w-3 h-3" />
+          Expand
+        </button>
+      </div>
+
+      {/* Expanded sub-trace flowchart — full recursive replica */}
+      {expanded && (
+        <div className="mt-4 border border-border rounded-lg p-4 bg-card/50">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-mono">
+              Sub-traces of "{trace.action}"
+            </span>
+          </div>
           <TraceFlowchart
             traces={trace.subTraces}
             depth={depth + 1}
@@ -140,6 +252,7 @@ function TraceNode({
   );
 }
 
+/* ─── Add trace dialog ─── */
 function AddTraceDialog({
   open,
   onOpenChange,
@@ -231,6 +344,7 @@ function AddTraceDialog({
   );
 }
 
+/* ─── Main flowchart ─── */
 export function TraceFlowchart({
   traces,
   depth = 0,
@@ -241,9 +355,10 @@ export function TraceFlowchart({
   onUpdateTraceDeps,
 }: TraceFlowchartProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const tiers = computeTraceTiers(traces);
+  const tiers = useMemo(() => buildTiers(traces), [traces]);
+  const reversedTiers = useMemo(() => [...tiers].reverse(), [tiers]);
 
-  if (traces.length === 0 && depth === 0) {
+  if (traces.length === 0) {
     return (
       <div className="text-center py-6">
         <p className="text-sm text-muted-foreground mb-3">No trace entries yet.</p>
@@ -261,34 +376,46 @@ export function TraceFlowchart({
   }
 
   return (
-    <div className="space-y-1">
-      {/* Tiers rendered bottom-up like the mission flowchart */}
-      <div className="flex flex-col-reverse gap-4">
-        {tiers.map((tier, tierIdx) => (
-          <div key={tierIdx}>
-            {/* Connectors */}
-            {tierIdx < tiers.length - 1 && (
-              <div className="flex justify-center py-1">
-                <div className="w-px h-4 bg-border" />
+    <div>
+      <div className="overflow-x-auto pb-2">
+        <div className="flex flex-col items-center gap-0 min-w-fit">
+          {reversedTiers.map((tier, tierIdx) => {
+            const actualDepth = tiers.length - 1 - tierIdx;
+            const nextTierBelow = tierIdx < reversedTiers.length - 1 ? reversedTiers[tierIdx + 1] : null;
+
+            return (
+              <div key={actualDepth} className="flex flex-col items-center">
+                <div className="flex items-start justify-center gap-3">
+                  {tier.map((trace) => (
+                    <TraceNode
+                      key={trace.id}
+                      trace={trace}
+                      allTraces={traces}
+                      depth={depth}
+                      missionId={missionId}
+                      taskId={taskId}
+                      parentPath={parentPath}
+                      onAddTrace={onAddTrace}
+                      onUpdateTraceDeps={onUpdateTraceDeps}
+                    />
+                  ))}
+                </div>
+
+                {nextTierBelow && (
+                  <div className="flex justify-center py-0">
+                    <TierConnectors tierAbove={tier} tierBelow={nextTierBelow} />
+                  </div>
+                )}
               </div>
-            )}
-            <div className="flex flex-wrap justify-center gap-3">
-              {tier.map((trace) => (
-                <TraceNode
-                  key={trace.id}
-                  trace={trace}
-                  allTraces={traces}
-                  depth={depth}
-                  missionId={missionId}
-                  taskId={taskId}
-                  parentPath={parentPath}
-                  onAddTrace={onAddTrace}
-                  onUpdateTraceDeps={onUpdateTraceDeps}
-                />
-              ))}
+            );
+          })}
+
+          {depth === 0 && (
+            <div className="mt-3 px-3 py-1 bg-muted rounded text-xs text-muted-foreground font-medium font-mono">
+              Root
             </div>
-          </div>
-        ))}
+          )}
+        </div>
       </div>
 
       {/* Add trace button */}
