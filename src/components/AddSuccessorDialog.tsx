@@ -40,6 +40,7 @@ export function AddSuccessorDialog({ open, onOpenChange, parentTask, missionId, 
       requiredAgentType: requiredAgentType.trim(),
       locationRadius: locationRadius.trim() || undefined,
       suggestedAgentIds: [],
+      chatMessages: [],
     });
 
     reset();

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { Mission, Task, Agent, TraceEntry, TaskStatus } from "./types";
+import { Mission, Task, Agent, TraceEntry, TaskStatus, ChatMessage } from "./types";
 import { seedMission, seedAgents } from "./seed-data";
 
 interface SubstrateState {
@@ -10,9 +10,12 @@ interface SubstrateState {
   addTrace: (missionId: string, taskId: string, entry: Omit<TraceEntry, "id" | "timestamp">) => void;
   addTask: (missionId: string, task: Omit<Task, "id" | "order" | "traces">) => void;
   deleteTask: (missionId: string, taskId: string) => void;
-  updateTask: (missionId: string, taskId: string, updates: Partial<Pick<Task, "requiredAgentType" | "locationRadius" | "assignedAgentId" | "assignedAgentName" | "dependencies">>) => void;
+  updateTask: (missionId: string, taskId: string, updates: Partial<Pick<Task, "requiredAgentType" | "locationRadius" | "assignedAgentId" | "assignedAgentName" | "dependencies" | "deadline" | "position">>) => void;
   updateTraceInTask: (missionId: string, taskId: string, traceId: string, updates: Partial<Pick<TraceEntry, "dependencies">>) => void;
   addSubTrace: (missionId: string, taskId: string, parentTracePath: string[], entry: Omit<TraceEntry, "id" | "timestamp">) => void;
+  deleteTrace: (missionId: string, taskId: string, tracePath: string[], traceId: string) => void;
+  addMission: (mission: Omit<Mission, "id" | "tasks">) => void;
+  addChatMessage: (missionId: string, taskId: string, tracePath: string[], agentName: string, content: string) => void;
   getAgent: (id: string) => Agent | undefined;
   getMission: (id: string) => Mission | undefined;
   getTask: (missionId: string, taskId: string) => Task | undefined;
@@ -67,6 +70,7 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
                       timestamp: new Date().toISOString(),
                       dependencies: [],
                       subTraces: [],
+                      chatMessages: [],
                     },
                   ],
                 }
@@ -109,6 +113,7 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
                           timestamp: new Date().toISOString(),
                           dependencies: [],
                           subTraces: [],
+                          chatMessages: [],
                         },
                       ],
                     }
@@ -133,7 +138,7 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
                       ...t,
                       traces: [
                         ...t.traces,
-                        { ...entry, id: `tr-${Date.now()}`, timestamp: new Date().toISOString(), dependencies: [], subTraces: [] },
+                        { ...entry, id: `tr-${Date.now()}`, timestamp: new Date().toISOString() },
                       ],
                     }
               ),
@@ -157,7 +162,7 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const updateTask = useCallback((missionId: string, taskId: string, updates: Partial<Pick<Task, "requiredAgentType" | "locationRadius" | "assignedAgentId" | "assignedAgentName" | "dependencies">>) => {
+  const updateTask = useCallback((missionId: string, taskId: string, updates: Partial<Pick<Task, "requiredAgentType" | "locationRadius" | "assignedAgentId" | "assignedAgentName" | "dependencies" | "deadline" | "position">>) => {
     setMissions((prev) =>
       prev.map((m) =>
         m.id !== missionId
@@ -222,8 +227,88 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
                   ...entry,
                   id: `tr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                   timestamp: new Date().toISOString(),
+                  chatMessages: entry.chatMessages || [],
                 };
                 return { ...t, traces: insertSubTrace(t.traces, parentTracePath, newEntry) };
+              }),
+            }
+      )
+    );
+  }, []);
+
+  const removeTrace = (traces: TraceEntry[], path: string[], traceId: string): TraceEntry[] => {
+    if (path.length === 0) {
+      return traces.filter((tr) => tr.id !== traceId).map((tr) => ({
+        ...tr,
+        dependencies: tr.dependencies.filter((d) => d !== traceId),
+      }));
+    }
+    return traces.map((tr) => {
+      if (tr.id === path[0]) {
+        return { ...tr, subTraces: removeTrace(tr.subTraces, path.slice(1), traceId) };
+      }
+      return tr;
+    });
+  };
+
+  const deleteTrace = useCallback((missionId: string, taskId: string, tracePath: string[], traceId: string) => {
+    setMissions((prev) =>
+      prev.map((m) =>
+        m.id !== missionId
+          ? m
+          : {
+              ...m,
+              tasks: m.tasks.map((t) => {
+                if (t.id !== taskId) return t;
+                return { ...t, traces: removeTrace(t.traces, tracePath, traceId) };
+              }),
+            }
+      )
+    );
+  }, []);
+
+  const addMission = useCallback((mission: Omit<Mission, "id" | "tasks">) => {
+    setMissions((prev) => [
+      ...prev,
+      { ...mission, id: `m-${Date.now()}`, tasks: [] },
+    ]);
+  }, []);
+
+  const addChatToTraces = (traces: TraceEntry[], path: string[], msg: ChatMessage): TraceEntry[] => {
+    if (path.length === 0) return traces; // shouldn't happen
+    if (path.length === 1) {
+      return traces.map((tr) =>
+        tr.id === path[0] ? { ...tr, chatMessages: [...tr.chatMessages, msg] } : tr
+      );
+    }
+    return traces.map((tr) => {
+      if (tr.id === path[0]) {
+        return { ...tr, subTraces: addChatToTraces(tr.subTraces, path.slice(1), msg) };
+      }
+      return tr;
+    });
+  };
+
+  const addChatMessage = useCallback((missionId: string, taskId: string, tracePath: string[], agentName: string, content: string) => {
+    const msg: ChatMessage = {
+      id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      agentName,
+      content,
+      timestamp: new Date().toISOString(),
+    };
+    setMissions((prev) =>
+      prev.map((m) =>
+        m.id !== missionId
+          ? m
+          : {
+              ...m,
+              tasks: m.tasks.map((t) => {
+                if (t.id !== taskId) return t;
+                if (tracePath.length === 0) {
+                  // Chat at task level
+                  return { ...t, chatMessages: [...t.chatMessages, msg] };
+                }
+                return { ...t, traces: addChatToTraces(t.traces, tracePath, msg) };
               }),
             }
       )
@@ -238,7 +323,7 @@ export function SubstrateProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <SubstrateContext.Provider value={{ missions, agents, completeTask, claimTask, addTrace, addTask, deleteTask, updateTask, updateTraceInTask, addSubTrace, getAgent, getMission, getTask }}>
+    <SubstrateContext.Provider value={{ missions, agents, completeTask, claimTask, addTrace, addTask, deleteTask, updateTask, updateTraceInTask, addSubTrace, deleteTrace, addMission, addChatMessage, getAgent, getMission, getTask }}>
       {children}
     </SubstrateContext.Provider>
   );
