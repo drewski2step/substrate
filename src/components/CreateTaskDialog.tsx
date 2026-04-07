@@ -47,6 +47,7 @@ export function CreateTaskDialog({ missionId, existingTasks, onCreateTask }: Cre
       requiredAgentType: requiredAgentType.trim(),
       locationRadius: locationRadius.trim() || undefined,
       suggestedAgentIds: [],
+      chatMessages: [],
     });
 
     reset();
