@@ -1,5 +1,5 @@
 ### Impossible Coordination
-#Why the world has broken coordination and how to fix it
+# Why the world has broken coordination and how to fix it
 
 A stout gentleman with glasses and greying hair stood at the front of the classroom. When Dr. Bernard Amadei began his guest lecture, his subtle French accent grabbed the class's attention. He started with something along the lines of “You know you're in a bad situation when you're measuring how much life you have left in minutes instead of years”. Dr. Amadei -the founder of Engineers without Borders USA- has spent a lifetime organizing humanitarian collaboration in the world’s most chaotic countries. After his lecture, I jogged to catch him outside the classroom and asked “why can't these countries escape poverty?”. The engineer in me expected that electrical infrastructure was the culprit. The answer Dr. Amadei provided, surprised me - “corruption”. 
 The misallocation of resources due to negligent information management is called a coordination failure- and corruption is the most extreme example. However, coordination failures are the normal operating state in nearly all organizations. 
