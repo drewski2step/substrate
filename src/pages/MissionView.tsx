@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { format } from "date-fns";
 import { useSubstrate } from "@/lib/substrate-context";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -126,15 +127,17 @@ function TraceBlock({
               </span>
               <StatusBadge status={task.status} />
             </div>
-            <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5 font-mono">
-              {task.requiredAgentType}
-            </span>
+            {task.requiredAgentType && (
+              <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5 font-mono">
+                {task.requiredAgentType}
+              </span>
+            )}
             {task.assignedAgentName && (
               <span className="text-[10px] text-muted-foreground font-mono">→ {task.assignedAgentName}</span>
             )}
             {task.deadline && (
               <span className="text-[10px] text-primary font-mono block">
-                Due: {new Date(task.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                Due: {format(new Date(task.deadline), "MMM d, h:mm a")}
               </span>
             )}
           </div>

@@ -247,7 +247,7 @@ export default function TaskView() {
           {/* Right panel */}
           <div className="lg:col-span-3 animate-fade-in-up-delay-1">
             <div className="border border-border rounded-lg p-5">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 font-mono">Sub-traces</h3>
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 font-mono">Traces</h3>
               <p className="text-xs text-muted-foreground mb-4">Modular flowchart of actions. Click a node to expand deeper traces.</p>
 
               <TraceFlowchart

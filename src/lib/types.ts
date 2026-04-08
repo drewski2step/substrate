@@ -9,6 +9,8 @@ export interface ChatMessage {
   timestamp: string;
 }
 
+export type RecurrenceType = "none" | "daily" | "weekly" | "biweekly" | "monthly" | "quarterly";
+
 export interface TraceEntry {
   id: string;
   taskId: string;
@@ -22,6 +24,7 @@ export interface TraceEntry {
   subTraces: TraceEntry[]; // recursive sub-traces
   chatMessages: ChatMessage[];
   position?: { x: number; y: number }; // user-defined position override
+  recurrence?: RecurrenceType;
 }
 
 export interface Task {
@@ -31,7 +34,7 @@ export interface Task {
   description: string;
   status: TaskStatus;
   dependencies: string[];
-  requiredAgentType: string;
+  requiredAgentType?: string;
   locationRadius?: string;
   deadline?: string;
   assignedAgentId?: string;
@@ -41,6 +44,7 @@ export interface Task {
   order: number;
   chatMessages: ChatMessage[];
   position?: { x: number; y: number };
+  recurrence?: RecurrenceType;
 }
 
 export interface Mission {
