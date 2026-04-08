@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef, useCallback } from "react";
-import { TraceEntry } from "@/lib/types";
+import { useState, useMemo, useCallback } from "react";
+import { TraceEntry, RecurrenceType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Check, ChevronDown, ChevronRight, GitBranch, Lock, Plus, Trash2, GripVertical, CalendarIcon } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, GitBranch, Lock, Plus, Trash2, GripVertical, CalendarIcon, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChatBox } from "@/components/ChatBox";
 import { format } from "date-fns";
@@ -81,7 +81,6 @@ function buildTiers(traces: TraceEntry[]): TraceEntry[][] {
     const d = depths.get(trace.id) ?? 0;
     tiers[d].push(trace);
   });
-  // Sort within each tier by deadline (earlier deadlines lower / closer to root)
   tiers.forEach((tier) => {
     tier.sort((a, b) => {
       if (a.deadline && b.deadline) return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
@@ -131,6 +130,53 @@ function TierConnectors({ tierAbove, tierBelow }: { tierAbove: TraceEntry[]; tie
   );
 }
 
+function EditDepsDialog({
+  open, onOpenChange, trace, allTraces, onUpdateDeps,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  trace: TraceEntry;
+  allTraces: TraceEntry[];
+  onUpdateDeps: (traceId: string, deps: string[]) => void;
+}) {
+  const [deps, setDeps] = useState<string[]>(trace.dependencies);
+
+  const toggleDep = (id: string) => {
+    setDeps((prev) => prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]);
+  };
+
+  const handleSave = () => {
+    onUpdateDeps(trace.id, deps);
+    onOpenChange(false);
+  };
+
+  const otherTraces = allTraces.filter((t) => t.id !== trace.id);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-sm">Edit dependencies</DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-muted-foreground">Select which traces this one depends on. Remove all to make it independent.</p>
+        <div className="space-y-1 max-h-48 overflow-y-auto mt-2">
+          {otherTraces.length === 0 && <p className="text-xs text-muted-foreground">No other traces available.</p>}
+          {otherTraces.map((t) => (
+            <label key={t.id} className="flex items-center gap-2 text-xs cursor-pointer py-1.5 px-2 rounded hover:bg-muted/50">
+              <input type="checkbox" checked={deps.includes(t.id)} onChange={() => toggleDep(t.id)} className="rounded border-border" />
+              <span className="truncate">{t.content.slice(0, 40)}</span>
+              <span className="text-[10px] text-muted-foreground ml-auto">{t.action}</span>
+            </label>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button size="sm" onClick={handleSave}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function TraceNode({
   trace, allTraces, depth, missionId, taskId, parentPath,
   onAddTrace, onUpdateTraceDeps, onDeleteTrace, onChatMessage,
@@ -151,6 +197,7 @@ function TraceNode({
   onDrop: (targetId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [editDepsOpen, setEditDepsOpen] = useState(false);
   const hasSubTraces = trace.subTraces.length > 0;
   const status = actionStatus[trace.action] || "open";
 
@@ -200,7 +247,12 @@ function TraceNode({
             <span className="text-[10px] text-muted-foreground font-mono">{trace.agentName}</span>
             {trace.deadline && (
               <span className="text-[10px] text-primary font-mono block">
-                Due: {new Date(trace.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                Due: {format(new Date(trace.deadline), "MMM d, h:mm a")}
+              </span>
+            )}
+            {trace.recurrence && trace.recurrence !== "none" && (
+              <span className="text-[10px] text-accent-foreground font-mono flex items-center gap-0.5">
+                <Repeat className="w-2.5 h-2.5" /> {trace.recurrence}
               </span>
             )}
           </div>
@@ -211,7 +263,7 @@ function TraceNode({
             <span className="flex items-center gap-0.5 text-[10px] text-primary">
               {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
               <GitBranch className="w-3 h-3" />
-              {trace.subTraces.length} sub-trace{trace.subTraces.length !== 1 ? "s" : ""}
+              {trace.subTraces.length} trace{trace.subTraces.length !== 1 ? "s" : ""}
             </span>
           </div>
         )}
@@ -224,6 +276,12 @@ function TraceNode({
         >
           <GitBranch className="w-3 h-3" /> Expand
         </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); setEditDepsOpen(true); }}
+          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/80 transition-colors"
+        >
+          Deps
+        </button>
         {onDeleteTrace && (
           <button
             onClick={(e) => { e.stopPropagation(); onDeleteTrace(parentPath, trace.id); }}
@@ -234,11 +292,21 @@ function TraceNode({
         )}
       </div>
 
+      {editDepsOpen && (
+        <EditDepsDialog
+          open={editDepsOpen}
+          onOpenChange={setEditDepsOpen}
+          trace={trace}
+          allTraces={allTraces}
+          onUpdateDeps={onUpdateTraceDeps}
+        />
+      )}
+
       {expanded && (
         <div className="mt-4 border border-border rounded-lg p-4 bg-card/50">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-mono">
-              Sub-traces of "{trace.action}"
+              Traces within "{trace.content.slice(0, 25)}"
             </span>
           </div>
           <TraceFlowchart
@@ -280,22 +348,36 @@ function AddTraceDialog({
   const [agentName, setAgentName] = useState("");
   const [selectedDeps, setSelectedDeps] = useState<string[]>([]);
   const [deadline, setDeadline] = useState<Date | undefined>();
+  const [deadlineTime, setDeadlineTime] = useState("");
+  const [recurrence, setRecurrence] = useState<RecurrenceType>("none");
 
-  const reset = () => { setContent(""); setAction("note"); setAgentName(""); setSelectedDeps([]); setDeadline(undefined); };
+  const reset = () => { setContent(""); setAction("note"); setAgentName(""); setSelectedDeps([]); setDeadline(undefined); setDeadlineTime(""); setRecurrence("none"); };
+
+  const buildDeadline = (): string | undefined => {
+    if (!deadline) return undefined;
+    if (deadlineTime) {
+      const [h, m] = deadlineTime.split(":").map(Number);
+      const d = new Date(deadline);
+      d.setHours(h, m, 0, 0);
+      return d.toISOString();
+    }
+    return deadline.toISOString();
+  };
 
   const handleCreate = () => {
-    if (!content.trim() || !agentName.trim()) return;
+    if (!content.trim()) return;
     onAdd(
       {
         taskId: "",
         agentId: "manual",
-        agentName: agentName.trim(),
+        agentName: agentName.trim() || "Anonymous",
         action,
         content: content.trim(),
-        deadline: deadline?.toISOString(),
+        deadline: buildDeadline(),
         dependencies: selectedDeps,
         subTraces: [],
         chatMessages: [],
+        recurrence: recurrence !== "none" ? recurrence : undefined,
       },
       selectedDeps
     );
@@ -307,10 +389,10 @@ function AddTraceDialog({
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-sm">Add trace entry</DialogTitle>
+          <DialogTitle className="text-sm">Add trace</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <Input placeholder="Agent name" value={agentName} onChange={(e) => setAgentName(e.target.value)} className="text-sm" />
+          <Input placeholder="Agent name (optional)" value={agentName} onChange={(e) => setAgentName(e.target.value)} className="text-sm" />
           <Select value={action} onValueChange={(v) => setAction(v as TraceEntry["action"])}>
             <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -323,27 +405,49 @@ function AddTraceDialog({
             </SelectContent>
           </Select>
           <Textarea placeholder="What happened?" value={content} onChange={(e) => setContent(e.target.value)} className="text-sm min-h-[80px]" />
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-full justify-start text-left font-normal text-sm", !deadline && "text-muted-foreground")}>
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {deadline ? format(deadline, "PPP") : "Deadline (optional)"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={deadline} onSelect={setDeadline} initialFocus className="p-3 pointer-events-auto" />
-            </PopoverContent>
-          </Popover>
+          {/* Deadline with time */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block font-mono">Deadline (optional)</label>
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("flex-1 justify-start text-left font-normal text-sm", !deadline && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {deadline ? format(deadline, "MMM d, yyyy") : "Pick date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={deadline} onSelect={setDeadline} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+              <Input type="time" value={deadlineTime} onChange={(e) => setDeadlineTime(e.target.value)} className="w-28 text-sm" />
+            </div>
+          </div>
+          {/* Recurrence */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block font-mono">Recurrence (optional)</label>
+            <Select value={recurrence} onValueChange={(v) => setRecurrence(v as RecurrenceType)}>
+              <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None (one-time)</SelectItem>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="biweekly">Biweekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           {traces.length > 0 && (
             <div>
-              <p className="text-xs text-muted-foreground mb-1.5">Depends on:</p>
+              <p className="text-xs text-muted-foreground mb-1.5">Depends on (optional):</p>
               <div className="flex flex-wrap gap-1">
                 {traces.map((t) => (
                   <Button key={t.id} variant={selectedDeps.includes(t.id) ? "default" : "outline"} size="sm" className="h-6 text-[10px]"
                     onClick={() => setSelectedDeps((prev) => prev.includes(t.id) ? prev.filter((d) => d !== t.id) : [...prev, t.id])}
                   >
                     {selectedDeps.includes(t.id) && <Check className="w-2.5 h-2.5 mr-0.5" />}
-                    {t.action}: {t.content.slice(0, 30)}…
+                    {t.content.slice(0, 30)}…
                   </Button>
                 ))}
               </div>
@@ -351,7 +455,7 @@ function AddTraceDialog({
           )}
         </div>
         <DialogFooter>
-          <Button size="sm" onClick={handleCreate} disabled={!content.trim() || !agentName.trim()}>Add entry</Button>
+          <Button size="sm" onClick={handleCreate} disabled={!content.trim()}>Add trace</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -369,14 +473,13 @@ export function TraceFlowchart({
 
   const handleDrop = useCallback((targetId: string) => {
     if (!dragId || dragId === targetId) return;
-    // Swap dependencies as a simple reorder mechanism
     setDragId(null);
   }, [dragId]);
 
   if (traces.length === 0) {
     return (
       <div className="text-center py-6">
-        <p className="text-sm text-muted-foreground mb-3">No trace entries yet.</p>
+        <p className="text-sm text-muted-foreground mb-3">No traces yet.</p>
         <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAddDialogOpen(true)}>
           <Plus className="w-3 h-3" /> Add first trace
         </Button>
@@ -422,8 +525,7 @@ export function TraceFlowchart({
       </div>
       <div className="flex justify-center pt-3">
         <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setAddDialogOpen(true)}>
-          <Plus className="w-3 h-3" />
-          {depth === 0 ? "Add trace" : "Add sub-trace"}
+          <Plus className="w-3 h-3" /> Add trace
         </Button>
       </div>
       <AddTraceDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} traces={traces} onAdd={(entry) => onAddTrace(parentPath, entry)} />

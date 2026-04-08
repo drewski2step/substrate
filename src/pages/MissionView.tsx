@@ -126,9 +126,11 @@ function TraceBlock({
               </span>
               <StatusBadge status={task.status} />
             </div>
-            <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5 font-mono">
-              {task.requiredAgentType}
-            </span>
+            {task.requiredAgentType && (
+              <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5 font-mono">
+                {task.requiredAgentType}
+              </span>
+            )}
             {task.assignedAgentName && (
               <span className="text-[10px] text-muted-foreground font-mono">→ {task.assignedAgentName}</span>
             )}
