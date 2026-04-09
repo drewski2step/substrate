@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      block_dependencies: {
+        Row: {
+          block_id: string
+          created_at: string | null
+          depends_on_id: string
+          id: string
+        }
+        Insert: {
+          block_id: string
+          created_at?: string | null
+          depends_on_id: string
+          id?: string
+        }
+        Update: {
+          block_id?: string
+          created_at?: string | null
+          depends_on_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "block_dependencies_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "block_dependencies_depends_on_id_fkey"
+            columns: ["depends_on_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocks: {
         Row: {
           created_at: string | null
