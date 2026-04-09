@@ -1,31 +1,36 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, CalendarIcon } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { Plus } from "lucide-react";
 import { useCreateGoal } from "@/hooks/use-goals";
+import { toast } from "sonner";
 
 export function CreateMissionDialog() {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const navigate = useNavigate();
   const createGoal = useCreateGoal();
 
-  const reset = () => {
-    setTitle("");
-    setDescription("");
-  };
+  const reset = () => { setTitle(""); setDescription(""); };
 
   const handleCreate = () => {
     if (!title.trim()) return;
     createGoal.mutate(
       { title: title.trim(), description: description.trim() || undefined },
-      { onSuccess: () => { reset(); setOpen(false); } }
+      {
+        onSuccess: (data) => {
+          reset();
+          setOpen(false);
+          if (data?.id) navigate(`/mission/${data.id}`);
+        },
+        onError: (err: any) => {
+          toast.error(`Failed to create mission: ${err.message}`);
+        },
+      }
     );
   };
 
@@ -33,8 +38,7 @@ export function CreateMissionDialog() {
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); setOpen(o); }}>
       <DialogTrigger asChild>
         <Button size="sm" className="gap-1.5">
-          <Plus className="w-3.5 h-3.5" />
-          New Mission
+          <Plus className="w-3.5 h-3.5" /> New Mission
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
