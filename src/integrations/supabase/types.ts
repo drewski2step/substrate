@@ -14,7 +14,106 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      blocks: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          goal_id: string | null
+          id: string
+          signal_strength: number | null
+          status: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          goal_id?: string | null
+          id?: string
+          signal_strength?: number | null
+          status?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          goal_id?: string | null
+          id?: string
+          signal_strength?: number | null
+          status?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocks_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goals: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          status: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          status?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          status?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      signals: {
+        Row: {
+          block_id: string | null
+          created_at: string | null
+          deposited_by: string | null
+          id: string
+          value: number
+        }
+        Insert: {
+          block_id?: string | null
+          created_at?: string | null
+          deposited_by?: string | null
+          id?: string
+          value: number
+        }
+        Update: {
+          block_id?: string | null
+          created_at?: string | null
+          deposited_by?: string | null
+          id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signals_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
