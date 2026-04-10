@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { AppHeader } from "@/components/AppHeader";
 import { cn } from "@/lib/utils";
 import { Check, ArrowLeft, CheckCircle2, Plus, GripVertical, GitBranch } from "lucide-react";
@@ -52,20 +52,22 @@ function buildTiers(blocks: BlockWithDeps[]): BlockWithDeps[][] {
 
 // --- Block card ---
 function BlockCard({
-  block, goalId, allBlocks, onComplete, onAddSuccessor, onEditDeps,
+  block, goalId, allBlocks, onComplete, onAddSuccessor, onEditDeps, onNavigate,
 }: {
   block: BlockWithDeps; goalId: string; allBlocks: BlockWithDeps[];
   onComplete: (id: string) => void;
   onAddSuccessor: (block: BlockWithDeps) => void;
   onEditDeps: (block: BlockWithDeps) => void;
+  onNavigate: (block: BlockWithDeps) => void;
 }) {
   const canComplete = block.status === "active" || block.status === "pending";
   const status = block.status || "pending";
   return (
     <div className="relative group w-48 shrink-0">
       <div
+        onClick={() => onNavigate(block)}
         className={cn(
-          "relative border-2 rounded-lg px-4 py-3 transition-all",
+          "relative border-2 rounded-lg px-4 py-3 transition-all cursor-pointer",
           statusBg[status] || statusBg.pending,
           "hover:shadow-lg hover:shadow-primary/5 hover:scale-[1.02]"
         )}
@@ -98,14 +100,14 @@ function BlockCard({
       </div>
       <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
         {canComplete && (
-          <button onClick={() => onComplete(block.id)}
+          <button onClick={(e) => { e.stopPropagation(); onComplete(block.id); }}
             className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-substrate-open text-[10px] font-medium text-primary-foreground shadow-sm hover:bg-substrate-open/80 transition-colors"
           ><CheckCircle2 className="w-3 h-3" /> Done</button>
         )}
-        <button onClick={() => onAddSuccessor(block)}
+        <button onClick={(e) => { e.stopPropagation(); onAddSuccessor(block); }}
           className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-accent text-[10px] font-medium text-accent-foreground shadow-sm hover:bg-accent/80 transition-colors"
         ><Plus className="w-3 h-3" /> Next</button>
-        <button onClick={() => onEditDeps(block)}
+        <button onClick={(e) => { e.stopPropagation(); onEditDeps(block); }}
           className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/80 transition-colors"
         ><GitBranch className="w-3 h-3" /> Deps</button>
       </div>
