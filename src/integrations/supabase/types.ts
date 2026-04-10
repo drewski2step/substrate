@@ -150,6 +150,51 @@ export type Database = {
           },
         ]
       }
+      traces: {
+        Row: {
+          action: string
+          agent_name: string
+          block_id: string
+          content: string
+          created_at: string
+          id: string
+          parent_trace_id: string | null
+        }
+        Insert: {
+          action?: string
+          agent_name?: string
+          block_id: string
+          content?: string
+          created_at?: string
+          id?: string
+          parent_trace_id?: string | null
+        }
+        Update: {
+          action?: string
+          agent_name?: string
+          block_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          parent_trace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "traces_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "traces_parent_trace_id_fkey"
+            columns: ["parent_trace_id"]
+            isOneToOne: false
+            referencedRelation: "traces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
