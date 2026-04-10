@@ -237,6 +237,7 @@ function EditDepsDialog({ block, allBlocks, goalId, open, onOpenChange }: {
 
 // --- Main page ---
 export default function MissionView() {
+  const navigate = useNavigate();
   const { missionId } = useParams<{ missionId: string }>();
   const { data: goal, isLoading: goalLoading } = useGoal(missionId || "");
   const { data: blocks, isLoading: blocksLoading } = useBlocks(missionId || "");
@@ -321,6 +322,7 @@ export default function MissionView() {
                             onComplete={(id) => updateBlock.mutate({ id, goalId: goal.id, updates: { status: "complete" } })}
                             onAddSuccessor={(b) => { setSuccessorParent(b); setAddDialogOpen(true); }}
                             onEditDeps={setEditDepsBlock}
+                            onNavigate={(b) => navigate(`/mission/${missionId}/task/${b.id}`)}
                           />
                         ))}
                       </div>
