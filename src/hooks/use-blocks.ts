@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export type BlockRow = {
   id: string;
   goal_id: string | null;
+  parent_block_id: string | null;
   title: string;
   description: string | null;
   status: string | null;
@@ -47,10 +48,10 @@ export function useBlocks(goalId: string) {
 export function useCreateBlock() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (block: { goal_id: string; title: string; description?: string; status?: string; dependsOnId?: string }) => {
+    mutationFn: async (block: { goal_id: string; title: string; description?: string; status?: string; dependsOnId?: string; parent_block_id?: string }) => {
       const { data, error } = await supabase
         .from("blocks")
-        .insert({ goal_id: block.goal_id, title: block.title, description: block.description || null, status: block.status || "pending" })
+        .insert({ goal_id: block.goal_id, title: block.title, description: block.description || null, status: block.status || "pending", parent_block_id: block.parent_block_id || null })
         .select()
         .single();
       if (error) throw error;
