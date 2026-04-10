@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import MissionBoard from "./pages/MissionBoard";
 import MissionView from "./pages/MissionView";
-import TaskView from "./pages/TaskView";
+import BlockView from "./pages/BlockView";
 import AgentList from "./pages/AgentList";
 import AgentProfile from "./pages/AgentProfile";
 import NotFound from "./pages/NotFound";
@@ -21,7 +21,9 @@ const App = () => (
         <Routes>
           <Route path="/" element={<MissionBoard />} />
           <Route path="/mission/:missionId" element={<MissionView />} />
-          <Route path="/mission/:missionId/task/:taskId" element={<TaskView />} />
+          <Route path="/mission/:missionId/block/:blockId" element={<BlockView />} />
+          {/* Legacy route redirect */}
+          <Route path="/mission/:missionId/task/:taskId" element={<BlockView />} />
           <Route path="/agents" element={<AgentList />} />
           <Route path="/agent/:agentId" element={<AgentProfile />} />
           <Route path="*" element={<NotFound />} />
