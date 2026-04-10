@@ -26,12 +26,12 @@ export default function BlockView() {
   const resolvedBlockId = blockId || taskId || "";
   const { data: goal, isLoading: goalLoading } = useGoal(missionId || "");
   const { data: blocks, isLoading: blocksLoading } = useBlocks(missionId || "");
-  const { data: ancestors, isLoading: ancestorsLoading } = useBlockAncestors(blockId || "");
+  const { data: ancestors, isLoading: ancestorsLoading } = useBlockAncestors(resolvedBlockId);
   const updateBlock = useUpdateBlock();
   const deleteBlock = useDeleteBlock();
 
   const isLoading = goalLoading || blocksLoading || ancestorsLoading;
-  const block = blocks?.find((b) => b.id === blockId);
+  const block = blocks?.find((b) => b.id === resolvedBlockId);
 
   if (isLoading) {
     return (
@@ -78,7 +78,7 @@ export default function BlockView() {
           {ancestors?.map((anc) => (
             <span key={anc.id} className="flex items-center gap-1">
               <ChevronRight className="w-3 h-3 text-muted-foreground" />
-              {anc.id === blockId ? (
+              {anc.id === resolvedBlockId ? (
                 <span className="text-foreground font-medium">{anc.title}</span>
               ) : (
                 <Link to={`/mission/${missionId}/block/${anc.id}`} className="text-muted-foreground hover:text-primary transition-colors">
