@@ -22,7 +22,8 @@ const statusColor: Record<string, string> = {
 
 export default function BlockView() {
   const navigate = useNavigate();
-  const { missionId, blockId } = useParams<{ missionId: string; blockId: string }>();
+  const { missionId, blockId, taskId } = useParams<{ missionId: string; blockId?: string; taskId?: string }>();
+  const resolvedBlockId = blockId || taskId || "";
   const { data: goal, isLoading: goalLoading } = useGoal(missionId || "");
   const { data: blocks, isLoading: blocksLoading } = useBlocks(missionId || "");
   const { data: ancestors, isLoading: ancestorsLoading } = useBlockAncestors(blockId || "");
