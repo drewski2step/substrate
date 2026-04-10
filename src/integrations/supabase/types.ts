@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      block_chats: {
+        Row: {
+          block_id: string
+          created_at: string
+          id: string
+          message: string
+          sender_name: string
+        }
+        Insert: {
+          block_id: string
+          created_at?: string
+          id?: string
+          message?: string
+          sender_name?: string
+        }
+        Update: {
+          block_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          sender_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "block_chats_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       block_dependencies: {
         Row: {
           block_id: string
@@ -57,6 +89,7 @@ export type Database = {
           description: string | null
           goal_id: string | null
           id: string
+          parent_block_id: string | null
           signal_strength: number | null
           status: string | null
           title: string
@@ -67,6 +100,7 @@ export type Database = {
           description?: string | null
           goal_id?: string | null
           id?: string
+          parent_block_id?: string | null
           signal_strength?: number | null
           status?: string | null
           title: string
@@ -77,6 +111,7 @@ export type Database = {
           description?: string | null
           goal_id?: string | null
           id?: string
+          parent_block_id?: string | null
           signal_strength?: number | null
           status?: string | null
           title?: string
@@ -87,6 +122,13 @@ export type Database = {
             columns: ["goal_id"]
             isOneToOne: false
             referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocks_parent_block_id_fkey"
+            columns: ["parent_block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
             referencedColumns: ["id"]
           },
         ]
