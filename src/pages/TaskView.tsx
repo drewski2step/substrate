@@ -1,58 +1,133 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useSubstrate } from "@/lib/substrate-context";
 import { AppHeader } from "@/components/AppHeader";
-import { StatusBadge } from "@/components/StatusBadge";
-import { TraceFlowchart } from "@/components/TraceFlowchart";
-import { ChatBox } from "@/components/ChatBox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Check, MapPin, Pencil, Star, Trash2, X, CalendarIcon } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Trash2, Plus, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TraceEntry } from "@/lib/types";
+import { useGoal } from "@/hooks/use-goals";
+import { useBlocks, useUpdateBlock, useDeleteBlock, BlockWithDeps } from "@/hooks/use-blocks";
+import { useTraces, useCreateTrace, useDeleteTrace, TraceRow } from "@/hooks/use-traces";
+import { toast } from "sonner";
 import { format } from "date-fns";
+
+const statusLabel: Record<string, string> = {
+  pending: "Pending",
+  active: "Active",
+  complete: "Complete",
+  stalled: "Stalled",
+};
+
+const statusColor: Record<string, string> = {
+  pending: "bg-substrate-open/10 text-substrate-open border-substrate-open/20",
+  active: "bg-substrate-active/10 text-substrate-active border-substrate-active/20",
+  complete: "bg-muted text-muted-foreground border-border",
+  stalled: "bg-substrate-blocked/10 text-substrate-blocked border-substrate-blocked/20",
+};
+
+const actionColor: Record<string, string> = {
+  claimed: "border-l-substrate-active",
+  updated: "border-l-substrate-open",
+  completed: "border-l-substrate-complete",
+  note: "border-l-muted-foreground",
+  blocked: "border-l-substrate-blocked",
+  unblocked: "border-l-substrate-open",
+};
+
+function AddTraceDialog({ blockId, open, onOpenChange }: { blockId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const [agentName, setAgentName] = useState("");
+  const [action, setAction] = useState("note");
+  const [content, setContent] = useState("");
+  const createTrace = useCreateTrace();
+
+  const handleCreate = () => {
+    if (!content.trim()) return;
+    createTrace.mutate(
+      { block_id: blockId, agent_name: agentName.trim() || "System", action, content: content.trim() },
+      {
+        onSuccess: () => { setAgentName(""); setContent(""); setAction("note"); onOpenChange(false); },
+        onError: (err: any) => toast.error(err.message),
+      }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { setAgentName(""); setContent(""); setAction("note"); } onOpenChange(o); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle className="text-sm">Add trace entry</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <Input placeholder="Agent name (optional)" value={agentName} onChange={(e) => setAgentName(e.target.value)} className="text-sm" />
+          <Select value={action} onValueChange={setAction}>
+            <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="note">Note</SelectItem>
+              <SelectItem value="claimed">Claimed</SelectItem>
+              <SelectItem value="updated">Updated</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="blocked">Blocked</SelectItem>
+              <SelectItem value="unblocked">Unblocked</SelectItem>
+            </SelectContent>
+          </Select>
+          <Textarea placeholder="What happened?" value={content} onChange={(e) => setContent(e.target.value)} className="text-sm min-h-[80px]" />
+        </div>
+        <DialogFooter>
+          <Button size="sm" onClick={handleCreate} disabled={!content.trim() || createTrace.isPending}>
+            {createTrace.isPending ? "Adding..." : "Add trace"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function TaskView() {
   const navigate = useNavigate();
   const { missionId, taskId } = useParams<{ missionId: string; taskId: string }>();
-  const { getMission, getTask, completeTask, claimTask, deleteTask, updateTask, updateTraceInTask, addSubTrace, deleteTrace, addChatMessage, agents } = useSubstrate();
-  const mission = getMission(missionId || "");
-  const task = getTask(missionId || "", taskId || "");
+  const { data: goal, isLoading: goalLoading } = useGoal(missionId || "");
+  const { data: blocks, isLoading: blocksLoading } = useBlocks(missionId || "");
+  const { data: traces, isLoading: tracesLoading } = useTraces(taskId || "");
+  const updateBlock = useUpdateBlock();
+  const deleteBlock = useDeleteBlock();
+  const deleteTrace = useDeleteTrace();
+  const [addTraceOpen, setAddTraceOpen] = useState(false);
 
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
+  const isLoading = goalLoading || blocksLoading || tracesLoading;
+  const block = blocks?.find((b) => b.id === taskId);
 
-  if (!mission || !task) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <AppHeader />
         <main className="mx-auto max-w-5xl px-6 py-12">
-          <p className="text-muted-foreground">Trace not found.</p>
+          <Skeleton className="h-4 w-32 mb-6" />
+          <Skeleton className="h-6 w-64 mb-2" />
+          <Skeleton className="h-4 w-96 mb-8" />
+          <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}</div>
         </main>
       </div>
     );
   }
 
-  const upstreamTraces: TraceEntry[] = [];
-  const visited = new Set<string>();
-  function collectUpstream(depIds: string[]) {
-    for (const depId of depIds) {
-      if (visited.has(depId)) continue;
-      visited.add(depId);
-      const depTask = mission.tasks.find((t) => t.id === depId);
-      if (depTask) {
-        upstreamTraces.push(...depTask.traces);
-        collectUpstream(depTask.dependencies);
-      }
-    }
+  if (!goal || !block) {
+    return (
+      <div className="min-h-screen bg-background">
+        <AppHeader />
+        <main className="mx-auto max-w-5xl px-6 py-12">
+          <p className="text-muted-foreground">Block not found.</p>
+          <Link to={missionId ? `/mission/${missionId}` : "/"} className="text-xs text-primary hover:underline mt-2 inline-block font-mono">← Back</Link>
+        </main>
+      </div>
+    );
   }
-  collectUpstream(task.dependencies);
-  upstreamTraces.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  const suggestedAgents = agents.filter((a) => task.suggestedAgentIds.includes(a.id));
+  const status = block.status || "pending";
+  const depBlocks = blocks?.filter((b) => block.dependencies.includes(b.id)) || [];
+  const canComplete = status === "pending" || status === "active";
 
   return (
     <div className="min-h-screen bg-background">
@@ -60,227 +135,128 @@ export default function TaskView() {
       <main className="mx-auto max-w-5xl px-6 py-12">
         <div className="animate-fade-in-up">
           <Link to={`/mission/${missionId}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mb-6 font-mono">
-            <ArrowLeft className="w-3 h-3" /> {mission.title}
+            <ArrowLeft className="w-3 h-3" /> {goal.title}
           </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          {/* Left panel — block details */}
           <div className="lg:col-span-2 animate-fade-in-up">
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-semibold leading-tight">{task.title}</h1>
-              <StatusBadge status={task.status} />
+              <h1 className="text-xl font-semibold leading-tight">{block.title}</h1>
+              <span className={cn("inline-flex items-center px-2 py-0.5 text-xs font-medium rounded border", statusColor[status] || statusColor.pending)}>
+                {statusLabel[status] || status}
+              </span>
             </div>
-            <p className="text-sm text-muted-foreground mt-3 leading-relaxed">{task.description}</p>
+            {block.description && <p className="text-sm text-muted-foreground mt-3 leading-relaxed">{block.description}</p>}
 
-            <div className="mt-6 space-y-3">
-              {/* Agent type */}
-              <div className="flex items-center gap-2 text-xs group">
-                <span className="text-muted-foreground w-24 font-mono">Agent type</span>
-                {editingField === "agentType" ? (
-                  <div className="flex items-center gap-1">
-                    <Input className="h-6 text-xs w-40" value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { updateTask(mission.id, task.id, { requiredAgentType: editValue }); setEditingField(null); } if (e.key === "Escape") setEditingField(null); }} autoFocus />
-                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { updateTask(mission.id, task.id, { requiredAgentType: editValue }); setEditingField(null); }}><Check className="w-3 h-3" /></Button>
-                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setEditingField(null)}><X className="w-3 h-3" /></Button>
-                  </div>
-                ) : (
-                  <span className="font-medium cursor-pointer hover:text-primary flex items-center gap-1" onClick={() => { setEditValue(task.requiredAgentType); setEditingField("agentType"); }}>
-                    {task.requiredAgentType}
-                    <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                  </span>
-                )}
-              </div>
-
-              {/* Location */}
-              <div className="flex items-center gap-2 text-xs group">
-                <span className="text-muted-foreground w-24 font-mono">Location</span>
-                {editingField === "location" ? (
-                  <div className="flex items-center gap-1">
-                    <Input className="h-6 text-xs w-40" value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { updateTask(mission.id, task.id, { locationRadius: editValue || undefined }); setEditingField(null); } if (e.key === "Escape") setEditingField(null); }} autoFocus />
-                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { updateTask(mission.id, task.id, { locationRadius: editValue || undefined }); setEditingField(null); }}><Check className="w-3 h-3" /></Button>
-                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setEditingField(null)}><X className="w-3 h-3" /></Button>
-                  </div>
-                ) : (
-                  <span className="font-medium cursor-pointer hover:text-primary flex items-center gap-1" onClick={() => { setEditValue(task.locationRadius || ""); setEditingField("location"); }}>
-                    <MapPin className="w-3 h-3" /> {task.locationRadius || "Not set"}
-                    <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                  </span>
-                )}
-              </div>
-
-              {/* Deadline */}
-              <div className="flex items-center gap-2 text-xs group">
-                <span className="text-muted-foreground w-24 font-mono">Deadline</span>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="font-medium cursor-pointer hover:text-primary flex items-center gap-1 text-xs">
-                      <CalendarIcon className="w-3 h-3" />
-                      {task.deadline ? format(new Date(task.deadline), "MMM d, yyyy") : "Not set"}
-                      <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={task.deadline ? new Date(task.deadline) : undefined}
-                      onSelect={(date) => updateTask(mission.id, task.id, { deadline: date?.toISOString() })}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              {/* Assigned */}
-              <div className="flex items-center gap-2 text-xs group">
-                <span className="text-muted-foreground w-24 font-mono">Assigned</span>
-                {editingField === "assigned" ? (
-                  <div className="flex flex-col gap-1">
-                    {agents.map((agent) => (
-                      <Button key={agent.id} variant={task.assignedAgentId === agent.id ? "default" : "outline"} size="sm" className="h-6 text-xs justify-start" onClick={() => { updateTask(mission.id, task.id, { assignedAgentId: agent.id, assignedAgentName: agent.name }); setEditingField(null); }}>
-                        {agent.name}
-                      </Button>
-                    ))}
-                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { updateTask(mission.id, task.id, { assignedAgentId: undefined, assignedAgentName: undefined }); setEditingField(null); }}>Unassign</Button>
-                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setEditingField(null)}>Cancel</Button>
-                  </div>
-                ) : (
-                  <span className="font-medium cursor-pointer hover:text-primary flex items-center gap-1" onClick={() => setEditingField("assigned")}>
-                    {task.assignedAgentName ? (
-                      <Link to={`/agent/${task.assignedAgentId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
-                        {task.assignedAgentName}
-                      </Link>
-                    ) : "Unassigned"}
-                    <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                  </span>
-                )}
-              </div>
-
-              {/* Dependencies */}
-              <div className="flex items-start gap-2 text-xs group">
-                <span className="text-muted-foreground w-24 shrink-0 font-mono">Depends on</span>
-                {editingField === "deps" ? (
-                  <div className="flex flex-col gap-1">
-                    {mission.tasks.filter((t) => t.id !== task.id).map((t) => {
-                      const isSelected = task.dependencies.includes(t.id);
-                      return (
-                        <Button key={t.id} variant={isSelected ? "default" : "outline"} size="sm" className="h-6 text-xs justify-start" onClick={() => {
-                          const newDeps = isSelected ? task.dependencies.filter((d) => d !== t.id) : [...task.dependencies, t.id];
-                          updateTask(mission.id, task.id, { dependencies: newDeps });
-                        }}>
-                          {isSelected && <Check className="w-3 h-3 mr-1" />}{t.title}
-                        </Button>
-                      );
-                    })}
-                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setEditingField(null)}>Done</Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-1 cursor-pointer" onClick={() => setEditingField("deps")}>
-                    {task.dependencies.length > 0 ? task.dependencies.map((depId) => {
-                      const dep = mission.tasks.find((t) => t.id === depId);
-                      return (
-                        <span key={depId} className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-muted rounded text-xs font-mono">
-                          {dep?.status === "complete" && <Check className="w-2.5 h-2.5" />}
-                          {dep?.title || depId}
-                        </span>
-                      );
-                    }) : <span className="text-muted-foreground">None</span>}
-                    <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity mt-0.5" />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {(task.status === "active" || task.status === "open") && (
-              <Button className="mt-6" size="sm" onClick={() => completeTask(mission.id, task.id)}>
-                Mark complete
-              </Button>
-            )}
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="mt-3 text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5">
-                  <Trash2 className="w-3.5 h-3.5" /> Delete trace
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this trace?</AlertDialogTitle>
-                  <AlertDialogDescription>This will remove the trace and clear it from any dependency lists.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => { deleteTask(mission.id, task.id); navigate(`/mission/${missionId}`); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {suggestedAgents.length > 0 && (task.status === "open" || task.status === "locked") && (
-              <div className="mt-8">
-                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 font-mono">Suggested agents</h3>
-                <div className="space-y-2">
-                  {suggestedAgents.map((agent) => (
-                    <div key={agent.id} className="flex items-center justify-between border border-border rounded-lg p-3">
-                      <div>
-                        <Link to={`/agent/${agent.id}`} className="text-sm font-medium hover:underline hover:text-primary">{agent.name}</Link>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs text-muted-foreground flex items-center gap-1 font-mono"><Star className="w-3 h-3" />{agent.reputationScore}</span>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1 font-mono"><MapPin className="w-3 h-3" />{agent.location}</span>
-                        </div>
-                      </div>
-                      <Button size="sm" variant="outline" onClick={() => claimTask(mission.id, task.id, agent.id)}>Invite</Button>
-                    </div>
+            {/* Prerequisites */}
+            {depBlocks.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 font-mono">Prerequisites</h3>
+                <div className="flex flex-wrap gap-1">
+                  {depBlocks.map((dep) => (
+                    <Link key={dep.id} to={`/mission/${missionId}/task/${dep.id}`}
+                      className="inline-flex items-center px-2 py-0.5 bg-muted rounded text-xs font-mono hover:bg-accent transition-colors">
+                      {dep.title}
+                    </Link>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Task-level chat */}
-            <div className="mt-6">
-              <ChatBox
-                messages={task.chatMessages}
-                onSendMessage={(name, msg) => addChatMessage(mission.id, task.id, [], name, msg)}
-                label="Trace discussion"
-              />
+            {/* Actions */}
+            <div className="mt-6 flex flex-wrap gap-2">
+              {canComplete && (
+                <Button size="sm" onClick={() => {
+                  updateBlock.mutate(
+                    { id: block.id, goalId: goal.id, updates: { status: "complete" } },
+                    { onError: (err: any) => toast.error(err.message) }
+                  );
+                }}>
+                  Mark complete
+                </Button>
+              )}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5">
+                    <Trash2 className="w-3.5 h-3.5" /> Delete block
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this block?</AlertDialogTitle>
+                    <AlertDialogDescription>This will permanently remove the block and all its traces.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        deleteBlock.mutate(
+                          { id: block.id, goalId: goal.id },
+                          {
+                            onSuccess: () => navigate(`/mission/${missionId}`),
+                            onError: (err: any) => toast.error(err.message),
+                          }
+                        );
+                      }}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
 
-          {/* Right panel */}
+          {/* Right panel — traces */}
           <div className="lg:col-span-3 animate-fade-in-up-delay-1">
             <div className="border border-border rounded-lg p-5">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 font-mono">Traces</h3>
-              <p className="text-xs text-muted-foreground mb-4">Modular flowchart of actions. Click a node to expand deeper traces.</p>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 font-mono">Trace log</h3>
+                  <p className="text-xs text-muted-foreground">Chronological audit trail of actions on this block.</p>
+                </div>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAddTraceOpen(true)}>
+                  <Plus className="w-3.5 h-3.5" /> Add trace
+                </Button>
+              </div>
 
-              <TraceFlowchart
-                traces={task.traces}
-                missionId={mission.id}
-                taskId={task.id}
-                onAddTrace={(parentPath, entry) => {
-                  const fullEntry = { ...entry, taskId: task.id };
-                  addSubTrace(mission.id, task.id, parentPath, fullEntry);
-                }}
-                onUpdateTraceDeps={(traceId, deps) => {
-                  updateTraceInTask(mission.id, task.id, traceId, { dependencies: deps });
-                }}
-                onDeleteTrace={(tracePath, traceId) => {
-                  deleteTrace(mission.id, task.id, tracePath, traceId);
-                }}
-                onChatMessage={(tracePath, agentName, content) => {
-                  addChatMessage(mission.id, task.id, tracePath, agentName, content);
-                }}
-              />
-
-              {upstreamTraces.length > 0 && (
-                <div className="border-t border-border mt-6 pt-4">
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 font-mono">Upstream context</h4>
-                  <p className="text-xs text-muted-foreground mb-3">Traces from dependency nodes.</p>
-                  <div className={cn("opacity-70")}>
-                    <TraceFlowchart traces={upstreamTraces} missionId={mission.id} taskId={task.id} onAddTrace={() => {}} onUpdateTraceDeps={() => {}} />
-                  </div>
+              {(!traces || traces.length === 0) ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">No traces yet. Add one to start the audit log.</p>
+              ) : (
+                <div className="space-y-2">
+                  {traces.map((trace) => (
+                    <div key={trace.id} className={cn("border-l-4 rounded-r-lg bg-muted/30 px-4 py-3 group", actionColor[trace.action] || "border-l-muted-foreground")}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 text-xs mb-1">
+                            <span className="font-semibold">{trace.agent_name}</span>
+                            <span className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono uppercase">{trace.action}</span>
+                            <span className="text-muted-foreground flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {format(new Date(trace.created_at), "MMM d, h:mm a")}
+                            </span>
+                          </div>
+                          <p className="text-sm leading-relaxed">{trace.content}</p>
+                        </div>
+                        <button
+                          onClick={() => deleteTrace.mutate({ id: trace.id, blockId: block.id }, { onError: (err: any) => toast.error(err.message) })}
+                          className="opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           </div>
         </div>
+
+        <AddTraceDialog blockId={block.id} open={addTraceOpen} onOpenChange={setAddTraceOpen} />
       </main>
     </div>
   );
