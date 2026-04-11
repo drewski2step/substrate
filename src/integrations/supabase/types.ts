@@ -198,6 +198,8 @@ export type Database = {
           block_id: string | null
           content: string
           created_at: string
+          deleted_at: string | null
+          edited_at: string | null
           goal_id: string | null
           id: string
           parent_id: string | null
@@ -212,6 +214,8 @@ export type Database = {
           block_id?: string | null
           content: string
           created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
           goal_id?: string | null
           id?: string
           parent_id?: string | null
@@ -226,6 +230,8 @@ export type Database = {
           block_id?: string | null
           content?: string
           created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
           goal_id?: string | null
           id?: string
           parent_id?: string | null
