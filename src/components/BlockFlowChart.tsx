@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock, useSetDependencies, BlockWithDeps } from "@/hooks/use-blocks";
+import { useBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock, useSetDependencies, useUpdateBlockPosition, BlockWithDeps } from "@/hooks/use-blocks";
 import { useBlockDiscussionCounts } from "@/hooks/use-discussions";
 import { useLogEdit } from "@/hooks/use-edit-history";
 import { useAuth } from "@/hooks/use-auth";
