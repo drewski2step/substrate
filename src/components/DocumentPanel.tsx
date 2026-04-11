@@ -31,7 +31,7 @@ function useUsername(userId: string | null) {
   });
 }
 
-function DocumentRow({ doc, currentUserId }: { doc: DocumentRow; currentUserId: string | null }) {
+function DocRow({ doc, currentUserId }: { doc: DocumentRowType; currentUserId: string | null }) {
   const deleteDoc = useDeleteDocument();
   const { data: username } = useUsername(doc.uploaded_by);
 
