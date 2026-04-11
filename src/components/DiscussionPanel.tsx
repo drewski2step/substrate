@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { useBlockDiscussions, useCreateDiscussion, useUpvoteDiscussion, useResolveDiscussion, useDiscussionReplies, useEditDiscussion, useDeleteDiscussion, DiscussionRow } from "@/hooks/use-discussions";
+import { useBlockDiscussions, useCreateDiscussion, useUpvoteDiscussion, useResolveDiscussion, useDiscussionReplies, useEditDiscussion, useDeleteDiscussion, DiscussionRow, DiscussionWithRelevance } from "@/hooks/use-discussions";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -218,6 +218,7 @@ export function DiscussionPanel({ blockId, goalId }: { blockId: string; goalId: 
   const { data: posts, isLoading } = useBlockDiscussions(blockId);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "question" | "blocker">("all");
+  const [sort, setSort] = useState<"top" | "new" | "unresolved">("top");
   const [composerOpen, setComposerOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -229,6 +230,16 @@ export function DiscussionPanel({ blockId, goalId }: { blockId: string; goalId: 
       return (p.title?.toLowerCase().includes(q) || p.content.toLowerCase().includes(q));
     }
     return true;
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sort === "top") return (b as DiscussionWithRelevance).relevance_score - (a as DiscussionWithRelevance).relevance_score;
+    if (sort === "new") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    // unresolved: unresolved questions first, then by relevance
+    const aUnresolved = a.type === "question" && !a.resolved ? 1 : 0;
+    const bUnresolved = b.type === "question" && !b.resolved ? 1 : 0;
+    if (bUnresolved !== aUnresolved) return bUnresolved - aUnresolved;
+    return (b as DiscussionWithRelevance).relevance_score - (a as DiscussionWithRelevance).relevance_score;
   });
 
   return (
