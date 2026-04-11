@@ -88,6 +88,8 @@ export type Database = {
           created_by: string | null
           description: string | null
           goal_id: string | null
+          heat: number
+          heat_updated_at: string
           id: string
           parent_block_id: string | null
           signal_strength: number | null
@@ -99,6 +101,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           goal_id?: string | null
+          heat?: number
+          heat_updated_at?: string
           id?: string
           parent_block_id?: string | null
           signal_strength?: number | null
@@ -110,6 +114,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           goal_id?: string | null
+          heat?: number
+          heat_updated_at?: string
           id?: string
           parent_block_id?: string | null
           signal_strength?: number | null
@@ -129,6 +135,73 @@ export type Database = {
             columns: ["parent_block_id"]
             isOneToOne: false
             referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discussions: {
+        Row: {
+          block_id: string | null
+          content: string
+          created_at: string
+          goal_id: string | null
+          id: string
+          parent_id: string | null
+          resolved: boolean
+          scope: string
+          title: string | null
+          type: string
+          upvotes: number
+          user_id: string | null
+        }
+        Insert: {
+          block_id?: string | null
+          content: string
+          created_at?: string
+          goal_id?: string | null
+          id?: string
+          parent_id?: string | null
+          resolved?: boolean
+          scope?: string
+          title?: string | null
+          type?: string
+          upvotes?: number
+          user_id?: string | null
+        }
+        Update: {
+          block_id?: string | null
+          content?: string
+          created_at?: string
+          goal_id?: string | null
+          id?: string
+          parent_id?: string | null
+          resolved?: boolean
+          scope?: string
+          title?: string | null
+          type?: string
+          upvotes?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discussions_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discussions_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discussions_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "discussions"
             referencedColumns: ["id"]
           },
         ]
