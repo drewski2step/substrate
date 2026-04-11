@@ -13,6 +13,7 @@ export type BlockRow = {
   heat_updated_at: string | null;
   created_by: string | null;
   created_at: string | null;
+  deleted_at?: string | null;
 };
 
 export type BlockWithDeps = BlockRow & { dependencies: string[] };
