@@ -399,7 +399,7 @@ export function BlockFlowChart({
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-[300px] overflow-hidden">
-            <DocumentPanel blockId={filesBlockId} goalId={goalId} blockTitle={parentBlockTitle || "Goal"} />
+            <DocumentPanel blockId={filesBlockId} goalId={goalId} blockTitle={parentBlockTitle || "Goal"} parentBlockId={parentBlockId || undefined} />
           </div>
         </DialogContent>
       </Dialog>
