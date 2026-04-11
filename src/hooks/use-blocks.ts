@@ -15,6 +15,8 @@ export type BlockRow = {
   created_at: string | null;
   deleted_at?: string | null;
   is_files_block?: boolean;
+  position_x?: number | null;
+  position_y?: number | null;
 };
 
 export type BlockWithDeps = BlockRow & { dependencies: string[] };
