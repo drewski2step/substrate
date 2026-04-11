@@ -45,20 +45,29 @@ export function useUploadDocument() {
       userId: string;
       parentBlockId?: string;
     }) => {
+      console.log("[upload] Starting upload", { blockId, goalId, fileName: file.name, userId, parentBlockId });
+
       // Upload to storage
       const filePath = `${userId}/${blockId}/${Date.now()}_${file.name}`;
+      console.log("[upload] Storage path:", filePath);
       const { error: uploadError } = await supabase.storage
         .from("block-documents")
         .upload(filePath, file);
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("[upload] Storage upload failed:", uploadError);
+        throw uploadError;
+      }
+      console.log("[upload] Storage upload succeeded");
 
       const { data: urlData } = supabase.storage
         .from("block-documents")
         .getPublicUrl(filePath);
+      console.log("[upload] Public URL:", urlData.publicUrl);
 
       const ext = file.name.split(".").pop()?.toLowerCase() || "";
 
       // Insert record using the files block's real ID
+      console.log("[upload] Inserting block_documents row with block_id:", blockId);
       const { data, error } = await supabase
         .from("block_documents")
         .insert({
@@ -72,7 +81,11 @@ export function useUploadDocument() {
         })
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        console.error("[upload] block_documents insert failed:", error);
+        throw error;
+      }
+      console.log("[upload] block_documents insert succeeded:", data);
 
       // +6 heat, +4 signal on the PARENT block (not the files block)
       const heatTargetId = parentBlockId || blockId;
