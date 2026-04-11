@@ -160,3 +160,11 @@
   animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.24s forwards;
   opacity: 0;
 }
+
+/* Text wrapping for all discussion/chat inputs */
+textarea, input[type="text"], input:not([type]) {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+  overflow-x: hidden;
+}
