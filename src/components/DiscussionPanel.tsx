@@ -348,7 +348,7 @@ function ComposeDialog({ blockId, goalId, open, onOpenChange, defaultScope }: {
               ))}
             </SelectContent>
           </Select>
-          <Input placeholder="Title (required)" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
+          <Textarea placeholder="Title (required)" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm min-h-[40px] resize-none" rows={1} />
           <Textarea placeholder="Content (required)" value={content} onChange={(e) => setContent(e.target.value)} className="text-sm min-h-[80px]" />
           <div className="flex items-center gap-2">
             <Switch id="scope" checked={missionWide} onCheckedChange={setMissionWide} />
