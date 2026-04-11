@@ -37,11 +37,13 @@ export function useUploadDocument() {
       goalId,
       file,
       userId,
+      parentBlockId,
     }: {
       blockId: string;
       goalId: string;
       file: File;
       userId: string;
+      parentBlockId?: string;
     }) => {
       // Upload to storage
       const filePath = `${userId}/${blockId}/${Date.now()}_${file.name}`;
@@ -56,7 +58,7 @@ export function useUploadDocument() {
 
       const ext = file.name.split(".").pop()?.toLowerCase() || "";
 
-      // Insert record
+      // Insert record using the files block's real ID
       const { data, error } = await supabase
         .from("block_documents")
         .insert({
@@ -72,11 +74,12 @@ export function useUploadDocument() {
         .single();
       if (error) throw error;
 
-      // +6 heat, +4 signal on parent block
+      // +6 heat, +4 signal on the PARENT block (not the files block)
+      const heatTargetId = parentBlockId || blockId;
       const { data: blk } = await supabase
         .from("blocks")
         .select("heat, signal_strength")
-        .eq("id", blockId)
+        .eq("id", heatTargetId)
         .single();
       if (blk) {
         await supabase
@@ -86,7 +89,7 @@ export function useUploadDocument() {
             signal_strength: (blk.signal_strength || 0) + 4,
             heat_updated_at: new Date().toISOString(),
           } as any)
-          .eq("id", blockId);
+          .eq("id", heatTargetId);
       }
 
       return data as DocumentRow;
