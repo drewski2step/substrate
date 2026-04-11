@@ -66,7 +66,7 @@ function ReplyThread({ parentId, blockId, goalId }: { parentId: string; blockId:
             {r.edited_at && <span className="text-muted-foreground ml-1 text-[10px]">(edited)</span>}
             {isEditing ? (
               <div className="mt-1 flex gap-1.5">
-                <Input value={editText} onChange={(e) => setEditText(e.target.value)} className="text-xs h-7" />
+                <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="text-xs min-h-[40px] resize-none" rows={2} />
                 <Button size="sm" className="h-7 text-xs" onClick={() => {
                   editDiscussion.mutate({ id: r.id, content: editText.trim() }, { onSuccess: () => setEditingId(null) });
                 }}>Save</Button>
@@ -86,13 +86,15 @@ function ReplyThread({ parentId, blockId, goalId }: { parentId: string; blockId:
       })}
       {showReply ? (
         <div className="flex gap-1.5">
-          <Input
+          <Textarea
             placeholder="Reply..."
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
-            className="text-xs h-7"
+            className="text-xs min-h-[40px] resize-none"
+            rows={2}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && replyText.trim()) {
+              if (e.key === "Enter" && !e.shiftKey && replyText.trim()) {
+                e.preventDefault();
                 createDiscussion.mutate(
                   { block_id: blockId, goal_id: goalId, parent_id: parentId, type: "insight", content: replyText.trim() },
                   { onSuccess: () => { setReplyText(""); setShowReply(false); }, onError: (err: any) => toast.error(err.message) }
