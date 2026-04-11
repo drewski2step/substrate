@@ -76,57 +76,117 @@ function BlockCard({
   const status = block.status || "pending";
   const heat = block.heat || 0;
   const { data: counts } = useBlockDiscussionCounts(block.id);
+  const { data: pledges } = useBlockPledges(block.id);
+  const pledgeBlock = usePledgeBlock();
+  const unpledgeBlock = useUnpledgeBlock();
+  const { user } = useAuth();
+
+  // Fetch pledger usernames
+  const pledgerIds = pledges?.map((p) => p.user_id) || [];
+  const { data: pledgerProfiles } = useQuery({
+    queryKey: ["pledger-profiles", block.id, pledgerIds.join(",")],
+    queryFn: async () => {
+      if (pledgerIds.length === 0) return [];
+      const { data } = await supabase.from("profiles").select("id, username, avatar_seed").in("id", pledgerIds);
+      return data || [];
+    },
+    enabled: pledgerIds.length > 0,
+  });
+
+  const isPledged = pledges && pledges.length > 0;
+  const userPledged = pledges?.some((p) => p.user_id === user?.id);
+
+  // Generate star positions for night sky
+  const stars = useMemo(() =>
+    Array.from({ length: 14 }, (_, i) => ({
+      left: `${Math.random() * 90 + 5}%`,
+      top: `${Math.random() * 80 + 5}%`,
+      delay: `${Math.random() * 3}s`,
+      duration: `${1.5 + Math.random() * 1.5}s`,
+    })),
+  []);
 
   return (
     <div className="relative group w-48 shrink-0">
       <div
         onClick={() => onNavigate(block)}
         className={cn(
-          "relative border-2 rounded-lg px-4 py-3 transition-all cursor-pointer",
-          getHeatColor(heat),
+          "relative border-2 rounded-lg px-4 py-3 transition-all cursor-pointer overflow-hidden",
+          isPledged ? "border-indigo-400/60 bg-[hsl(230,35%,12%)]" : getHeatColor(heat),
           counts?.openBlockers && counts.openBlockers > 0 && "ring-2 ring-destructive/50",
-          heat > 200 && "animate-pulse-subtle",
+          heat > 200 && !isPledged && "animate-pulse-subtle",
           "hover:shadow-lg hover:scale-[1.02]"
         )}
       >
-        <div className="flex items-center gap-2 pt-1">
+        {/* Night sky stars for pledged blocks */}
+        {isPledged && stars.map((s, i) => (
+          <span
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-white animate-twinkle"
+            style={{ left: s.left, top: s.top, animationDelay: s.delay, animationDuration: s.duration }}
+          />
+        ))}
+
+        <div className={cn("flex items-center gap-2 pt-1 relative z-10", isPledged && "text-indigo-100")}>
           <div className={cn(
             "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
             status === "complete" && "bg-primary border-primary",
-            status === "pending" && "border-muted-foreground/30 bg-muted/30",
+            status === "pending" && (isPledged ? "border-indigo-400/50 bg-indigo-400/10" : "border-muted-foreground/30 bg-muted/30"),
             status === "active" && "border-substrate-active bg-substrate-active/10",
             status === "stalled" && "border-substrate-blocked bg-substrate-blocked/10"
           )}>
             {status === "complete" && <Check className="w-3 h-3 text-primary-foreground" />}
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-xs font-semibold leading-tight">{block.title}</span>
+            <span className={cn("text-xs font-semibold leading-tight", isPledged && "text-indigo-50")}>{block.title}</span>
             {block.description && (
-              <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5 font-mono truncate">
+              <span className={cn("text-[10px] leading-tight block mt-0.5 font-mono truncate", isPledged ? "text-indigo-300/70" : "text-muted-foreground")}>
                 {block.description}
               </span>
             )}
           </div>
         </div>
+
+        {/* Pledger avatars */}
+        {isPledged && pledgerProfiles && pledgerProfiles.length > 0 && (
+          <div className="flex items-center gap-1 mt-1.5 relative z-10">
+            {pledgerProfiles.slice(0, 5).map((p) => (
+              <div key={p.id} className="group/avatar relative">
+                <img
+                  src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${p.avatar_seed}`}
+                  alt={p.username}
+                  className="w-5 h-5 rounded-full border border-indigo-400/40 hover:scale-125 transition-transform"
+                />
+                <span className="absolute -top-5 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[8px] px-1 py-0.5 rounded opacity-0 group-hover/avatar:opacity-100 whitespace-nowrap pointer-events-none">
+                  {p.username}
+                </span>
+              </div>
+            ))}
+            {pledgerProfiles.length > 5 && (
+              <span className="text-[10px] text-indigo-300">+{pledgerProfiles.length - 5}</span>
+            )}
+          </div>
+        )}
+
         {/* Heat + discussion badges */}
-        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+        <div className={cn("flex items-center gap-2 mt-1.5 flex-wrap relative z-10", isPledged && "text-indigo-300")}>
           {heat > 0 && (
-            <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums", getFlameColor(heat))}>
+            <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums", isPledged ? "text-amber-300" : getFlameColor(heat))}>
               <Flame className="w-3 h-3" />{heat}
             </span>
           )}
           {counts?.openQuestions && counts.openQuestions > 0 ? (
-            <span className="flex items-center gap-0.5 text-[10px] text-blue-600 font-mono">
+            <span className="flex items-center gap-0.5 text-[10px] text-blue-400 font-mono">
               <HelpCircle className="w-3 h-3" />{counts.openQuestions}
             </span>
           ) : null}
           {counts?.openBlockers && counts.openBlockers > 0 ? (
-            <span className="flex items-center gap-0.5 text-[10px] text-destructive font-mono">
+            <span className="flex items-center gap-0.5 text-[10px] text-red-400 font-mono">
               <AlertTriangle className="w-3 h-3" />{counts.openBlockers}
             </span>
           ) : null}
           {block.dependencies.length > 0 && (
-            <span className="text-[10px] text-muted-foreground font-mono">
+            <span className="text-[10px] font-mono">
               {block.dependencies.length} dep{block.dependencies.length > 1 ? "s" : ""}
             </span>
           )}
@@ -147,6 +207,17 @@ function BlockCard({
         <button onClick={(e) => { e.stopPropagation(); onEdit(block); }}
           className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/80 transition-colors"
         ><Pencil className="w-3 h-3" /> Edit</button>
+        {user && (
+          <button onClick={(e) => {
+            e.stopPropagation();
+            if (userPledged) unpledgeBlock.mutate({ blockId: block.id, userId: user.id });
+            else pledgeBlock.mutate({ blockId: block.id, userId: user.id });
+          }}
+            className={cn("flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium shadow-sm transition-colors",
+              userPledged ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+            )}
+          ><Star className="w-3 h-3" /> {userPledged ? "Pledged" : "Pledge"}</button>
+        )}
       </div>
     </div>
   );
