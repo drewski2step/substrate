@@ -317,7 +317,7 @@ export function BlockFlowChart({
   const reversedTiers = useMemo(() => [...tiers].reverse(), [tiers]);
 
   const filesBlockLabel = parentBlockTitle ? `${parentBlockTitle} Files` : "Files";
-  const filesBlockId = filesBlock?.id || parentBlockId || goalId;
+  const filesBlockId = filesBlock?.id || "";
 
   if (isLoading) {
     return (
@@ -336,14 +336,22 @@ export function BlockFlowChart({
         </Button>
       </div>
 
-      {/* Files Block — always pinned at top */}
-      <div
-        onClick={() => setFilesOpen(true)}
-        className="mb-4 w-full max-w-md mx-auto border-2 border-emerald-600/30 bg-emerald-900/10 rounded-lg px-4 py-2 cursor-pointer hover:bg-emerald-900/20 hover:border-emerald-500/40 transition-all flex items-center gap-2"
-      >
-        <FolderOpen className="w-4 h-4 text-emerald-600 shrink-0" />
-        <span className="text-xs font-medium text-emerald-700">{filesBlockLabel}</span>
-      </div>
+      {/* Files Block — only shown at block level, not goal level */}
+      {hasFilesBlock && (
+        <div
+          onClick={() => {
+            if (!filesBlockId) {
+              toast.error("Files block not found — it may still be creating");
+              return;
+            }
+            setFilesOpen(true);
+          }}
+          className="mb-4 w-full max-w-md mx-auto border-2 border-emerald-600/30 bg-emerald-900/10 rounded-lg px-4 py-2 cursor-pointer hover:bg-emerald-900/20 hover:border-emerald-500/40 transition-all flex items-center gap-2"
+        >
+          <FolderOpen className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span className="text-xs font-medium text-emerald-700">{filesBlockLabel}</span>
+        </div>
+      )}
 
       {blocks.length === 0 ? (
         <p className="text-muted-foreground text-sm">No blocks yet. Add one to get started.</p>
