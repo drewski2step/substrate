@@ -353,11 +353,6 @@ export function BlockFlowChart({
                         onNavigate={onNavigateToBlock}
                         onEdit={(b) => user ? setEditBlock(b) : toast.error("Sign in to edit")}
                       />
-                        onComplete={(id) => updateBlock.mutate({ id, goalId, updates: { status: "complete" } })}
-                        onAddSuccessor={(b) => { setSuccessorParent(b); setAddDialogOpen(true); }}
-                        onEditDeps={setEditDepsBlock}
-                        onNavigate={onNavigateToBlock}
-                      />
                     ))}
                   </div>
                   {nextTierBelow && (
