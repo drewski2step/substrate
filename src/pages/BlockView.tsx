@@ -3,13 +3,15 @@ import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Trash2, ChevronRight } from "lucide-react";
+import { Trash2, ChevronRight, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGoal } from "@/hooks/use-goals";
 import { useBlocks, useUpdateBlock, useDeleteBlock } from "@/hooks/use-blocks";
 import { useBlockAncestors } from "@/hooks/use-block-ancestors";
 import { BlockFlowChart } from "@/components/BlockFlowChart";
 import { BlockChatPanel } from "@/components/BlockChatPanel";
+import { DiscussionPanel } from "@/components/DiscussionPanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 const statusLabel: Record<string, string> = { pending: "Pending", active: "Active", complete: "Complete", stalled: "Stalled" };
@@ -37,7 +39,7 @@ export default function BlockView() {
     return (
       <div className="min-h-screen bg-background">
         <AppHeader />
-        <main className="mx-auto max-w-6xl px-6 py-12">
+        <main className="mx-auto max-w-7xl px-6 py-12">
           <Skeleton className="h-4 w-48 mb-6" />
           <Skeleton className="h-6 w-64 mb-8" />
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
@@ -53,7 +55,7 @@ export default function BlockView() {
     return (
       <div className="min-h-screen bg-background">
         <AppHeader />
-        <main className="mx-auto max-w-6xl px-6 py-12">
+        <main className="mx-auto max-w-7xl px-6 py-12">
           <p className="text-muted-foreground">Block not found.</p>
           <Link to={missionId ? `/mission/${missionId}` : "/"} className="text-xs text-primary hover:underline mt-2 inline-block font-mono">← Back</Link>
         </main>
@@ -63,13 +65,13 @@ export default function BlockView() {
 
   const status = block.status || "pending";
   const canComplete = status === "pending" || status === "active";
-  // Parent block for "back" navigation
   const parentBlockId = block.parent_block_id;
+  const heat = block.heat || 0;
 
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="mx-auto max-w-6xl px-6 py-12">
+      <main className="mx-auto max-w-7xl px-6 py-12">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1 text-xs font-mono mb-6 flex-wrap animate-fade-in-up">
           <Link to={`/mission/${missionId}`} className="text-muted-foreground hover:text-primary transition-colors">
@@ -95,6 +97,11 @@ export default function BlockView() {
           <span className={cn("inline-flex items-center px-2 py-0.5 text-xs font-medium rounded border", statusColor[status] || statusColor.pending)}>
             {statusLabel[status] || status}
           </span>
+          {heat > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-xs font-mono tabular-nums text-orange-500">
+              <Flame className="w-3.5 h-3.5" />{heat}
+            </span>
+          )}
         </div>
         {block.description && <p className="text-sm text-muted-foreground mb-4 max-w-2xl">{block.description}</p>}
 
@@ -136,7 +143,7 @@ export default function BlockView() {
           </AlertDialog>
         </div>
 
-        {/* Two panels: Flow + Chat */}
+        {/* Two panels: Flow + Discussion/Chat */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 animate-fade-in-up-delay-1">
           <div className="lg:col-span-3">
             <BlockFlowChart
@@ -145,8 +152,19 @@ export default function BlockView() {
               onNavigateToBlock={(b) => navigate(`/mission/${missionId}/block/${b.id}`)}
             />
           </div>
-          <div className="lg:col-span-2 min-h-[400px]">
-            <BlockChatPanel blockId={block.id} />
+          <div className="lg:col-span-2 min-h-[500px]">
+            <Tabs defaultValue="discussions" className="h-full flex flex-col">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="discussions">Discussions</TabsTrigger>
+                <TabsTrigger value="chat">Chat</TabsTrigger>
+              </TabsList>
+              <TabsContent value="discussions" className="flex-1 mt-2">
+                <DiscussionPanel blockId={block.id} goalId={goal.id} />
+              </TabsContent>
+              <TabsContent value="chat" className="flex-1 mt-2">
+                <BlockChatPanel blockId={block.id} />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </main>

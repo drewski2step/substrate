@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Check, CheckCircle2, Plus, GitBranch } from "lucide-react";
+import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,21 +8,26 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useBlocks, useCreateBlock, useUpdateBlock, useSetDependencies, BlockWithDeps } from "@/hooks/use-blocks";
+import { useBlockDiscussionCounts } from "@/hooks/use-discussions";
 import { toast } from "sonner";
 
-// --- Status styles ---
-const statusBg: Record<string, string> = {
-  complete: "bg-muted/60 border-substrate-complete/40",
-  active: "bg-substrate-active/8 border-substrate-active/30",
-  pending: "bg-substrate-open/8 border-substrate-open/30",
-  stalled: "bg-substrate-blocked/8 border-substrate-blocked/30",
-};
-const statusAccent: Record<string, string> = {
-  complete: "bg-substrate-complete",
-  active: "bg-substrate-active",
-  pending: "bg-substrate-open",
-  stalled: "bg-substrate-blocked",
-};
+function getHeatColor(heat: number): string {
+  if (heat <= 0) return "border-border bg-card";
+  if (heat <= 20) return "border-blue-300 bg-blue-50";
+  if (heat <= 50) return "border-teal-300 bg-teal-50";
+  if (heat <= 100) return "border-amber-300 bg-amber-50";
+  if (heat <= 200) return "border-orange-400 bg-orange-50";
+  return "border-red-500 bg-red-50";
+}
+
+function getFlameColor(heat: number): string {
+  if (heat <= 0) return "text-muted-foreground";
+  if (heat <= 20) return "text-blue-500";
+  if (heat <= 50) return "text-teal-500";
+  if (heat <= 100) return "text-amber-500";
+  if (heat <= 200) return "text-orange-500";
+  return "text-red-500";
+}
 
 // --- DAG helpers ---
 function computeDepths(blocks: BlockWithDeps[]): Map<string, number> {
@@ -48,7 +53,7 @@ function buildTiers(blocks: BlockWithDeps[]): BlockWithDeps[][] {
   return tiers;
 }
 
-// --- Block card ---
+// --- Block card with heat ---
 function BlockCard({
   block, onComplete, onAddSuccessor, onEditDeps, onNavigate,
 }: {
@@ -60,22 +65,26 @@ function BlockCard({
 }) {
   const canComplete = block.status === "active" || block.status === "pending";
   const status = block.status || "pending";
+  const heat = block.heat || 0;
+  const { data: counts } = useBlockDiscussionCounts(block.id);
+
   return (
     <div className="relative group w-48 shrink-0">
       <div
         onClick={() => onNavigate(block)}
         className={cn(
           "relative border-2 rounded-lg px-4 py-3 transition-all cursor-pointer",
-          statusBg[status] || statusBg.pending,
-          "hover:shadow-lg hover:shadow-primary/5 hover:scale-[1.02]"
+          getHeatColor(heat),
+          counts?.openBlockers && counts.openBlockers > 0 && "ring-2 ring-destructive/50",
+          heat > 200 && "animate-pulse-subtle",
+          "hover:shadow-lg hover:scale-[1.02]"
         )}
       >
-        <div className={cn("absolute top-0 left-3 right-3 h-0.5 rounded-b", statusAccent[status] || statusAccent.pending)} />
         <div className="flex items-center gap-2 pt-1">
           <div className={cn(
             "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
             status === "complete" && "bg-primary border-primary",
-            status === "pending" && "border-substrate-open bg-substrate-open/10",
+            status === "pending" && "border-muted-foreground/30 bg-muted/30",
             status === "active" && "border-substrate-active bg-substrate-active/10",
             status === "stalled" && "border-substrate-blocked bg-substrate-blocked/10"
           )}>
@@ -88,12 +97,30 @@ function BlockCard({
                 {block.description}
               </span>
             )}
-            {block.dependencies.length > 0 && (
-              <span className="text-[10px] text-muted-foreground font-mono">
-                {block.dependencies.length} dep{block.dependencies.length > 1 ? "s" : ""}
-              </span>
-            )}
           </div>
+        </div>
+        {/* Heat + discussion badges */}
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+          {heat > 0 && (
+            <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums", getFlameColor(heat))}>
+              <Flame className="w-3 h-3" />{heat}
+            </span>
+          )}
+          {counts?.openQuestions && counts.openQuestions > 0 ? (
+            <span className="flex items-center gap-0.5 text-[10px] text-blue-600 font-mono">
+              <HelpCircle className="w-3 h-3" />{counts.openQuestions}
+            </span>
+          ) : null}
+          {counts?.openBlockers && counts.openBlockers > 0 ? (
+            <span className="flex items-center gap-0.5 text-[10px] text-destructive font-mono">
+              <AlertTriangle className="w-3 h-3" />{counts.openBlockers}
+            </span>
+          ) : null}
+          {block.dependencies.length > 0 && (
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {block.dependencies.length} dep{block.dependencies.length > 1 ? "s" : ""}
+            </span>
+          )}
         </div>
       </div>
       <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
@@ -251,7 +278,6 @@ export function BlockFlowChart({
   const [successorParent, setSuccessorParent] = useState<BlockWithDeps | null>(null);
   const [editDepsBlock, setEditDepsBlock] = useState<BlockWithDeps | null>(null);
 
-  // Filter blocks to only those at this level
   const blocks = useMemo(() => {
     if (!allGoalBlocks) return [];
     return allGoalBlocks.filter((b) => {

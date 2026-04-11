@@ -2,9 +2,11 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { AppHeader } from "@/components/AppHeader";
 import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGoal } from "@/hooks/use-goals";
-import { useBlocks, BlockWithDeps } from "@/hooks/use-blocks";
+import { useBlocks } from "@/hooks/use-blocks";
 import { BlockFlowChart } from "@/components/BlockFlowChart";
+import { MissionFeed } from "@/components/MissionFeed";
 import { useMemo } from "react";
 
 export default function MissionView() {
@@ -37,7 +39,7 @@ export default function MissionView() {
       <div className="min-h-screen bg-background">
         <AppHeader />
         <main className="mx-auto max-w-5xl px-6 py-12">
-          <p className="text-muted-foreground">Mission not found.</p>
+          <p className="text-muted-foreground">Goal not found.</p>
         </main>
       </div>
     );
@@ -49,7 +51,7 @@ export default function MissionView() {
       <main className="mx-auto max-w-5xl px-6 py-12">
         <div className="animate-fade-in-up">
           <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mb-6 font-mono">
-            <ArrowLeft className="w-3 h-3" /> Missions
+            <ArrowLeft className="w-3 h-3" /> Goals
           </Link>
           <h1 className="text-2xl font-semibold leading-tight">{goal.title}</h1>
           {goal.description && <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{goal.description}</p>}
@@ -62,11 +64,22 @@ export default function MissionView() {
         </div>
 
         <div className="mt-10 animate-fade-in-up-delay-1">
-          <BlockFlowChart
-            goalId={goal.id}
-            parentBlockId={null}
-            onNavigateToBlock={(b) => navigate(`/mission/${missionId}/block/${b.id}`)}
-          />
+          <Tabs defaultValue="flowchart">
+            <TabsList>
+              <TabsTrigger value="flowchart">Block Flow</TabsTrigger>
+              <TabsTrigger value="feed">Mission Feed</TabsTrigger>
+            </TabsList>
+            <TabsContent value="flowchart" className="mt-4">
+              <BlockFlowChart
+                goalId={goal.id}
+                parentBlockId={null}
+                onNavigateToBlock={(b) => navigate(`/mission/${missionId}/block/${b.id}`)}
+              />
+            </TabsContent>
+            <TabsContent value="feed" className="mt-4">
+              <MissionFeed goalId={goal.id} missionId={missionId || ""} />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>
