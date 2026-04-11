@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle } from "lucide-react";
+import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useBlocks, useCreateBlock, useUpdateBlock, useSetDependencies, BlockWithDeps } from "@/hooks/use-blocks";
 import { useBlockDiscussionCounts } from "@/hooks/use-discussions";
+import { DocumentPanel } from "@/components/DocumentPanel";
 import { toast } from "sonner";
 
 function getHeatColor(heat: number): string {
