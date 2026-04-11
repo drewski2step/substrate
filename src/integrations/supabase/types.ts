@@ -172,6 +172,8 @@ export type Database = {
           id: string
           is_files_block: boolean
           parent_block_id: string | null
+          position_x: number | null
+          position_y: number | null
           signal_strength: number | null
           status: string | null
           title: string
@@ -187,6 +189,8 @@ export type Database = {
           id?: string
           is_files_block?: boolean
           parent_block_id?: string | null
+          position_x?: number | null
+          position_y?: number | null
           signal_strength?: number | null
           status?: string | null
           title: string
@@ -202,6 +206,8 @@ export type Database = {
           id?: string
           is_files_block?: boolean
           parent_block_id?: string | null
+          position_x?: number | null
+          position_y?: number | null
           signal_strength?: number | null
           status?: string | null
           title?: string
