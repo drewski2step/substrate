@@ -90,79 +90,84 @@ export default function BlockView() {
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      {/* Sticky block header */}
-      <div className="sticky top-0 z-30 bg-background border-b border-border">
-        <div className="mx-auto max-w-7xl px-6">
-          {/* Back navigation button styled like a block */}
-          <div className="py-3 flex items-center justify-between">
-            <button
-              onClick={() => navigate(backUrl)}
-              className="inline-flex items-center gap-2 border-2 border-border rounded-lg px-4 py-2 hover:bg-muted/50 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-semibold">{block.title}</span>
-              <span className={cn("inline-flex items-center px-2 py-0.5 text-[10px] font-medium rounded border ml-1", statusColor[status] || statusColor.pending)}>
-                {statusLabel[status] || status}
-              </span>
-              {heat > 0 && (
-                <span className="inline-flex items-center gap-0.5 text-xs font-mono tabular-nums text-orange-500">
-                  <Flame className="w-3.5 h-3.5" />{heat}
-                </span>
-              )}
-            </button>
-            <div className="flex items-center gap-2">
-              {canComplete && (
-                <Button size="sm" onClick={() => {
-                  updateBlock.mutate({ id: block.id, goalId: goal.id, updates: { status: "complete" } },
-                    { onError: (err: any) => toast.error(err.message) });
-                }}>Mark complete</Button>
-              )}
-              {user && (
-                <Button
-                  size="sm"
-                  variant={userPledged ? "default" : "outline"}
-                  className={cn("gap-1.5", userPledged && "bg-indigo-600 hover:bg-indigo-700")}
-                  onClick={() => {
-                    if (userPledged) unpledgeBlock.mutate({ blockId: block.id, userId: user.id });
-                    else pledgeBlock.mutate({ blockId: block.id, userId: user.id });
-                  }}
-                >
-                  <Star className="w-3.5 h-3.5" /> {userPledged ? "Pledged" : "Pledge"}
-                </Button>
-              )}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5">
-                    <Trash2 className="w-3.5 h-3.5" /> Delete
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete this block?</AlertDialogTitle>
-                    <AlertDialogDescription>This will permanently remove the block, all its child blocks, and chat messages.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => {
-                        deleteBlock.mutate({ id: block.id, goalId: goal.id }, {
-                          onSuccess: () => navigate(backUrl),
-                          onError: (err: any) => toast.error(err.message),
-                        });
-                      }}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >Delete</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <RealtimeIndicator connected={connected} />
-            </div>
-          </div>
-          {block.description && <p className="text-xs text-muted-foreground pb-2 max-w-2xl">{block.description}</p>}
+      <main className="mx-auto max-w-7xl px-6 py-8">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4 font-mono">
+          <Link to={`/mission/${missionId}`} className="hover:underline">{goal.title}</Link>
+          <span>&gt;</span>
+          {ancestors && ancestors.filter(a => a.id !== block.id).map((a) => (
+            <span key={a.id} className="flex items-center gap-2">
+              <Link to={`/mission/${missionId}/block/${a.id}`} className="hover:underline">{a.title}</Link>
+              <span>&gt;</span>
+            </span>
+          ))}
+          <span className="text-foreground font-semibold">{block.title}</span>
         </div>
-      </div>
 
-      <main className="mx-auto max-w-7xl px-6 py-6">
+        {/* Title row */}
+        <div className="flex items-center gap-3 mb-2">
+          <h1 className="text-2xl font-bold">{block.title}</h1>
+          <span className={cn("inline-flex items-center px-3 py-1 text-xs font-medium rounded border", statusColor[status] || statusColor.pending)}>
+            {statusLabel[status] || status}
+          </span>
+          {heat > 0 && (
+            <span className="inline-flex items-center gap-1 text-sm font-mono tabular-nums text-orange-500">
+              <Flame className="w-4 h-4" />{heat}
+            </span>
+          )}
+          <RealtimeIndicator connected={connected} />
+        </div>
+
+        {block.description && <p className="text-sm text-muted-foreground mb-4 max-w-2xl">{block.description}</p>}
+
+        {/* Actions */}
+        <div className="flex items-center gap-3 mb-8">
+          {canComplete && (
+            <Button onClick={() => {
+              updateBlock.mutate({ id: block.id, goalId: goal.id, updates: { status: "complete" } },
+                { onError: (err: any) => toast.error(err.message) });
+            }}>Mark complete</Button>
+          )}
+          {user && (
+            <Button
+              variant={userPledged ? "default" : "outline"}
+              className={cn("gap-1.5", userPledged && "bg-indigo-600 hover:bg-indigo-700")}
+              onClick={() => {
+                if (userPledged) unpledgeBlock.mutate({ blockId: block.id, userId: user.id });
+                else pledgeBlock.mutate({ blockId: block.id, userId: user.id });
+              }}
+            >
+              <Star className="w-4 h-4" /> {userPledged ? "Pledged" : "Pledge"}
+            </Button>
+          )}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5">
+                <Trash2 className="w-4 h-4" /> Delete block
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this block?</AlertDialogTitle>
+                <AlertDialogDescription>This will permanently remove the block, all its child blocks, and chat messages.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    deleteBlock.mutate({ id: block.id, goalId: goal.id }, {
+                      onSuccess: () => navigate(backUrl),
+                      onError: (err: any) => toast.error(err.message),
+                    });
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+
+      {/* Two panels: Flow + Discussion/Chat */}
         {/* Two panels: Flow + Discussion/Chat */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
           <div className="lg:col-span-3">
