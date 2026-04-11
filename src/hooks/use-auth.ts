@@ -52,13 +52,19 @@ export function useAuth() {
       .maybeSingle();
     if (existing) throw new Error("Username is already taken");
 
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
+    const avatarSeed = Math.random().toString(36).substring(2, 10);
 
-    // Update the auto-created profile with the chosen username
-    if (data.user) {
-      await supabase.from("profiles").update({ username }).eq("id", data.user.id);
-    }
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          username,
+          avatar_seed: avatarSeed,
+        },
+      },
+    });
+    if (error) throw error;
     return data;
   };
 
