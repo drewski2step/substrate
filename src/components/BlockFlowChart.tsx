@@ -285,9 +285,13 @@ export function BlockFlowChart({
 }) {
   const { data: allGoalBlocks, isLoading } = useBlocks(goalId);
   const updateBlock = useUpdateBlock();
+  const deleteBlock = useDeleteBlock();
+  const logEdit = useLogEdit();
+  const { user } = useAuth();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [successorParent, setSuccessorParent] = useState<BlockWithDeps | null>(null);
   const [editDepsBlock, setEditDepsBlock] = useState<BlockWithDeps | null>(null);
+  const [editBlock, setEditBlock] = useState<BlockWithDeps | null>(null);
   const [filesOpen, setFilesOpen] = useState(false);
 
   const blocks = useMemo(() => {
