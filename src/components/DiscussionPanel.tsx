@@ -265,16 +265,26 @@ export function DiscussionPanel({ blockId, goalId }: { blockId: string; goalId: 
               )}
             >{f === "all" ? "All" : f === "question" ? "Questions" : "Blockers"}</button>
           ))}
+          <span className="mx-1 text-border">|</span>
+          {(["top", "new", "unresolved"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setSort(s)}
+              className={cn("px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
+                sort === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >{s === "top" ? "Top" : s === "new" ? "New" : "Unresolved"}</button>
+          ))}
         </div>
       </div>
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-2">
           {isLoading ? (
             <p className="text-xs text-muted-foreground text-center py-8">Loading...</p>
-          ) : filtered.length === 0 ? (
+          ) : sorted.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-8">No discussions yet. Start one!</p>
           ) : (
-            filtered.map((post) => (
+            sorted.map((post) => (
               <PostCard
                 key={post.id} post={post} goalId={goalId}
                 expanded={expandedId === post.id}
