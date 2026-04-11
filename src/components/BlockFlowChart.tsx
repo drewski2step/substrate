@@ -56,13 +56,14 @@ function buildTiers(blocks: BlockWithDeps[]): BlockWithDeps[][] {
 
 // --- Block card with heat ---
 function BlockCard({
-  block, onComplete, onAddSuccessor, onEditDeps, onNavigate,
+  block, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit,
 }: {
   block: BlockWithDeps;
   onComplete: (id: string) => void;
   onAddSuccessor: (block: BlockWithDeps) => void;
   onEditDeps: (block: BlockWithDeps) => void;
   onNavigate: (block: BlockWithDeps) => void;
+  onEdit: (block: BlockWithDeps) => void;
 }) {
   const canComplete = block.status === "active" || block.status === "pending";
   const status = block.status || "pending";
