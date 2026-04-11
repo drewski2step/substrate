@@ -75,6 +75,7 @@ function BlockCard({
   onDragEnd?: (id: string, x: number, y: number) => void;
 }) {
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const didDragRef = useRef(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const canComplete = block.status === "active" || block.status === "pending";
@@ -113,6 +114,7 @@ function BlockCard({
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
+    didDragRef.current = false;
     e.preventDefault();
     const rect = cardRef.current?.parentElement?.getBoundingClientRect();
     if (!rect) return;
@@ -136,6 +138,7 @@ function BlockCard({
         const dx = ev.clientX - dragRef.current.startX;
         const dy = ev.clientY - dragRef.current.startY;
         if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+          didDragRef.current = true;
           const newX = (block.position_x || dragRef.current.origX) + dx;
           const newY = (block.position_y || dragRef.current.origY) + dy;
           onDragEnd(block.id, Math.max(0, newX), Math.max(0, newY));
@@ -154,7 +157,7 @@ function BlockCard({
     <div ref={cardRef} className="relative group w-48 shrink-0" style={dragStyle}>
       <div
         onMouseDown={handleMouseDown}
-        onClick={() => { if (!dragOffset) onNavigate(block); }}
+        onClick={() => { if (!didDragRef.current) onNavigate(block); }}
         className={cn(
           "relative border-2 rounded-lg px-4 py-3 cursor-grab active:cursor-grabbing overflow-hidden",
           isPledged ? "border-indigo-400/60 bg-[hsl(230,35%,12%)]" : getHeatColor(heat),
