@@ -156,15 +156,19 @@ export default function BlockView() {
           </div>
           <div className="lg:col-span-2 min-h-[500px]">
             <Tabs defaultValue="discussions" className="h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="discussions">Discussions</TabsTrigger>
                 <TabsTrigger value="chat">Chat</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
               </TabsList>
               <TabsContent value="discussions" className="flex-1 mt-2">
                 <DiscussionPanel blockId={block.id} goalId={goal.id} />
               </TabsContent>
               <TabsContent value="chat" className="flex-1 mt-2">
                 <BlockChatPanel blockId={block.id} />
+              </TabsContent>
+              <TabsContent value="history" className="flex-1 mt-2">
+                <EditHistoryViewer entityType="block" entityId={block.id} />
               </TabsContent>
             </Tabs>
           </div>
