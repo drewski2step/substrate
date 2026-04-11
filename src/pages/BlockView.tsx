@@ -149,6 +149,7 @@ export default function BlockView() {
             <BlockFlowChart
               goalId={goal.id}
               parentBlockId={block.id}
+              parentBlockTitle={block.title}
               onNavigateToBlock={(b) => navigate(`/mission/${missionId}/block/${b.id}`)}
             />
           </div>

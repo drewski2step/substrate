@@ -73,6 +73,7 @@ export default function MissionView() {
               <BlockFlowChart
                 goalId={goal.id}
                 parentBlockId={null}
+                parentBlockTitle={goal.title}
                 onNavigateToBlock={(b) => navigate(`/mission/${missionId}/block/${b.id}`)}
               />
             </TabsContent>
