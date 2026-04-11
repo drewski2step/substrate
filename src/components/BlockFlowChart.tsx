@@ -296,15 +296,12 @@ export function BlockFlowChart({
 
   // Find the real files block from DB
   const filesBlock = useMemo(() => {
-    if (!allGoalBlocks) return null;
-    const targetParentId = parentBlockId || null;
-    // For goal-level, files blocks have parent_block_id matching a root block — we need a different approach
-    // Files blocks are children of the current context's block
-    if (parentBlockId) {
-      return allGoalBlocks.find((b) => (b as any).is_files_block === true && b.parent_block_id === parentBlockId) || null;
-    }
-    return null;
+    if (!allGoalBlocks || !parentBlockId) return null;
+    return allGoalBlocks.find((b) => (b as any).is_files_block === true && b.parent_block_id === parentBlockId) || null;
   }, [allGoalBlocks, parentBlockId]);
+
+  // Only show files shelf when we have a real parent block (not at goal level)
+  const hasFilesBlock = !!parentBlockId;
 
   const blocks = useMemo(() => {
     if (!allGoalBlocks) return [];
