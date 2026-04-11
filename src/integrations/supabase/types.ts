@@ -82,10 +82,62 @@ export type Database = {
           },
         ]
       }
+      block_documents: {
+        Row: {
+          block_id: string
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          goal_id: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          block_id: string
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          goal_id: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          block_id?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          goal_id?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "block_documents_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "block_documents_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocks: {
         Row: {
           created_at: string | null
           created_by: string | null
+          deleted_at: string | null
           description: string | null
           goal_id: string | null
           heat: number
@@ -99,6 +151,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           description?: string | null
           goal_id?: string | null
           heat?: number
@@ -112,6 +165,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           description?: string | null
           goal_id?: string | null
           heat?: number
@@ -144,6 +198,8 @@ export type Database = {
           block_id: string | null
           content: string
           created_at: string
+          deleted_at: string | null
+          edited_at: string | null
           goal_id: string | null
           id: string
           parent_id: string | null
@@ -158,6 +214,8 @@ export type Database = {
           block_id?: string | null
           content: string
           created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
           goal_id?: string | null
           id?: string
           parent_id?: string | null
@@ -172,6 +230,8 @@ export type Database = {
           block_id?: string | null
           content?: string
           created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
           goal_id?: string | null
           id?: string
           parent_id?: string | null
@@ -206,10 +266,44 @@ export type Database = {
           },
         ]
       }
+      edit_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          entity_id: string
+          entity_type: string
+          field_changed: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          entity_id: string
+          entity_type: string
+          field_changed: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          entity_id?: string
+          entity_type?: string
+          field_changed?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           created_at: string | null
           created_by: string | null
+          deleted_at: string | null
           description: string | null
           id: string
           status: string | null
@@ -218,6 +312,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           description?: string | null
           id?: string
           status?: string | null
@@ -226,6 +321,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           description?: string | null
           id?: string
           status?: string | null

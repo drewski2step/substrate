@@ -14,6 +14,8 @@ export type DiscussionRow = {
   scope: string;
   resolved: boolean;
   created_at: string;
+  edited_at: string | null;
+  deleted_at: string | null;
 };
 
 export function useBlockDiscussions(blockId: string) {
@@ -98,6 +100,7 @@ export function useCreateDiscussion() {
       title?: string | null;
       content: string;
       scope?: string;
+      user_id?: string | null;
     }) => {
       const { data, error } = await supabase
         .from("discussions" as any)
@@ -109,6 +112,7 @@ export function useCreateDiscussion() {
           title: post.title || null,
           content: post.content,
           scope: post.scope || "block",
+          user_id: post.user_id || null,
         })
         .select()
         .single();
@@ -191,5 +195,41 @@ export function useBlockDiscussionCounts(blockId: string) {
       };
     },
     enabled: !!blockId,
+  });
+}
+
+export function useEditDiscussion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, content, title }: { id: string; content: string; title?: string | null }) => {
+      const updates: any = { content, edited_at: new Date().toISOString() };
+      if (title !== undefined) updates.title = title;
+      const { error } = await supabase.from("discussions" as any).update(updates).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["discussions"] });
+    },
+  });
+}
+
+export function useDeleteDiscussion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, hasReplies }: { id: string; hasReplies: boolean }) => {
+      if (hasReplies) {
+        // Soft-delete: keep for thread structure
+        const { error } = await supabase.from("discussions" as any).update({ deleted_at: new Date().toISOString(), content: "[deleted]", title: null }).eq("id", id);
+        if (error) throw error;
+      } else {
+        // Hard-delete
+        const { error } = await supabase.from("discussions" as any).delete().eq("id", id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["discussions"] });
+      qc.invalidateQueries({ queryKey: ["discussion-counts"] });
+    },
   });
 }

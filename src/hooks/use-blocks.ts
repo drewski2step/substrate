@@ -13,6 +13,7 @@ export type BlockRow = {
   heat_updated_at: string | null;
   created_by: string | null;
   created_at: string | null;
+  deleted_at?: string | null;
 };
 
 export type BlockWithDeps = BlockRow & { dependencies: string[] };
@@ -22,7 +23,8 @@ export function useBlocks(goalId: string) {
     queryKey: ["blocks", goalId],
     queryFn: async () => {
       const [blocksRes, depsRes] = await Promise.all([
-        supabase.from("blocks").select("*").eq("goal_id", goalId).order("created_at", { ascending: true }),
+        supabase.from("blocks").select("*").eq("goal_id", goalId).is("deleted_at", null).order("created_at", { ascending: true }),
+        supabase.from("block_dependencies").select("block_id, depends_on_id"),
         supabase.from("block_dependencies").select("block_id, depends_on_id"),
       ]);
       if (blocksRes.error) throw blocksRes.error;

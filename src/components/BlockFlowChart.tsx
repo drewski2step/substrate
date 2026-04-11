@@ -1,14 +1,19 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle } from "lucide-react";
+import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useBlocks, useCreateBlock, useUpdateBlock, useSetDependencies, BlockWithDeps } from "@/hooks/use-blocks";
+import { useBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock, useSetDependencies, BlockWithDeps } from "@/hooks/use-blocks";
 import { useBlockDiscussionCounts } from "@/hooks/use-discussions";
+import { useLogEdit } from "@/hooks/use-edit-history";
+import { useAuth } from "@/hooks/use-auth";
+import { DocumentPanel } from "@/components/DocumentPanel";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 function getHeatColor(heat: number): string {
@@ -55,13 +60,14 @@ function buildTiers(blocks: BlockWithDeps[]): BlockWithDeps[][] {
 
 // --- Block card with heat ---
 function BlockCard({
-  block, onComplete, onAddSuccessor, onEditDeps, onNavigate,
+  block, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit,
 }: {
   block: BlockWithDeps;
   onComplete: (id: string) => void;
   onAddSuccessor: (block: BlockWithDeps) => void;
   onEditDeps: (block: BlockWithDeps) => void;
   onNavigate: (block: BlockWithDeps) => void;
+  onEdit: (block: BlockWithDeps) => void;
 }) {
   const canComplete = block.status === "active" || block.status === "pending";
   const status = block.status || "pending";
@@ -135,6 +141,9 @@ function BlockCard({
         <button onClick={(e) => { e.stopPropagation(); onEditDeps(block); }}
           className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/80 transition-colors"
         ><GitBranch className="w-3 h-3" /> Deps</button>
+        <button onClick={(e) => { e.stopPropagation(); onEdit(block); }}
+          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/80 transition-colors"
+        ><Pencil className="w-3 h-3" /> Edit</button>
       </div>
     </div>
   );
@@ -266,17 +275,24 @@ function EditDepsDialog({ block, allBlocks, goalId, open, onOpenChange }: {
 export function BlockFlowChart({
   goalId,
   parentBlockId,
+  parentBlockTitle,
   onNavigateToBlock,
 }: {
   goalId: string;
   parentBlockId?: string | null;
+  parentBlockTitle?: string;
   onNavigateToBlock: (block: BlockWithDeps) => void;
 }) {
   const { data: allGoalBlocks, isLoading } = useBlocks(goalId);
   const updateBlock = useUpdateBlock();
+  const deleteBlock = useDeleteBlock();
+  const logEdit = useLogEdit();
+  const { user } = useAuth();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [successorParent, setSuccessorParent] = useState<BlockWithDeps | null>(null);
   const [editDepsBlock, setEditDepsBlock] = useState<BlockWithDeps | null>(null);
+  const [editBlock, setEditBlock] = useState<BlockWithDeps | null>(null);
+  const [filesOpen, setFilesOpen] = useState(false);
 
   const blocks = useMemo(() => {
     if (!allGoalBlocks) return [];
@@ -288,6 +304,9 @@ export function BlockFlowChart({
 
   const tiers = useMemo(() => buildTiers(blocks), [blocks]);
   const reversedTiers = useMemo(() => [...tiers].reverse(), [tiers]);
+
+  const filesBlockLabel = parentBlockTitle ? `${parentBlockTitle} Files` : "Files";
+  const filesBlockId = parentBlockId || goalId;
 
   if (isLoading) {
     return (
@@ -304,6 +323,15 @@ export function BlockFlowChart({
         <Button size="sm" className="gap-1.5" onClick={() => { setSuccessorParent(null); setAddDialogOpen(true); }}>
           <Plus className="w-3.5 h-3.5" /> Add block
         </Button>
+      </div>
+
+      {/* Files Block — always pinned at top */}
+      <div
+        onClick={() => setFilesOpen(true)}
+        className="mb-4 w-full max-w-md mx-auto border-2 border-emerald-600/30 bg-emerald-900/10 rounded-lg px-4 py-2 cursor-pointer hover:bg-emerald-900/20 hover:border-emerald-500/40 transition-all flex items-center gap-2"
+      >
+        <FolderOpen className="w-4 h-4 text-emerald-600 shrink-0" />
+        <span className="text-xs font-medium text-emerald-700">{filesBlockLabel}</span>
       </div>
 
       {blocks.length === 0 ? (
@@ -323,6 +351,7 @@ export function BlockFlowChart({
                         onAddSuccessor={(b) => { setSuccessorParent(b); setAddDialogOpen(true); }}
                         onEditDeps={setEditDepsBlock}
                         onNavigate={onNavigateToBlock}
+                        onEdit={(b) => user ? setEditBlock(b) : toast.error("Sign in to edit")}
                       />
                     ))}
                   </div>
@@ -346,6 +375,121 @@ export function BlockFlowChart({
           open={!!editDepsBlock} onOpenChange={(o) => { if (!o) setEditDepsBlock(null); }}
         />
       )}
+
+      {/* Document panel dialog */}
+      <Dialog open={filesOpen} onOpenChange={setFilesOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <FolderOpen className="w-4 h-4 text-emerald-600" /> {filesBlockLabel}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-[300px] overflow-hidden">
+            <DocumentPanel blockId={filesBlockId} goalId={goalId} blockTitle={parentBlockTitle || "Goal"} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit block dialog */}
+      {editBlock && (
+        <EditBlockDialog
+          block={editBlock} goalId={goalId}
+          open={!!editBlock} onOpenChange={(o) => { if (!o) setEditBlock(null); }}
+        />
+      )}
     </div>
+  );
+}
+
+// --- Edit Block dialog ---
+function EditBlockDialog({ block, goalId, open, onOpenChange }: {
+  block: BlockWithDeps; goalId: string; open: boolean; onOpenChange: (o: boolean) => void;
+}) {
+  const [title, setTitle] = useState(block.title);
+  const [description, setDescription] = useState(block.description || "");
+  const [status, setStatus] = useState(block.status || "pending");
+  const updateBlock = useUpdateBlock();
+  const deleteBlock = useDeleteBlock();
+  const logEdit = useLogEdit();
+  const { user } = useAuth();
+
+  const handleSave = async () => {
+    if (!user || !title.trim()) return;
+    const changes: { field: string; old: string | null; new_val: string | null }[] = [];
+    if (title.trim() !== block.title) changes.push({ field: "title", old: block.title, new_val: title.trim() });
+    if (description.trim() !== (block.description || "")) changes.push({ field: "description", old: block.description, new_val: description.trim() || null });
+    if (status !== (block.status || "pending")) changes.push({ field: "status", old: block.status, new_val: status });
+
+    for (const c of changes) {
+      await logEdit.mutateAsync({ entity_type: "block", entity_id: block.id, changed_by: user.id, field_changed: c.field, old_value: c.old, new_value: c.new_val });
+    }
+
+    const updates: any = {};
+    if (title.trim() !== block.title) updates.title = title.trim();
+    if (description.trim() !== (block.description || "")) updates.description = description.trim() || null;
+    if (status !== (block.status || "pending")) updates.status = status;
+
+    if (Object.keys(updates).length > 0) {
+      updateBlock.mutate({ id: block.id, goalId, updates }, {
+        onSuccess: () => { onOpenChange(false); toast.success("Block updated"); },
+        onError: (err: any) => toast.error(err.message),
+      });
+    } else {
+      onOpenChange(false);
+    }
+  };
+
+  const handleDelete = () => {
+    if (!user) return;
+    logEdit.mutate({ entity_type: "block", entity_id: block.id, changed_by: user.id, field_changed: "deleted_at", old_value: null, new_value: new Date().toISOString() });
+    updateBlock.mutate({ id: block.id, goalId, updates: { deleted_at: new Date().toISOString() } as any }, {
+      onSuccess: () => { onOpenChange(false); toast.success("Block deleted. Undo within 24 hours from block view."); },
+      onError: (err: any) => toast.error(err.message),
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { setTitle(block.title); setDescription(block.description || ""); setStatus(block.status || "pending"); } onOpenChange(o); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-sm">Edit block</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
+          <Textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} className="text-sm min-h-[60px]" />
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="complete">Complete</SelectItem>
+              <SelectItem value="stalled">Stalled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter className="flex justify-between">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive gap-1">
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this block?</AlertDialogTitle>
+                <AlertDialogDescription>Are you sure you want to delete this block and all its contents? This can be undone within 24 hours.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button size="sm" onClick={handleSave} disabled={!title.trim()}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

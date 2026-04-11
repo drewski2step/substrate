@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { useBlockDiscussions, useCreateDiscussion, useUpvoteDiscussion, useResolveDiscussion, useDiscussionReplies, DiscussionRow } from "@/hooks/use-discussions";
+import { useBlockDiscussions, useCreateDiscussion, useUpvoteDiscussion, useResolveDiscussion, useDiscussionReplies, useEditDiscussion, useDeleteDiscussion, DiscussionRow } from "@/hooks/use-discussions";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, ArrowUp, MessageSquare, CheckCircle2, AlertTriangle, Lightbulb, Link2, FileText, HelpCircle } from "lucide-react";
+import { Search, Plus, ArrowUp, MessageSquare, CheckCircle2, AlertTriangle, Lightbulb, Link2, FileText, HelpCircle, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -35,18 +36,54 @@ function TypeBadge({ type }: { type: string }) {
 function ReplyThread({ parentId, blockId, goalId }: { parentId: string; blockId: string; goalId: string }) {
   const { data: replies } = useDiscussionReplies(parentId);
   const createDiscussion = useCreateDiscussion();
+  const editDiscussion = useEditDiscussion();
+  const deleteDiscussion = useDeleteDiscussion();
+  const { user } = useAuth();
   const [replyText, setReplyText] = useState("");
   const [showReply, setShowReply] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
 
   return (
     <div className="ml-4 mt-2 border-l-2 border-border pl-3 space-y-2">
-      {replies?.map((r) => (
-        <div key={r.id} className="text-xs">
-          <span className="font-semibold">Anonymous</span>
-          <span className="text-muted-foreground ml-2">{format(new Date(r.created_at), "MMM d, h:mm a")}</span>
-          <p className="mt-0.5 leading-relaxed">{r.content}</p>
-        </div>
-      ))}
+      {replies?.map((r) => {
+        const isDeleted = !!r.deleted_at;
+        const isOwner = user?.id === r.user_id;
+        const isEditing = editingId === r.id;
+
+        if (isDeleted) {
+          return (
+            <div key={r.id} className="text-xs text-muted-foreground italic py-1">
+              This post was deleted
+            </div>
+          );
+        }
+
+        return (
+          <div key={r.id} className="text-xs group/reply">
+            <span className="font-semibold">Anonymous</span>
+            <span className="text-muted-foreground ml-2">{format(new Date(r.created_at), "MMM d, h:mm a")}</span>
+            {r.edited_at && <span className="text-muted-foreground ml-1 text-[10px]">(edited)</span>}
+            {isEditing ? (
+              <div className="mt-1 flex gap-1.5">
+                <Input value={editText} onChange={(e) => setEditText(e.target.value)} className="text-xs h-7" />
+                <Button size="sm" className="h-7 text-xs" onClick={() => {
+                  editDiscussion.mutate({ id: r.id, content: editText.trim() }, { onSuccess: () => setEditingId(null) });
+                }}>Save</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingId(null)}>Cancel</Button>
+              </div>
+            ) : (
+              <p className="mt-0.5 leading-relaxed">{r.content}</p>
+            )}
+            {isOwner && !isEditing && (
+              <div className="flex gap-2 mt-0.5 opacity-0 group-hover/reply:opacity-100 transition-opacity">
+                <button onClick={() => { setEditingId(r.id); setEditText(r.content); }} className="text-[10px] text-muted-foreground hover:text-primary">Edit</button>
+                <button onClick={() => deleteDiscussion.mutate({ id: r.id, hasReplies: false })} className="text-[10px] text-muted-foreground hover:text-destructive">Delete</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
       {showReply ? (
         <div className="flex gap-1.5">
           <Input
@@ -81,9 +118,28 @@ function ReplyThread({ parentId, blockId, goalId }: { parentId: string; blockId:
 function PostCard({ post, goalId, onExpand, expanded }: { post: DiscussionRow; goalId: string; onExpand: () => void; expanded: boolean }) {
   const upvote = useUpvoteDiscussion();
   const resolve = useResolveDiscussion();
+  const editDiscussion = useEditDiscussion();
+  const deleteDiscussion = useDeleteDiscussion();
+  const { data: replies } = useDiscussionReplies(post.id);
+  const { user } = useAuth();
+  const isOwner = user?.id === post.user_id;
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(post.title || "");
+  const [editContent, setEditContent] = useState(post.content);
+
+  if (post.deleted_at) {
+    const hasReplies = replies && replies.length > 0;
+    if (!hasReplies) return null;
+    return (
+      <div className="border rounded-lg p-3 text-xs text-muted-foreground italic">
+        This post was deleted
+        <ReplyThread parentId={post.id} blockId={post.block_id || ""} goalId={goalId} />
+      </div>
+    );
+  }
 
   return (
-    <div className={cn("border rounded-lg p-3 transition-all", post.type === "blocker" && !post.resolved && "border-destructive/50")}>
+    <div className={cn("border rounded-lg p-3 transition-all group/post", post.type === "blocker" && !post.resolved && "border-destructive/50")}>
       <div className="flex items-start gap-2">
         <button
           onClick={(e) => { e.stopPropagation(); upvote.mutate({ id: post.id, blockId: post.block_id }); }}
@@ -100,16 +156,48 @@ function PostCard({ post, goalId, onExpand, expanded }: { post: DiscussionRow; g
                 <CheckCircle2 className="w-3 h-3" /> Resolved
               </span>
             )}
+            {post.edited_at && <span className="text-[10px] text-muted-foreground">(edited)</span>}
           </div>
-          {post.title && <p className="text-sm font-medium leading-tight">{post.title}</p>}
-          <p className={cn("text-xs text-muted-foreground mt-0.5", !expanded && "line-clamp-2")}>{post.content}</p>
+          {editing ? (
+            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-sm" placeholder="Title" />
+              <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="text-xs min-h-[40px]" />
+              <div className="flex gap-1.5">
+                <Button size="sm" className="h-7 text-xs" onClick={() => {
+                  editDiscussion.mutate({ id: post.id, content: editContent.trim(), title: editTitle.trim() || null }, {
+                    onSuccess: () => setEditing(false),
+                    onError: (err: any) => toast.error(err.message),
+                  });
+                }}>Save</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(false)}>Cancel</Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {post.title && <p className="text-sm font-medium leading-tight">{post.title}</p>}
+              <p className={cn("text-xs text-muted-foreground mt-0.5", !expanded && "line-clamp-2")}>{post.content}</p>
+            </>
+          )}
           <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
             <span>{format(new Date(post.created_at), "MMM d, h:mm a")}</span>
-            <span className="flex items-center gap-0.5"><MessageSquare className="w-3 h-3" /> replies</span>
+            <span className="flex items-center gap-0.5"><MessageSquare className="w-3 h-3" /> {replies?.length || 0} replies</span>
           </div>
         </div>
+        {isOwner && !editing && (
+          <div className="flex gap-1 opacity-0 group-hover/post:opacity-100 transition-opacity shrink-0">
+            <button onClick={(e) => { e.stopPropagation(); setEditing(true); }} className="p-1 rounded hover:bg-muted">
+              <Pencil className="w-3 h-3 text-muted-foreground" />
+            </button>
+            <button onClick={(e) => {
+              e.stopPropagation();
+              deleteDiscussion.mutate({ id: post.id, hasReplies: (replies?.length || 0) > 0 });
+            }} className="p-1 rounded hover:bg-destructive/10">
+              <Trash2 className="w-3 h-3 text-destructive" />
+            </button>
+          </div>
+        )}
       </div>
-      {expanded && (
+      {expanded && !editing && (
         <div className="mt-3">
           {post.type === "question" && !post.resolved && (
             <Button
@@ -198,6 +286,7 @@ function ComposeDialog({ blockId, goalId, open, onOpenChange, defaultScope }: {
   const [content, setContent] = useState("");
   const [missionWide, setMissionWide] = useState(defaultScope === "mission");
   const createDiscussion = useCreateDiscussion();
+  const { user } = useAuth();
 
   const handleSubmit = () => {
     if (!title.trim() || !content.trim()) return;
@@ -209,6 +298,7 @@ function ComposeDialog({ blockId, goalId, open, onOpenChange, defaultScope }: {
         title: title.trim(),
         content: content.trim(),
         scope: missionWide ? "mission" : "block",
+        user_id: user?.id || null,
       },
       {
         onSuccess: () => { setTitle(""); setContent(""); setType("insight"); setMissionWide(false); onOpenChange(false); },
