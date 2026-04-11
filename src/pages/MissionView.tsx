@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { ArrowLeft, Pencil, Trash2, Undo2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +15,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { BlockFlowChart } from "@/components/BlockFlowChart";
 import { MissionFeed } from "@/components/MissionFeed";
 import { EditHistoryViewer } from "@/components/EditHistoryViewer";
-import { useMemo } from "react";
+import { useRealtimeSync } from "@/hooks/use-realtime";
+import { RealtimeIndicator } from "@/components/RealtimeIndicator";
 import { toast } from "sonner";
 
 export default function MissionView() {
@@ -26,6 +27,7 @@ export default function MissionView() {
   const updateGoal = useUpdateGoal();
   const logEdit = useLogEdit();
   const { user } = useAuth();
+  const { connected } = useRealtimeSync(missionId || "");
   const isLoading = goalLoading || blocksLoading;
 
   const [editing, setEditing] = useState(false);
@@ -189,6 +191,10 @@ export default function MissionView() {
         </div>
 
         <div className="mt-10 animate-fade-in-up-delay-1">
+          <div className="flex items-center justify-between mb-2">
+            <div />
+            <RealtimeIndicator connected={connected} />
+          </div>
           <Tabs defaultValue="flowchart">
             <TabsList>
               <TabsTrigger value="flowchart">Block Flow</TabsTrigger>

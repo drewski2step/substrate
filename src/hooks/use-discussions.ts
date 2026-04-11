@@ -18,22 +18,47 @@ export type DiscussionRow = {
   deleted_at: string | null;
 };
 
+function computeRelevance(post: DiscussionRow, replyCount: number): number {
+  const hoursSincePosted = Math.max(0.1, (Date.now() - new Date(post.created_at).getTime()) / (1000 * 60 * 60));
+  return (post.upvotes * 3) + (replyCount * 2) + (1 / hoursSincePosted * 10);
+}
+
 export function useBlockDiscussions(blockId: string) {
   return useQuery({
     queryKey: ["discussions", "block", blockId],
     queryFn: async () => {
+      // Fetch top-level posts
       const { data, error } = await supabase
         .from("discussions" as any)
         .select("*")
         .eq("block_id", blockId)
-        .is("parent_id", null)
-        .order("upvotes", { ascending: false });
+        .is("parent_id", null);
       if (error) throw error;
-      return data as unknown as DiscussionRow[];
+      const posts = data as unknown as DiscussionRow[];
+
+      // Fetch reply counts for each post
+      const { data: allReplies } = await supabase
+        .from("discussions" as any)
+        .select("parent_id")
+        .eq("block_id", blockId)
+        .not("parent_id", "is", null);
+      const replyCounts = new Map<string, number>();
+      for (const r of (allReplies as any[] || [])) {
+        replyCounts.set(r.parent_id, (replyCounts.get(r.parent_id) || 0) + 1);
+      }
+
+      // Compute live relevance
+      return posts.map((p) => ({
+        ...p,
+        relevance_score: computeRelevance(p, replyCounts.get(p.id) || 0),
+        reply_count: replyCounts.get(p.id) || 0,
+      }));
     },
     enabled: !!blockId,
   });
 }
+
+export type DiscussionWithRelevance = DiscussionRow & { relevance_score: number; reply_count: number };
 
 export function useMissionDiscussions(goalId: string) {
   return useQuery({

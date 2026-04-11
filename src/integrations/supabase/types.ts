@@ -133,6 +133,33 @@ export type Database = {
           },
         ]
       }
+      block_pledges: {
+        Row: {
+          active: boolean
+          block_id: string
+          id: string
+          pledged_at: string
+          unpledged_at: string | null
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          block_id: string
+          id?: string
+          pledged_at?: string
+          unpledged_at?: string | null
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          block_id?: string
+          id?: string
+          pledged_at?: string
+          unpledged_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       blocks: {
         Row: {
           created_at: string | null
@@ -206,6 +233,7 @@ export type Database = {
           goal_id: string | null
           id: string
           parent_id: string | null
+          relevance_score: number | null
           resolved: boolean
           scope: string
           title: string | null
@@ -222,6 +250,7 @@ export type Database = {
           goal_id?: string | null
           id?: string
           parent_id?: string | null
+          relevance_score?: number | null
           resolved?: boolean
           scope?: string
           title?: string | null
@@ -238,6 +267,7 @@ export type Database = {
           goal_id?: string | null
           id?: string
           parent_id?: string | null
+          relevance_score?: number | null
           resolved?: boolean
           scope?: string
           title?: string | null

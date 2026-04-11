@@ -3,7 +3,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Trash2, ChevronRight, Flame } from "lucide-react";
+import { Trash2, ChevronRight, Flame, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGoal } from "@/hooks/use-goals";
 import { useBlocks, useUpdateBlock, useDeleteBlock } from "@/hooks/use-blocks";
@@ -12,6 +12,10 @@ import { BlockFlowChart } from "@/components/BlockFlowChart";
 import { BlockChatPanel } from "@/components/BlockChatPanel";
 import { DiscussionPanel } from "@/components/DiscussionPanel";
 import { EditHistoryViewer } from "@/components/EditHistoryViewer";
+import { useRealtimeSync } from "@/hooks/use-realtime";
+import { RealtimeIndicator } from "@/components/RealtimeIndicator";
+import { useBlockPledges, usePledgeBlock, useUnpledgeBlock } from "@/hooks/use-pledges";
+import { useAuth } from "@/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
@@ -31,6 +35,12 @@ export default function BlockView() {
   const { data: blocks, isLoading: blocksLoading } = useBlocks(missionId || "");
   const { data: ancestors, isLoading: ancestorsLoading } = useBlockAncestors(resolvedBlockId);
   const updateBlock = useUpdateBlock();
+  const { user } = useAuth();
+  const { connected } = useRealtimeSync(missionId || "");
+  const { data: pledges } = useBlockPledges(resolvedBlockId);
+  const pledgeBlock = usePledgeBlock();
+  const unpledgeBlock = useUnpledgeBlock();
+  const userPledged = pledges?.some((p) => p.user_id === user?.id);
   const deleteBlock = useDeleteBlock();
 
   const isLoading = goalLoading || blocksLoading || ancestorsLoading;
@@ -107,12 +117,25 @@ export default function BlockView() {
         {block.description && <p className="text-sm text-muted-foreground mb-4 max-w-2xl">{block.description}</p>}
 
         {/* Actions */}
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="flex flex-wrap gap-2 mb-8 items-center">
           {canComplete && (
             <Button size="sm" onClick={() => {
               updateBlock.mutate({ id: block.id, goalId: goal.id, updates: { status: "complete" } },
                 { onError: (err: any) => toast.error(err.message) });
             }}>Mark complete</Button>
+          )}
+          {user && (
+            <Button
+              size="sm"
+              variant={userPledged ? "default" : "outline"}
+              className={cn("gap-1.5", userPledged && "bg-indigo-600 hover:bg-indigo-700")}
+              onClick={() => {
+                if (userPledged) unpledgeBlock.mutate({ blockId: block.id, userId: user.id });
+                else pledgeBlock.mutate({ blockId: block.id, userId: user.id });
+              }}
+            >
+              <Star className="w-3.5 h-3.5" /> {userPledged ? "Pledged" : "Pledge"}
+            </Button>
           )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -142,6 +165,9 @@ export default function BlockView() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          <div className="ml-auto">
+            <RealtimeIndicator connected={connected} />
+          </div>
         </div>
 
         {/* Two panels: Flow + Discussion/Chat */}
