@@ -389,6 +389,107 @@ export function BlockFlowChart({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit block dialog */}
+      {editBlock && (
+        <EditBlockDialog
+          block={editBlock} goalId={goalId}
+          open={!!editBlock} onOpenChange={(o) => { if (!o) setEditBlock(null); }}
+        />
+      )}
     </div>
+  );
+}
+
+// --- Edit Block dialog ---
+function EditBlockDialog({ block, goalId, open, onOpenChange }: {
+  block: BlockWithDeps; goalId: string; open: boolean; onOpenChange: (o: boolean) => void;
+}) {
+  const [title, setTitle] = useState(block.title);
+  const [description, setDescription] = useState(block.description || "");
+  const [status, setStatus] = useState(block.status || "pending");
+  const updateBlock = useUpdateBlock();
+  const deleteBlock = useDeleteBlock();
+  const logEdit = useLogEdit();
+  const { user } = useAuth();
+
+  const handleSave = async () => {
+    if (!user || !title.trim()) return;
+    const changes: { field: string; old: string | null; new_val: string | null }[] = [];
+    if (title.trim() !== block.title) changes.push({ field: "title", old: block.title, new_val: title.trim() });
+    if (description.trim() !== (block.description || "")) changes.push({ field: "description", old: block.description, new_val: description.trim() || null });
+    if (status !== (block.status || "pending")) changes.push({ field: "status", old: block.status, new_val: status });
+
+    for (const c of changes) {
+      await logEdit.mutateAsync({ entity_type: "block", entity_id: block.id, changed_by: user.id, field_changed: c.field, old_value: c.old, new_value: c.new_val });
+    }
+
+    const updates: any = {};
+    if (title.trim() !== block.title) updates.title = title.trim();
+    if (description.trim() !== (block.description || "")) updates.description = description.trim() || null;
+    if (status !== (block.status || "pending")) updates.status = status;
+
+    if (Object.keys(updates).length > 0) {
+      updateBlock.mutate({ id: block.id, goalId, updates }, {
+        onSuccess: () => { onOpenChange(false); toast.success("Block updated"); },
+        onError: (err: any) => toast.error(err.message),
+      });
+    } else {
+      onOpenChange(false);
+    }
+  };
+
+  const handleDelete = () => {
+    if (!user) return;
+    logEdit.mutate({ entity_type: "block", entity_id: block.id, changed_by: user.id, field_changed: "deleted_at", old_value: null, new_value: new Date().toISOString() });
+    updateBlock.mutate({ id: block.id, goalId, updates: { deleted_at: new Date().toISOString() } as any }, {
+      onSuccess: () => { onOpenChange(false); toast.success("Block deleted. Undo within 24 hours from block view."); },
+      onError: (err: any) => toast.error(err.message),
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { setTitle(block.title); setDescription(block.description || ""); setStatus(block.status || "pending"); } onOpenChange(o); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-sm">Edit block</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
+          <Textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} className="text-sm min-h-[60px]" />
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="complete">Complete</SelectItem>
+              <SelectItem value="stalled">Stalled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter className="flex justify-between">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive gap-1">
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this block?</AlertDialogTitle>
+                <AlertDialogDescription>Are you sure you want to delete this block and all its contents? This can be undone within 24 hours.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button size="sm" onClick={handleSave} disabled={!title.trim()}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
