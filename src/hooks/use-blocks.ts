@@ -9,6 +9,8 @@ export type BlockRow = {
   description: string | null;
   status: string | null;
   signal_strength: number | null;
+  heat: number;
+  heat_updated_at: string | null;
   created_by: string | null;
   created_at: string | null;
 };
@@ -26,7 +28,7 @@ export function useBlocks(goalId: string) {
       if (blocksRes.error) throw blocksRes.error;
       if (depsRes.error) throw depsRes.error;
 
-      const blockIds = new Set((blocksRes.data as BlockRow[]).map((b) => b.id));
+      const blockIds = new Set((blocksRes.data as any[]).map((b) => b.id));
       const depsMap = new Map<string, string[]>();
       for (const d of depsRes.data) {
         if (blockIds.has(d.block_id) && blockIds.has(d.depends_on_id)) {
@@ -36,8 +38,10 @@ export function useBlocks(goalId: string) {
         }
       }
 
-      return (blocksRes.data as BlockRow[]).map((b) => ({
+      return (blocksRes.data as any[]).map((b) => ({
         ...b,
+        heat: b.heat ?? 0,
+        heat_updated_at: b.heat_updated_at ?? null,
         dependencies: depsMap.get(b.id) || [],
       })) as BlockWithDeps[];
     },
@@ -71,8 +75,8 @@ export function useCreateBlock() {
 export function useUpdateBlock() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, goalId, updates }: { id: string; goalId: string; updates: Partial<Pick<BlockRow, "title" | "description" | "status" | "signal_strength">> }) => {
-      const { error } = await supabase.from("blocks").update(updates).eq("id", id);
+    mutationFn: async ({ id, goalId, updates }: { id: string; goalId: string; updates: Partial<Pick<BlockRow, "title" | "description" | "status" | "signal_strength" | "heat">> }) => {
+      const { error } = await supabase.from("blocks").update(updates as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ["blocks", vars.goalId] }),
@@ -94,10 +98,8 @@ export function useSetDependencies() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ blockId, goalId, dependsOnIds }: { blockId: string; goalId: string; dependsOnIds: string[] }) => {
-      // Remove existing deps for this block
       const { error: delErr } = await supabase.from("block_dependencies").delete().eq("block_id", blockId);
       if (delErr) throw delErr;
-      // Insert new ones
       if (dependsOnIds.length > 0) {
         const { error: insErr } = await supabase
           .from("block_dependencies")
