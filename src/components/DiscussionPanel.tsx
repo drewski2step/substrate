@@ -66,7 +66,7 @@ function ReplyThread({ parentId, blockId, goalId }: { parentId: string; blockId:
             {r.edited_at && <span className="text-muted-foreground ml-1 text-[10px]">(edited)</span>}
             {isEditing ? (
               <div className="mt-1 flex gap-1.5">
-                <Input value={editText} onChange={(e) => setEditText(e.target.value)} className="text-xs h-7" />
+                <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="text-xs min-h-[40px] resize-none" rows={2} />
                 <Button size="sm" className="h-7 text-xs" onClick={() => {
                   editDiscussion.mutate({ id: r.id, content: editText.trim() }, { onSuccess: () => setEditingId(null) });
                 }}>Save</Button>
@@ -86,13 +86,15 @@ function ReplyThread({ parentId, blockId, goalId }: { parentId: string; blockId:
       })}
       {showReply ? (
         <div className="flex gap-1.5">
-          <Input
+          <Textarea
             placeholder="Reply..."
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
-            className="text-xs h-7"
+            className="text-xs min-h-[40px] resize-none"
+            rows={2}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && replyText.trim()) {
+              if (e.key === "Enter" && !e.shiftKey && replyText.trim()) {
+                e.preventDefault();
                 createDiscussion.mutate(
                   { block_id: blockId, goal_id: goalId, parent_id: parentId, type: "insight", content: replyText.trim() },
                   { onSuccess: () => { setReplyText(""); setShowReply(false); }, onError: (err: any) => toast.error(err.message) }
@@ -160,7 +162,7 @@ function PostCard({ post, goalId, onExpand, expanded }: { post: DiscussionRow; g
           </div>
           {editing ? (
             <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-sm" placeholder="Title" />
+              <Textarea value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-sm min-h-[36px] resize-none" rows={1} placeholder="Title" />
               <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="text-xs min-h-[40px]" />
               <div className="flex gap-1.5">
                 <Button size="sm" className="h-7 text-xs" onClick={() => {
@@ -217,14 +219,13 @@ function PostCard({ post, goalId, onExpand, expanded }: { post: DiscussionRow; g
 export function DiscussionPanel({ blockId, goalId }: { blockId: string; goalId: string }) {
   const { data: posts, isLoading } = useBlockDiscussions(blockId);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "question" | "blocker">("all");
-  const [sort, setSort] = useState<"top" | "new" | "unresolved">("top");
+  const [filter, setFilter] = useState<string>("all");
+  const [sort, setSort] = useState<"top" | "new">("top");
   const [composerOpen, setComposerOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const filtered = (posts || []).filter((p) => {
-    if (filter === "question" && p.type !== "question") return false;
-    if (filter === "blocker" && p.type !== "blocker") return false;
+    if (filter !== "all" && p.type !== filter) return false;
     if (search) {
       const q = search.toLowerCase();
       return (p.title?.toLowerCase().includes(q) || p.content.toLowerCase().includes(q));
@@ -234,12 +235,7 @@ export function DiscussionPanel({ blockId, goalId }: { blockId: string; goalId: 
 
   const sorted = [...filtered].sort((a, b) => {
     if (sort === "top") return (b as DiscussionWithRelevance).relevance_score - (a as DiscussionWithRelevance).relevance_score;
-    if (sort === "new") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    // unresolved: unresolved questions first, then by relevance
-    const aUnresolved = a.type === "question" && !a.resolved ? 1 : 0;
-    const bUnresolved = b.type === "question" && !b.resolved ? 1 : 0;
-    if (bUnresolved !== aUnresolved) return bUnresolved - aUnresolved;
-    return (b as DiscussionWithRelevance).relevance_score - (a as DiscussionWithRelevance).relevance_score;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
   return (
@@ -255,26 +251,31 @@ export function DiscussionPanel({ blockId, goalId }: { blockId: string; goalId: 
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input placeholder="Search discussions..." value={search} onChange={(e) => setSearch(e.target.value)} className="text-xs h-7 pl-7" />
         </div>
-        <div className="flex gap-1">
-          {(["all", "question", "blocker"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn("px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
-                filter === f ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >{f === "all" ? "All" : f === "question" ? "Questions" : "Blockers"}</button>
-          ))}
-          <span className="mx-1 text-border">|</span>
-          {(["top", "new", "unresolved"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setSort(s)}
-              className={cn("px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
-                sort === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >{s === "top" ? "Top" : s === "new" ? "New" : "Unresolved"}</button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1">
+            {(["top", "new"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSort(s)}
+                className={cn("px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
+                  sort === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >{s === "top" ? "Top" : "New"}</button>
+            ))}
+          </div>
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="text-[10px] h-6 w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">All Types</SelectItem>
+              {Object.entries(typeConfig).map(([key, cfg]) => (
+                <SelectItem key={key} value={key} className="text-xs">
+                  <span className="flex items-center gap-1"><cfg.icon className="w-3 h-3" />{cfg.label}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <ScrollArea className="flex-1">
@@ -347,7 +348,7 @@ function ComposeDialog({ blockId, goalId, open, onOpenChange, defaultScope }: {
               ))}
             </SelectContent>
           </Select>
-          <Input placeholder="Title (required)" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
+          <Textarea placeholder="Title (required)" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm min-h-[40px] resize-none" rows={1} />
           <Textarea placeholder="Content (required)" value={content} onChange={(e) => setContent(e.target.value)} className="text-sm min-h-[80px]" />
           <div className="flex items-center gap-2">
             <Switch id="scope" checked={missionWide} onCheckedChange={setMissionWide} />

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useBlockChats, useCreateBlockChat } from "@/hooks/use-block-chats";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send } from "lucide-react";
@@ -58,20 +58,22 @@ export function BlockChatPanel({ blockId }: { blockId: string }) {
       </ScrollArea>
       <div className="p-3 border-t border-border space-y-2">
         {!senderName && (
-          <Input
+          <Textarea
             placeholder="Your name"
             value={senderName}
             onChange={(e) => setSenderName(e.target.value)}
-            className="text-xs h-8"
+            className="text-xs min-h-[32px] h-8 resize-none"
+            rows={1}
           />
         )}
         <div className="flex gap-2">
-          <Input
+          <Textarea
             placeholder="Type a message..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            className="text-sm"
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+            className="text-sm min-h-[40px] resize-none"
+            rows={1}
           />
           <Button size="sm" onClick={handleSend} disabled={!message.trim() || createChat.isPending}>
             <Send className="w-3.5 h-3.5" />

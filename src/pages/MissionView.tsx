@@ -14,7 +14,7 @@ import { useLogEdit } from "@/hooks/use-edit-history";
 import { useAuth } from "@/hooks/use-auth";
 import { BlockFlowChart } from "@/components/BlockFlowChart";
 import { MissionFeed } from "@/components/MissionFeed";
-import { EditHistoryViewer } from "@/components/EditHistoryViewer";
+
 import { useRealtimeSync } from "@/hooks/use-realtime";
 import { RealtimeIndicator } from "@/components/RealtimeIndicator";
 import { toast } from "sonner";
@@ -199,7 +199,6 @@ export default function MissionView() {
             <TabsList>
               <TabsTrigger value="flowchart">Block Flow</TabsTrigger>
               <TabsTrigger value="feed">Mission Feed</TabsTrigger>
-              <TabsTrigger value="history">Edit History</TabsTrigger>
             </TabsList>
             <TabsContent value="flowchart" className="mt-4">
               <BlockFlowChart
@@ -211,9 +210,6 @@ export default function MissionView() {
             </TabsContent>
             <TabsContent value="feed" className="mt-4">
               <MissionFeed goalId={goal.id} missionId={missionId || ""} />
-            </TabsContent>
-            <TabsContent value="history" className="mt-4">
-              <EditHistoryViewer entityType="goal" entityId={goal.id} />
             </TabsContent>
           </Tabs>
         </div>

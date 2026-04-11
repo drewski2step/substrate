@@ -3,7 +3,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Trash2, ChevronRight, Flame, Star } from "lucide-react";
+import { Trash2, ChevronLeft, Flame, Star, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGoal } from "@/hooks/use-goals";
 import { useBlocks, useUpdateBlock, useDeleteBlock } from "@/hooks/use-blocks";
@@ -11,7 +11,7 @@ import { useBlockAncestors } from "@/hooks/use-block-ancestors";
 import { BlockFlowChart } from "@/components/BlockFlowChart";
 import { BlockChatPanel } from "@/components/BlockChatPanel";
 import { DiscussionPanel } from "@/components/DiscussionPanel";
-import { EditHistoryViewer } from "@/components/EditHistoryViewer";
+
 import { useRealtimeSync } from "@/hooks/use-realtime";
 import { RealtimeIndicator } from "@/components/RealtimeIndicator";
 import { useBlockPledges, usePledgeBlock, useUnpledgeBlock } from "@/hooks/use-pledges";
@@ -79,99 +79,92 @@ export default function BlockView() {
   const parentBlockId = block.parent_block_id;
   const heat = block.heat || 0;
 
+  const backUrl = parentBlockId
+    ? `/mission/${missionId}/block/${parentBlockId}`
+    : `/mission/${missionId}`;
+  const backLabel = parentBlockId
+    ? ancestors?.find((a) => a.id === parentBlockId)?.title || "Parent Block"
+    : goal.title;
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="mx-auto max-w-7xl px-6 py-12">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-1 text-xs font-mono mb-6 flex-wrap animate-fade-in-up">
-          <Link to={`/mission/${missionId}`} className="text-muted-foreground hover:text-primary transition-colors">
-            {goal.title}
-          </Link>
-          {ancestors?.map((anc) => (
-            <span key={anc.id} className="flex items-center gap-1">
-              <ChevronRight className="w-3 h-3 text-muted-foreground" />
-              {anc.id === resolvedBlockId ? (
-                <span className="text-foreground font-medium">{anc.title}</span>
-              ) : (
-                <Link to={`/mission/${missionId}/block/${anc.id}`} className="text-muted-foreground hover:text-primary transition-colors">
-                  {anc.title}
-                </Link>
-              )}
-            </span>
-          ))}
-        </nav>
 
-        {/* Block header */}
-        <div className="flex items-center gap-3 mb-2 animate-fade-in-up">
-          <h1 className="text-xl font-semibold leading-tight">{block.title}</h1>
-          <span className={cn("inline-flex items-center px-2 py-0.5 text-xs font-medium rounded border", statusColor[status] || statusColor.pending)}>
-            {statusLabel[status] || status}
-          </span>
-          {heat > 0 && (
-            <span className="inline-flex items-center gap-0.5 text-xs font-mono tabular-nums text-orange-500">
-              <Flame className="w-3.5 h-3.5" />{heat}
-            </span>
-          )}
-        </div>
-        {block.description && <p className="text-sm text-muted-foreground mb-4 max-w-2xl">{block.description}</p>}
-
-        {/* Actions */}
-        <div className="flex flex-wrap gap-2 mb-8 items-center">
-          {canComplete && (
-            <Button size="sm" onClick={() => {
-              updateBlock.mutate({ id: block.id, goalId: goal.id, updates: { status: "complete" } },
-                { onError: (err: any) => toast.error(err.message) });
-            }}>Mark complete</Button>
-          )}
-          {user && (
-            <Button
-              size="sm"
-              variant={userPledged ? "default" : "outline"}
-              className={cn("gap-1.5", userPledged && "bg-indigo-600 hover:bg-indigo-700")}
-              onClick={() => {
-                if (userPledged) unpledgeBlock.mutate({ blockId: block.id, userId: user.id });
-                else pledgeBlock.mutate({ blockId: block.id, userId: user.id });
-              }}
+      {/* Sticky block header */}
+      <div className="sticky top-0 z-30 bg-background border-b border-border">
+        <div className="mx-auto max-w-7xl px-6">
+          {/* Back navigation button styled like a block */}
+          <div className="py-3 flex items-center justify-between">
+            <button
+              onClick={() => navigate(backUrl)}
+              className="inline-flex items-center gap-2 border-2 border-border rounded-lg px-4 py-2 hover:bg-muted/50 transition-colors"
             >
-              <Star className="w-3.5 h-3.5" /> {userPledged ? "Pledged" : "Pledge"}
-            </Button>
-          )}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5">
-                <Trash2 className="w-3.5 h-3.5" /> Delete block
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete this block?</AlertDialogTitle>
-                <AlertDialogDescription>This will permanently remove the block, all its child blocks, and chat messages.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
+              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">{block.title}</span>
+              <span className={cn("inline-flex items-center px-2 py-0.5 text-[10px] font-medium rounded border ml-1", statusColor[status] || statusColor.pending)}>
+                {statusLabel[status] || status}
+              </span>
+              {heat > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-xs font-mono tabular-nums text-orange-500">
+                  <Flame className="w-3.5 h-3.5" />{heat}
+                </span>
+              )}
+            </button>
+            <div className="flex items-center gap-2">
+              {canComplete && (
+                <Button size="sm" onClick={() => {
+                  updateBlock.mutate({ id: block.id, goalId: goal.id, updates: { status: "complete" } },
+                    { onError: (err: any) => toast.error(err.message) });
+                }}>Mark complete</Button>
+              )}
+              {user && (
+                <Button
+                  size="sm"
+                  variant={userPledged ? "default" : "outline"}
+                  className={cn("gap-1.5", userPledged && "bg-indigo-600 hover:bg-indigo-700")}
                   onClick={() => {
-                    deleteBlock.mutate({ id: block.id, goalId: goal.id }, {
-                      onSuccess: () => {
-                        if (parentBlockId) navigate(`/mission/${missionId}/block/${parentBlockId}`);
-                        else navigate(`/mission/${missionId}`);
-                      },
-                      onError: (err: any) => toast.error(err.message),
-                    });
+                    if (userPledged) unpledgeBlock.mutate({ blockId: block.id, userId: user.id });
+                    else pledgeBlock.mutate({ blockId: block.id, userId: user.id });
                   }}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <div className="ml-auto">
-            <RealtimeIndicator connected={connected} />
+                >
+                  <Star className="w-3.5 h-3.5" /> {userPledged ? "Pledged" : "Pledge"}
+                </Button>
+              )}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5">
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this block?</AlertDialogTitle>
+                    <AlertDialogDescription>This will permanently remove the block, all its child blocks, and chat messages.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        deleteBlock.mutate({ id: block.id, goalId: goal.id }, {
+                          onSuccess: () => navigate(backUrl),
+                          onError: (err: any) => toast.error(err.message),
+                        });
+                      }}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >Delete</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <RealtimeIndicator connected={connected} />
+            </div>
           </div>
+          {block.description && <p className="text-xs text-muted-foreground pb-2 max-w-2xl">{block.description}</p>}
         </div>
+      </div>
 
+      <main className="mx-auto max-w-7xl px-6 py-6">
         {/* Two panels: Flow + Discussion/Chat */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 animate-fade-in-up-delay-1">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
           <div className="lg:col-span-3">
             <BlockFlowChart
               goalId={goal.id}
@@ -182,19 +175,15 @@ export default function BlockView() {
           </div>
           <div className="lg:col-span-2 min-h-[500px]">
             <Tabs defaultValue="discussions" className="h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="discussions">Discussions</TabsTrigger>
                 <TabsTrigger value="chat">Chat</TabsTrigger>
-                <TabsTrigger value="history">History</TabsTrigger>
               </TabsList>
               <TabsContent value="discussions" className="flex-1 mt-2">
                 <DiscussionPanel blockId={block.id} goalId={goal.id} />
               </TabsContent>
               <TabsContent value="chat" className="flex-1 mt-2">
                 <BlockChatPanel blockId={block.id} />
-              </TabsContent>
-              <TabsContent value="history" className="flex-1 mt-2">
-                <EditHistoryViewer entityType="block" entityId={block.id} />
               </TabsContent>
             </Tabs>
           </div>

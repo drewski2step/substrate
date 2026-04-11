@@ -15,6 +15,8 @@ export type BlockRow = {
   created_at: string | null;
   deleted_at?: string | null;
   is_files_block?: boolean;
+  position_x?: number | null;
+  position_y?: number | null;
 };
 
 export type BlockWithDeps = BlockRow & { dependencies: string[] };
@@ -109,6 +111,17 @@ export function useSetDependencies() {
           .insert(dependsOnIds.map((d) => ({ block_id: blockId, depends_on_id: d })));
         if (insErr) throw insErr;
       }
+    },
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ["blocks", vars.goalId] }),
+  });
+}
+
+export function useUpdateBlockPosition() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, goalId, position_x, position_y }: { id: string; goalId: string; position_x: number; position_y: number }) => {
+      const { error } = await supabase.from("blocks").update({ position_x, position_y } as any).eq("id", id);
+      if (error) throw error;
     },
     onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ["blocks", vars.goalId] }),
   });
