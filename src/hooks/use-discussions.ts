@@ -112,6 +112,7 @@ export function useCreateDiscussion() {
           title: post.title || null,
           content: post.content,
           scope: post.scope || "block",
+          user_id: post.user_id || null,
         })
         .select()
         .single();
