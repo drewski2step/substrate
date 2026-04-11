@@ -14,6 +14,8 @@ export type DiscussionRow = {
   scope: string;
   resolved: boolean;
   created_at: string;
+  edited_at: string | null;
+  deleted_at: string | null;
 };
 
 export function useBlockDiscussions(blockId: string) {
