@@ -267,10 +267,12 @@ function EditDepsDialog({ block, allBlocks, goalId, open, onOpenChange }: {
 export function BlockFlowChart({
   goalId,
   parentBlockId,
+  parentBlockTitle,
   onNavigateToBlock,
 }: {
   goalId: string;
   parentBlockId?: string | null;
+  parentBlockTitle?: string;
   onNavigateToBlock: (block: BlockWithDeps) => void;
 }) {
   const { data: allGoalBlocks, isLoading } = useBlocks(goalId);
@@ -278,6 +280,7 @@ export function BlockFlowChart({
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [successorParent, setSuccessorParent] = useState<BlockWithDeps | null>(null);
   const [editDepsBlock, setEditDepsBlock] = useState<BlockWithDeps | null>(null);
+  const [filesOpen, setFilesOpen] = useState(false);
 
   const blocks = useMemo(() => {
     if (!allGoalBlocks) return [];
@@ -289,6 +292,9 @@ export function BlockFlowChart({
 
   const tiers = useMemo(() => buildTiers(blocks), [blocks]);
   const reversedTiers = useMemo(() => [...tiers].reverse(), [tiers]);
+
+  const filesBlockLabel = parentBlockTitle ? `${parentBlockTitle} Files` : "Files";
+  const filesBlockId = parentBlockId || goalId;
 
   if (isLoading) {
     return (
@@ -305,6 +311,15 @@ export function BlockFlowChart({
         <Button size="sm" className="gap-1.5" onClick={() => { setSuccessorParent(null); setAddDialogOpen(true); }}>
           <Plus className="w-3.5 h-3.5" /> Add block
         </Button>
+      </div>
+
+      {/* Files Block — always pinned at top */}
+      <div
+        onClick={() => setFilesOpen(true)}
+        className="mb-4 w-full max-w-md mx-auto border-2 border-emerald-600/30 bg-emerald-900/10 rounded-lg px-4 py-2 cursor-pointer hover:bg-emerald-900/20 hover:border-emerald-500/40 transition-all flex items-center gap-2"
+      >
+        <FolderOpen className="w-4 h-4 text-emerald-600 shrink-0" />
+        <span className="text-xs font-medium text-emerald-700">{filesBlockLabel}</span>
       </div>
 
       {blocks.length === 0 ? (
@@ -347,6 +362,20 @@ export function BlockFlowChart({
           open={!!editDepsBlock} onOpenChange={(o) => { if (!o) setEditDepsBlock(null); }}
         />
       )}
+
+      {/* Document panel dialog */}
+      <Dialog open={filesOpen} onOpenChange={setFilesOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <FolderOpen className="w-4 h-4 text-emerald-600" /> {filesBlockLabel}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-[300px] overflow-hidden">
+            <DocumentPanel blockId={filesBlockId} goalId={goalId} blockTitle={parentBlockTitle || "Goal"} />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
