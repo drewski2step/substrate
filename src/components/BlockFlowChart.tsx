@@ -64,7 +64,7 @@ function buildTiers(blocks: BlockWithDeps[]): BlockWithDeps[][] {
 
 // --- Block card with heat ---
 function BlockCard({
-  block, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit,
+  block, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
 }: {
   block: BlockWithDeps;
   onComplete: (id: string) => void;
@@ -72,7 +72,11 @@ function BlockCard({
   onEditDeps: (block: BlockWithDeps) => void;
   onNavigate: (block: BlockWithDeps) => void;
   onEdit: (block: BlockWithDeps) => void;
+  onDragEnd?: (id: string, x: number, y: number) => void;
 }) {
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const canComplete = block.status === "active" || block.status === "pending";
   const status = block.status || "pending";
   const heat = block.heat || 0;
