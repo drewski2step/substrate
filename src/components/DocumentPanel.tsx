@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useBlockDocuments, useUploadDocument, useDeleteDocument, DocumentRow } from "@/hooks/use-documents";
+import { useBlockDocuments, useUploadDocument, useDeleteDocument, type DocumentRow as DocumentRowType } from "@/hooks/use-documents";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
