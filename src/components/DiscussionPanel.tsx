@@ -162,7 +162,7 @@ function PostCard({ post, goalId, onExpand, expanded }: { post: DiscussionRow; g
           </div>
           {editing ? (
             <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-sm" placeholder="Title" />
+              <Textarea value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-sm min-h-[36px] resize-none" rows={1} placeholder="Title" />
               <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="text-xs min-h-[40px]" />
               <div className="flex gap-1.5">
                 <Button size="sm" className="h-7 text-xs" onClick={() => {
