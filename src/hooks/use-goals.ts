@@ -8,6 +8,7 @@ export type GoalRow = {
   status: string | null;
   created_by: string | null;
   created_at: string | null;
+  deleted_at?: string | null;
 };
 
 export function useGoals() {
@@ -17,6 +18,7 @@ export function useGoals() {
       const { data, error } = await supabase
         .from("goals")
         .select("*")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as GoalRow[];
@@ -53,5 +55,18 @@ export function useCreateGoal() {
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["goals"] }),
+  });
+}
+
+export function useUpdateGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Pick<GoalRow, "title" | "description" | "status" | "deleted_at">> }) => {
+      const { error } = await supabase.from("goals").update(updates as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["goals"] });
+    },
   });
 }
