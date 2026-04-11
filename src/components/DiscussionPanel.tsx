@@ -223,8 +223,7 @@ export function DiscussionPanel({ blockId, goalId }: { blockId: string; goalId: 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const filtered = (posts || []).filter((p) => {
-    if (filter === "question" && p.type !== "question") return false;
-    if (filter === "blocker" && p.type !== "blocker") return false;
+    if (filter !== "all" && p.type !== filter) return false;
     if (search) {
       const q = search.toLowerCase();
       return (p.title?.toLowerCase().includes(q) || p.content.toLowerCase().includes(q));
@@ -234,12 +233,7 @@ export function DiscussionPanel({ blockId, goalId }: { blockId: string; goalId: 
 
   const sorted = [...filtered].sort((a, b) => {
     if (sort === "top") return (b as DiscussionWithRelevance).relevance_score - (a as DiscussionWithRelevance).relevance_score;
-    if (sort === "new") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    // unresolved: unresolved questions first, then by relevance
-    const aUnresolved = a.type === "question" && !a.resolved ? 1 : 0;
-    const bUnresolved = b.type === "question" && !b.resolved ? 1 : 0;
-    if (bUnresolved !== aUnresolved) return bUnresolved - aUnresolved;
-    return (b as DiscussionWithRelevance).relevance_score - (a as DiscussionWithRelevance).relevance_score;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
   return (
