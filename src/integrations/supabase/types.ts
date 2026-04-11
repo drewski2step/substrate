@@ -143,6 +143,7 @@ export type Database = {
           heat: number
           heat_updated_at: string
           id: string
+          is_files_block: boolean
           parent_block_id: string | null
           signal_strength: number | null
           status: string | null
@@ -157,6 +158,7 @@ export type Database = {
           heat?: number
           heat_updated_at?: string
           id?: string
+          is_files_block?: boolean
           parent_block_id?: string | null
           signal_strength?: number | null
           status?: string | null
@@ -171,6 +173,7 @@ export type Database = {
           heat?: number
           heat_updated_at?: string
           id?: string
+          is_files_block?: boolean
           parent_block_id?: string | null
           signal_strength?: number | null
           status?: string | null

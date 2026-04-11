@@ -294,9 +294,23 @@ export function BlockFlowChart({
   const [editBlock, setEditBlock] = useState<BlockWithDeps | null>(null);
   const [filesOpen, setFilesOpen] = useState(false);
 
+  // Find the real files block from DB
+  const filesBlock = useMemo(() => {
+    if (!allGoalBlocks) return null;
+    const targetParentId = parentBlockId || null;
+    // For goal-level, files blocks have parent_block_id matching a root block — we need a different approach
+    // Files blocks are children of the current context's block
+    if (parentBlockId) {
+      return allGoalBlocks.find((b) => (b as any).is_files_block === true && b.parent_block_id === parentBlockId) || null;
+    }
+    return null;
+  }, [allGoalBlocks, parentBlockId]);
+
   const blocks = useMemo(() => {
     if (!allGoalBlocks) return [];
     return allGoalBlocks.filter((b) => {
+      // Always exclude files blocks from the flowchart
+      if ((b as any).is_files_block) return false;
       if (parentBlockId) return b.parent_block_id === parentBlockId;
       return !b.parent_block_id;
     });
@@ -306,7 +320,7 @@ export function BlockFlowChart({
   const reversedTiers = useMemo(() => [...tiers].reverse(), [tiers]);
 
   const filesBlockLabel = parentBlockTitle ? `${parentBlockTitle} Files` : "Files";
-  const filesBlockId = parentBlockId || goalId;
+  const filesBlockId = filesBlock?.id || parentBlockId || goalId;
 
   if (isLoading) {
     return (
@@ -385,7 +399,7 @@ export function BlockFlowChart({
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-[300px] overflow-hidden">
-            <DocumentPanel blockId={filesBlockId} goalId={goalId} blockTitle={parentBlockTitle || "Goal"} />
+            <DocumentPanel blockId={filesBlockId} goalId={goalId} blockTitle={parentBlockTitle || "Goal"} parentBlockId={parentBlockId || undefined} />
           </div>
         </DialogContent>
       </Dialog>
