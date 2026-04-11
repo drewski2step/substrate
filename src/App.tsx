@@ -3,11 +3,12 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/contexts/AuthContext";
 import MissionBoard from "./pages/MissionBoard";
 import MissionView from "./pages/MissionView";
 import BlockView from "./pages/BlockView";
-import AgentList from "./pages/AgentList";
-import AgentProfile from "./pages/AgentProfile";
+import SignUp from "./pages/SignUp";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -18,16 +19,17 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<MissionBoard />} />
-          <Route path="/mission/:missionId" element={<MissionView />} />
-          <Route path="/mission/:missionId/block/:blockId" element={<BlockView />} />
-          {/* Legacy route redirect */}
-          <Route path="/mission/:missionId/task/:taskId" element={<BlockView />} />
-          <Route path="/agents" element={<AgentList />} />
-          <Route path="/agent/:agentId" element={<AgentProfile />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<MissionBoard />} />
+            <Route path="/mission/:missionId" element={<MissionView />} />
+            <Route path="/mission/:missionId/block/:blockId" element={<BlockView />} />
+            <Route path="/mission/:missionId/task/:taskId" element={<BlockView />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
