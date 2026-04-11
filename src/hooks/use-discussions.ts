@@ -100,6 +100,7 @@ export function useCreateDiscussion() {
       title?: string | null;
       content: string;
       scope?: string;
+      user_id?: string | null;
     }) => {
       const { data, error } = await supabase
         .from("discussions" as any)
