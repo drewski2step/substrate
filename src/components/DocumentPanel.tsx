@@ -68,7 +68,7 @@ function DocRow({ doc, currentUserId }: { doc: DocumentRowType; currentUserId: s
   );
 }
 
-export function DocumentPanel({ blockId, goalId, blockTitle }: { blockId: string; goalId: string; blockTitle: string }) {
+export function DocumentPanel({ blockId, goalId, blockTitle, parentBlockId }: { blockId: string; goalId: string; blockTitle: string; parentBlockId?: string }) {
   const { data: docs, isLoading } = useBlockDocuments(blockId);
   const uploadDoc = useUploadDocument();
   const { user } = useAuth();
@@ -81,7 +81,7 @@ export function DocumentPanel({ blockId, goalId, blockTitle }: { blockId: string
     }
     Array.from(files).forEach((file) => {
       uploadDoc.mutate(
-        { blockId, goalId, file, userId: user.id },
+        { blockId, goalId, file, userId: user.id, parentBlockId },
         { onError: (err: any) => toast.error(err.message) }
       );
     });
