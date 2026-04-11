@@ -111,16 +111,56 @@ function BlockCard({
     })),
   []);
 
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    e.preventDefault();
+    const rect = cardRef.current?.parentElement?.getBoundingClientRect();
+    if (!rect) return;
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: cardRef.current?.offsetLeft || 0,
+      origY: cardRef.current?.offsetTop || 0,
+    };
+    const handleMouseMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      setDragOffset({
+        x: ev.clientX - dragRef.current.startX,
+        y: ev.clientY - dragRef.current.startY,
+      });
+    };
+    const handleMouseUp = (ev: MouseEvent) => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      if (dragRef.current && onDragEnd) {
+        const dx = ev.clientX - dragRef.current.startX;
+        const dy = ev.clientY - dragRef.current.startY;
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+          const newX = (block.position_x || dragRef.current.origX) + dx;
+          const newY = (block.position_y || dragRef.current.origY) + dy;
+          onDragEnd(block.id, Math.max(0, newX), Math.max(0, newY));
+        }
+      }
+      dragRef.current = null;
+      setDragOffset(null);
+    };
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, [block.id, block.position_x, block.position_y, onDragEnd]);
+
+  const dragStyle = dragOffset ? { transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)`, zIndex: 50, transition: 'none' } : {};
+
   return (
-    <div className="relative group w-48 shrink-0">
+    <div ref={cardRef} className="relative group w-48 shrink-0" style={dragStyle}>
       <div
-        onClick={() => onNavigate(block)}
+        onMouseDown={handleMouseDown}
+        onClick={() => { if (!dragOffset) onNavigate(block); }}
         className={cn(
-          "relative border-2 rounded-lg px-4 py-3 transition-all cursor-pointer overflow-hidden",
+          "relative border-2 rounded-lg px-4 py-3 cursor-grab active:cursor-grabbing overflow-hidden",
           isPledged ? "border-indigo-400/60 bg-[hsl(230,35%,12%)]" : getHeatColor(heat),
           counts?.openBlockers && counts.openBlockers > 0 && "ring-2 ring-destructive/50",
           heat >= 200 && !isPledged && "animate-flame-rim",
-          "hover:shadow-lg hover:scale-[1.02]"
+          "hover:shadow-lg"
         )}
       >
         {/* Night sky stars for pledged blocks */}
