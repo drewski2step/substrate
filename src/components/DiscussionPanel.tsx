@@ -249,26 +249,31 @@ export function DiscussionPanel({ blockId, goalId }: { blockId: string; goalId: 
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input placeholder="Search discussions..." value={search} onChange={(e) => setSearch(e.target.value)} className="text-xs h-7 pl-7" />
         </div>
-        <div className="flex gap-1">
-          {(["all", "question", "blocker"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn("px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
-                filter === f ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >{f === "all" ? "All" : f === "question" ? "Questions" : "Blockers"}</button>
-          ))}
-          <span className="mx-1 text-border">|</span>
-          {(["top", "new", "unresolved"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setSort(s)}
-              className={cn("px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
-                sort === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >{s === "top" ? "Top" : s === "new" ? "New" : "Unresolved"}</button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1">
+            {(["top", "new"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSort(s)}
+                className={cn("px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
+                  sort === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >{s === "top" ? "Top" : "New"}</button>
+            ))}
+          </div>
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="text-[10px] h-6 w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">All Types</SelectItem>
+              {Object.entries(typeConfig).map(([key, cfg]) => (
+                <SelectItem key={key} value={key} className="text-xs">
+                  <span className="flex items-center gap-1"><cfg.icon className="w-3 h-3" />{cfg.label}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <ScrollArea className="flex-1">
