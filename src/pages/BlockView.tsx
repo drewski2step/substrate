@@ -11,6 +11,7 @@ import { useBlockAncestors } from "@/hooks/use-block-ancestors";
 import { BlockFlowChart } from "@/components/BlockFlowChart";
 import { BlockChatPanel } from "@/components/BlockChatPanel";
 import { DiscussionPanel } from "@/components/DiscussionPanel";
+import { EditHistoryViewer } from "@/components/EditHistoryViewer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
