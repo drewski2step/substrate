@@ -404,6 +404,7 @@ export function BlockFlowChart({
 }) {
   const { data: allGoalBlocks, isLoading } = useBlocks(goalId);
   const updateBlock = useUpdateBlock();
+  const updatePosition = useUpdateBlockPosition();
   const deleteBlock = useDeleteBlock();
   const logEdit = useLogEdit();
   const { user } = useAuth();
@@ -490,6 +491,7 @@ export function BlockFlowChart({
                         onEditDeps={setEditDepsBlock}
                         onNavigate={onNavigateToBlock}
                         onEdit={(b) => user ? setEditBlock(b) : toast.error("Sign in to edit")}
+                        onDragEnd={(id, x, y) => updatePosition.mutate({ id, goalId, position_x: x, position_y: y })}
                       />
                     ))}
                   </div>
