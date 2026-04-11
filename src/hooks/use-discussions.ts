@@ -43,7 +43,7 @@ export function useBlockDiscussions(blockId: string) {
         .eq("block_id", blockId)
         .not("parent_id", "is", null);
       const replyCounts = new Map<string, number>();
-      for (const r of (allReplies || [])) {
+      for (const r of (allReplies as any[] || [])) {
         replyCounts.set(r.parent_id, (replyCounts.get(r.parent_id) || 0) + 1);
       }
 
