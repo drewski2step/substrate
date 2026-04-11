@@ -6,7 +6,7 @@ import { LogIn } from "lucide-react";
  * Wraps a write-action trigger. If authenticated, renders children.
  * If not, shows an inline "Join the network" prompt instead.
  */
-export function AuthGate({ children, className }: { children: React.ReactNode; className?: string }) {
+export function AuthGate({ children, className }: { children?: React.ReactNode; className?: string }) {
   const { user } = useAuthContext();
 
   if (user) return <>{children}</>;
