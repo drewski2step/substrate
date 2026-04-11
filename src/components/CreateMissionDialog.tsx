@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 import { useCreateGoal } from "@/hooks/use-goals";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { AuthGate } from "@/components/AuthGate";
 import { toast } from "sonner";
 
 export function CreateMissionDialog() {
@@ -14,6 +16,7 @@ export function CreateMissionDialog() {
   const [description, setDescription] = useState("");
   const navigate = useNavigate();
   const createGoal = useCreateGoal();
+  const { user } = useAuthContext();
 
   const reset = () => { setTitle(""); setDescription(""); };
 
@@ -28,30 +31,34 @@ export function CreateMissionDialog() {
           if (data?.id) navigate(`/mission/${data.id}`);
         },
         onError: (err: any) => {
-          toast.error(`Failed to create mission: ${err.message}`);
+          toast.error(`Failed to create goal: ${err.message}`);
         },
       }
     );
   };
 
+  if (!user) {
+    return <AuthGate />;
+  }
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); setOpen(o); }}>
       <DialogTrigger asChild>
         <Button size="sm" className="gap-1.5">
-          <Plus className="w-3.5 h-3.5" /> New Mission
+          <Plus className="w-3.5 h-3.5" /> New Goal
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-sm">Create a new mission</DialogTitle>
+          <DialogTitle className="text-sm">Create a new goal</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <Input placeholder="Mission title" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
-          <Textarea placeholder="Describe the mission..." value={description} onChange={(e) => setDescription(e.target.value)} className="text-sm min-h-[80px]" />
+          <Input placeholder="Goal title" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
+          <Textarea placeholder="Describe the goal..." value={description} onChange={(e) => setDescription(e.target.value)} className="text-sm min-h-[80px]" />
         </div>
         <DialogFooter>
           <Button size="sm" onClick={handleCreate} disabled={!title.trim() || createGoal.isPending}>
-            {createGoal.isPending ? "Creating..." : "Create mission"}
+            {createGoal.isPending ? "Creating..." : "Create goal"}
           </Button>
         </DialogFooter>
       </DialogContent>
