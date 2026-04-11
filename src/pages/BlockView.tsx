@@ -34,6 +34,7 @@ export default function BlockView() {
   const { data: goal, isLoading: goalLoading } = useGoal(missionId || "");
   const { data: blocks, isLoading: blocksLoading } = useBlocks(missionId || "");
   const { data: ancestors, isLoading: ancestorsLoading } = useBlockAncestors(resolvedBlockId);
+  const updateBlock = useUpdateBlock();
   const { user } = useAuth();
   const { connected } = useRealtimeSync(missionId || "");
   const { data: pledges } = useBlockPledges(resolvedBlockId);
