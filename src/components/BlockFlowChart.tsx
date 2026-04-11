@@ -23,17 +23,18 @@ function getHeatColor(heat: number): string {
   if (heat <= 0) return "border-border bg-card";
   if (heat <= 20) return "border-blue-300 bg-blue-50";
   if (heat <= 50) return "border-teal-300 bg-teal-50";
-  if (heat <= 100) return "border-amber-300 bg-amber-50";
-  if (heat <= 200) return "border-orange-400 bg-orange-50";
-  return "border-red-500 bg-red-50";
+  if (heat <= 100) return "border-yellow-400 bg-yellow-50";
+  if (heat <= 150) return "border-orange-400 bg-orange-50";
+  if (heat < 200) return "border-red-500 bg-red-50";
+  return "border-red-500 bg-red-50 animate-flame-rim";
 }
 
 function getFlameColor(heat: number): string {
   if (heat <= 0) return "text-muted-foreground";
   if (heat <= 20) return "text-blue-500";
   if (heat <= 50) return "text-teal-500";
-  if (heat <= 100) return "text-amber-500";
-  if (heat <= 200) return "text-orange-500";
+  if (heat <= 100) return "text-yellow-500";
+  if (heat <= 150) return "text-orange-500";
   return "text-red-500";
 }
 
@@ -114,7 +115,7 @@ function BlockCard({
           "relative border-2 rounded-lg px-4 py-3 transition-all cursor-pointer overflow-hidden",
           isPledged ? "border-indigo-400/60 bg-[hsl(230,35%,12%)]" : getHeatColor(heat),
           counts?.openBlockers && counts.openBlockers > 0 && "ring-2 ring-destructive/50",
-          heat > 200 && !isPledged && "animate-pulse-subtle",
+          heat >= 200 && !isPledged && "animate-flame-rim",
           "hover:shadow-lg hover:scale-[1.02]"
         )}
       >
