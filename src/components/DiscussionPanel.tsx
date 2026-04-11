@@ -217,8 +217,8 @@ function PostCard({ post, goalId, onExpand, expanded }: { post: DiscussionRow; g
 export function DiscussionPanel({ blockId, goalId }: { blockId: string; goalId: string }) {
   const { data: posts, isLoading } = useBlockDiscussions(blockId);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "question" | "blocker">("all");
-  const [sort, setSort] = useState<"top" | "new" | "unresolved">("top");
+  const [filter, setFilter] = useState<string>("all");
+  const [sort, setSort] = useState<"top" | "new">("top");
   const [composerOpen, setComposerOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
