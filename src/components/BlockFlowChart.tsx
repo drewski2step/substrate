@@ -137,6 +137,9 @@ function BlockCard({
         <button onClick={(e) => { e.stopPropagation(); onEditDeps(block); }}
           className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/80 transition-colors"
         ><GitBranch className="w-3 h-3" /> Deps</button>
+        <button onClick={(e) => { e.stopPropagation(); onEdit(block); }}
+          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/80 transition-colors"
+        ><Pencil className="w-3 h-3" /> Edit</button>
       </div>
     </div>
   );
