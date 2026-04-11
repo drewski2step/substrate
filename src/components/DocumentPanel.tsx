@@ -126,7 +126,7 @@ export function DocumentPanel({ blockId, goalId, blockTitle }: { blockId: string
             <p className="text-xs text-muted-foreground text-center py-4">No files attached yet.</p>
           ) : (
             docs.map((doc) => (
-              <DocumentRow key={doc.id} doc={doc} currentUserId={user?.id || null} />
+              <DocRow key={doc.id} doc={doc} currentUserId={user?.id || null} />
             ))
           )}
         </div>
