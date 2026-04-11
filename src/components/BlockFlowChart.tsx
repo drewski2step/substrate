@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen, Pencil, Trash2 } from "lucide-react";
+import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen, Pencil, Trash2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,10 +11,13 @@ import { useBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock, useSetDepend
 import { useBlockDiscussionCounts } from "@/hooks/use-discussions";
 import { useLogEdit } from "@/hooks/use-edit-history";
 import { useAuth } from "@/hooks/use-auth";
+import { useBlockPledges, usePledgeBlock, useUnpledgeBlock } from "@/hooks/use-pledges";
 import { DocumentPanel } from "@/components/DocumentPanel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 function getHeatColor(heat: number): string {
   if (heat <= 0) return "border-border bg-card";
