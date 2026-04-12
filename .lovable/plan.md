@@ -1,32 +1,52 @@
 
 
-## Plan: Unify BlockView layout to match MissionView
+## Plan: Grid-based block layout that grows downward
 
-### Goal
-Make every block level look identical to the mission level: a full-width view with two tabs at the top — "Block Flow" and "Discussions" — instead of the current side-by-side split with a right panel.
+### Summary
+Refactor the flowchart from tier-based horizontal layout to a 3-column grid that grows downward, with stable ordering for existing blocks.
 
-### Changes
+### Changes — single file: `src/components/BlockFlowChart.tsx`
 
-**1. Rewrite BlockView layout** (`src/pages/BlockView.tsx`)
-- Remove the `grid grid-cols-1 lg:grid-cols-5` two-panel layout
-- Replace with the same `Tabs` pattern from MissionView:
-  - Tab 1: "Block Flow" — full-width `BlockFlowChart` (same props as now)
-  - Tab 2: "Discussions" — full-width `DiscussionPanel` (same props as now, using the existing reddit-style component unchanged)
-- Remove the "Chat" tab entirely (the `BlockChatPanel` import and usage)
-- Keep everything else: breadcrumb, title row, status badge, heat, actions (mark complete, pledge, delete), realtime indicator
-- Change `max-w-7xl` to `max-w-5xl` to match MissionView
+**1. Update constants**
+- `GAP_X = 24`, `GAP_Y = 24`, add `COLS = 3`
 
-**2. No changes to DiscussionPanel or MissionFeed**
-- The reddit-style discussion component stays exactly as-is
-- MissionView stays exactly as-is
+**2. Replace `computeDefaultPositions` with grid layout**
+- Accept only blocks that have no saved position (auto-laid blocks)
+- Sort auto-laid blocks by `created_at` ascending — oldest at top-left, newest at bottom-right
+- Place in a 3-column grid: `col = index % 3`, `row = floor(index / 3)`
+- `x = col * (BLOCK_W + GAP_X)`, `y = row * (BLOCK_H + GAP_Y)`
 
-### Files to edit
-- `src/pages/BlockView.tsx` — layout refactor only
+**3. Update positions computation (around line 500)**
+- Split blocks into two groups: pinned (have saved position_x/position_y) and auto-laid (don't)
+- Sort auto-laid by `created_at` ascending
+- Pass auto-laid blocks to the new grid layout function
+- Pinned blocks keep their exact saved coordinates
+
+**4. Update container sizing (around line 515)**
+- Width: use `100%` instead of computed maxX — set container to full parent width
+- Height: still computed from max y position
+- Remove the `width` style, let CSS handle it
+
+**5. Fix overflow (line 565)**
+- Change `overflow-x-auto` to `overflow-x-hidden` on the outer wrapper
+- Remove horizontal scroll entirely
+
+**6. Remove Foundation label** (line 586-591)
+- The tier-based "Foundation" label no longer makes sense in a grid layout — remove it
+
+**7. Remove unused tier functions**
+- Remove `computeDepths`, `buildTiers` functions (no longer needed)
+
+### Stable ordering rationale
+Sorting auto-laid blocks by `created_at` ascending means existing blocks maintain their relative grid positions. When a new block is added, it appears last in the ascending sort, but since it has no saved position yet, it joins the auto-laid group at the end. The grid naturally accommodates it without shifting existing blocks — older blocks stay in their established positions and the new block fills the next available slot.
 
 ### What stays the same
-- Breadcrumb navigation
-- Block title, status badge, heat indicator
-- Action buttons (mark complete, pledge, delete)
-- DiscussionPanel component and its styling
-- BlockFlowChart component
+- BlockCard, drag handle, drag-end persistence
+- Files Block pinned at top
+- AbsoluteConnectors (already uses positions map)
+- All dialogs
+- Works at every fractal level
+
+### Files to edit
+- `src/components/BlockFlowChart.tsx`
 
