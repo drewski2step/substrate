@@ -468,30 +468,29 @@ export function BlockFlowChart({
     });
   }, [allGoalBlocks, parentBlockId]);
 
-  // Compute positions: use saved positions if available, otherwise default from tier layout
+  // Compute positions: pinned blocks keep saved coords, auto-laid blocks use grid
   const positions = useMemo(() => {
-    const defaults = computeDefaultPositions(blocks);
+    const pinned = blocks.filter((b) => b.position_x != null && b.position_y != null);
+    const autoLaid = blocks.filter((b) => b.position_x == null || b.position_y == null);
+    const gridPositions = computeGridPositions(autoLaid);
     const result = new Map<string, { x: number; y: number }>();
-    blocks.forEach((b) => {
-      if (b.position_x != null && b.position_y != null) {
-        result.set(b.id, { x: b.position_x, y: b.position_y });
-      } else {
-        const def = defaults.get(b.id);
-        result.set(b.id, def || { x: 0, y: 0 });
-      }
+    pinned.forEach((b) => {
+      result.set(b.id, { x: b.position_x!, y: b.position_y! });
+    });
+    autoLaid.forEach((b) => {
+      const pos = gridPositions.get(b.id);
+      result.set(b.id, pos || { x: 0, y: 0 });
     });
     return result;
   }, [blocks]);
 
-  // Compute container size from positions
-  const containerSize = useMemo(() => {
-    let maxX = 0;
+  // Compute container height from positions (width is 100%)
+  const containerHeight = useMemo(() => {
     let maxY = 0;
     positions.forEach((pos) => {
-      maxX = Math.max(maxX, pos.x + BLOCK_W + 40);
       maxY = Math.max(maxY, pos.y + BLOCK_H + 40);
     });
-    return { width: Math.max(400, maxX), height: Math.max(200, maxY) };
+    return Math.max(200, maxY);
   }, [positions]);
 
   const filesBlockLabel = parentBlockTitle ? `${parentBlockTitle} Files` : "Files";
