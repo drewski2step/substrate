@@ -9,6 +9,7 @@ export type GoalRow = {
   created_by: string | null;
   created_at: string | null;
   deleted_at?: string | null;
+  visibility: string;
 };
 
 export function useGoals() {
@@ -45,10 +46,17 @@ export function useGoal(id: string) {
 export function useCreateGoal() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (goal: { title: string; description?: string; status?: string }) => {
+    mutationFn: async (goal: { title: string; description?: string; status?: string; visibility?: string }) => {
+      const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase
         .from("goals")
-        .insert({ title: goal.title, description: goal.description || null, status: goal.status || "active" })
+        .insert({
+          title: goal.title,
+          description: goal.description || null,
+          status: goal.status || "active",
+          visibility: goal.visibility || "public",
+          created_by: session?.user?.id || null,
+        } as any)
         .select()
         .single();
       if (error) throw error;
