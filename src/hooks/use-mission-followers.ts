@@ -10,7 +10,7 @@ export function useMissionFollowers(goalId: string) {
         .select("*")
         .eq("goal_id", goalId);
       if (error) throw error;
-      return data as { id: string; goal_id: string; user_id: string; followed_at: string }[];
+      return (data as unknown) as { id: string; goal_id: string; user_id: string; followed_at: string }[];
     },
     enabled: !!goalId,
   });
