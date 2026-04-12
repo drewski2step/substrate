@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { ArrowLeft, Pencil, Trash2, Undo2 } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Undo2, Globe, Lock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
