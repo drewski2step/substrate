@@ -9,7 +9,6 @@ import { useGoal } from "@/hooks/use-goals";
 import { useBlocks, useUpdateBlock, useDeleteBlock } from "@/hooks/use-blocks";
 import { useBlockAncestors } from "@/hooks/use-block-ancestors";
 import { BlockFlowChart } from "@/components/BlockFlowChart";
-import { BlockChatPanel } from "@/components/BlockChatPanel";
 import { DiscussionPanel } from "@/components/DiscussionPanel";
 
 import { useRealtimeSync } from "@/hooks/use-realtime";
