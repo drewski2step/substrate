@@ -38,6 +38,15 @@ export function AppHeader() {
             >
               Missions
             </Link>
+            <Link
+              to="/discussions"
+              className={cn(
+                "text-sm font-mono transition-colors",
+                location.pathname.startsWith("/discussions") ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Discussions
+            </Link>
           </nav>
           {user && profile ? (
             <DropdownMenu>
