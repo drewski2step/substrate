@@ -97,6 +97,7 @@ function useGlobalDiscussions() {
           author_avatar_seed: profile?.avatar_seed || undefined,
           author_avatar_url: profile?.avatar_url || undefined,
           reply_count: replyCounts.get(d.id) || 0,
+          relevance_score: (d as any).relevance_score ?? 0,
         };
       });
     },
