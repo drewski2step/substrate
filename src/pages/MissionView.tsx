@@ -33,6 +33,7 @@ export default function MissionView() {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const [editVisibility, setEditVisibility] = useState("");
 
   const topLevelBlocks = useMemo(() => blocks?.filter((b) => !b.parent_block_id) || [], [blocks]);
   const completeCount = topLevelBlocks.filter((b) => b.status === "complete").length;
