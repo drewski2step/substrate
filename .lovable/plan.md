@@ -1,35 +1,59 @@
 
 
-## Plan: Implement user profile page at `/profile/:username`
+## Plan: Global Discussions page with top-level navigation
 
 ### Summary
-Create a new `UserProfile` page that displays a user's avatar, username, join date, pledged blocks, stats, and an edit option for the logged-in user's own profile. Add the route to `App.tsx`.
+Create a network-wide discussions feed at `/discussions` showing all public discussion posts across every mission, with search, sort, filter, inline expansion with threaded replies, and realtime updates.
 
-### New file: `src/pages/UserProfile.tsx`
+### 1. Add nav link — `src/components/AppHeader.tsx`
+- Add a "Discussions" `<Link>` to the `<nav>` element alongside "Missions", pointing to `/discussions`
+- Highlight when `location.pathname === "/discussions"` or starts with `/discussions`
 
-**Layout** (follows existing page patterns — `AppHeader`, `max-w-5xl` container, `animate-fade-in-up`):
+### 2. Add route — `src/App.tsx`
+- Import `Discussions` from `@/pages/Discussions`
+- Add `<Route path="/discussions" element={<Discussions />} />`
 
-1. **Data fetching**: Use `useParams` to get `username`, then query `profiles` table by username. If no profile found, render a "User not found" message (not NotFound/404).
+### 3. Create page — `src/pages/Discussions.tsx` (new file)
 
-2. **Header section**: Robot avatar (DiceBear via `getAvatarUrl`), username as h1, join date formatted with `date-fns` or `toLocaleDateString`.
+**Data fetching** — a single `useQuery` that:
+- Queries `discussions` table where `parent_id IS NULL`
+- Joins `goals` (via `goal_id`) filtering `goals.visibility = 'public'`
+- Joins `profiles` (via `user_id`) for username + avatar_seed
+- Joins `blocks` (via `block_id`) for block title + goal_id
+- Returns posts with attached mission title, block title, author info
 
-3. **Stats row**: Three counts in a horizontal row:
-   - Missions created: `SELECT count(*) FROM goals WHERE created_by = profileId`
-   - Blocks created: `SELECT count(*) FROM blocks WHERE created_by = profileId`
-   - Discussion posts: `SELECT count(*) FROM discussions WHERE user_id = profileId`
-   - Fetched via three separate `useQuery` calls or a single combined query.
+Since Supabase JS client doesn't support cross-table joins without foreign keys, and this project uses `as any` casts throughout, the query will:
+- Fetch top-level discussions with `parent_id IS NULL`
+- Batch-fetch related goals, blocks, and profiles in parallel
+- Merge client-side
 
-4. **Pledged blocks section**: Query `block_pledges` where `user_id = profileId AND active = true`, join with `blocks` for title/goal_id. Each renders as a card linking to `/mission/{goal_id}/block/{block_id}`.
+**Page layout**:
+- `AppHeader` at top
+- Page title "Discussions" + subtitle
+- Search input filtering by title/content
+- Sort tabs: Top (relevance_score desc) / New (created_at desc)
+- Filter dropdown: All Types / Question / Insight / Blocker / Resource / Proposal
+- Post cards in a scrolling list
 
-5. **Edit profile** (own profile only): If `authUser.id === profile.id`, show an "Edit profile" button that opens a dialog with:
-   - Username input (with uniqueness check on save)
-   - Display-only email (from `user.email`)
-   - Save calls `supabase.from("profiles").update({ username }).eq("id", userId)` and refreshes the auth context profile.
+**Each post card** shows:
+- Upvote button + count (requires auth; shows AuthGate for logged-out)
+- TypeBadge (reuse from DiscussionPanel)
+- Title + content preview (150 chars)
+- Breadcrumb: Mission title → Block title (both as links)
+- Author avatar + username (links to `/profile/:username`)
+- Timestamp + reply count + resolved badge
+- Click expands inline: full content, ReplyThread component, reply composer (auth-gated), mark resolved (author-only for questions)
 
-### Changes to `src/App.tsx`
-- Import `UserProfile` and add route: `<Route path="/profile/:username" element={<UserProfile />} />`
+**Realtime**: Subscribe to `postgres_changes` on `discussions` table, invalidate query on any change.
 
-### Files
-- `src/pages/UserProfile.tsx` — new
+### 4. Auth gating
+- Reading: fully public, no auth required
+- Upvoting: wrap in auth check, show inline "Join the network" prompt
+- Replying: ReplyThread already handles this via `useAuth` — logged-out users see the AuthGate prompt
+- No redirects for logged-out users
+
+### Files to edit
+- `src/components/AppHeader.tsx` — add nav link
 - `src/App.tsx` — add route
+- `src/pages/Discussions.tsx` — new file
 
