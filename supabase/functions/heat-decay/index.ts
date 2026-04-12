@@ -29,7 +29,25 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ decayed: updated }), {
+    // Decay all goals' heat by 2%
+    const { data: goals, error: goalFetchErr } = await supabase
+      .from("goals")
+      .select("id, heat")
+      .gt("heat", 0);
+
+    if (goalFetchErr) throw goalFetchErr;
+
+    let goalUpdated = 0;
+    for (const goal of goals || []) {
+      const newHeat = Math.floor(goal.heat * 0.98);
+      const finalHeat = newHeat < 1 ? 0 : newHeat;
+      if (finalHeat !== goal.heat) {
+        await supabase.from("goals").update({ heat: finalHeat, heat_updated_at: new Date().toISOString() }).eq("id", goal.id);
+        goalUpdated++;
+      }
+    }
+
+    return new Response(JSON.stringify({ decayed_blocks: updated, decayed_goals: goalUpdated }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
