@@ -533,8 +533,8 @@ export function BlockFlowChart({
       {blocks.length === 0 ? (
         <p className="text-muted-foreground text-sm">No blocks yet. Add one to get started.</p>
       ) : (
-        <div className="overflow-x-auto pb-4">
-          <div className="relative" style={{ width: containerSize.width, height: containerSize.height }}>
+        <div className="overflow-x-hidden pb-4">
+          <div className="relative w-full" style={{ height: containerHeight }}>
             <AbsoluteConnectors blocks={blocks} positions={positions} dragOffsets={new Map()} />
             {blocks.map((block) => {
               const pos = positions.get(block.id) || { x: 0, y: 0 };
@@ -553,13 +553,6 @@ export function BlockFlowChart({
                 />
               );
             })}
-            {/* Foundation label at bottom */}
-            <div
-              className="absolute left-1/2 -translate-x-1/2 px-3 py-1 bg-muted rounded text-xs text-muted-foreground font-medium font-mono"
-              style={{ top: containerSize.height - 30 }}
-            >
-              Foundation
-            </div>
           </div>
         </div>
       )}
