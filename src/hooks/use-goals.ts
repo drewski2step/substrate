@@ -9,6 +9,7 @@ export type GoalRow = {
   created_by: string | null;
   created_at: string | null;
   deleted_at?: string | null;
+  visibility: string;
 };
 
 export function useGoals() {
