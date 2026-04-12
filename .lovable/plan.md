@@ -1,28 +1,42 @@
 
 
-## Plan: Fix visibility update RLS error + move toggle to edit form
+## Plan: Drag Handle + Draggable Blocks with Persistent Positions
 
-### Root cause
+### Summary
 
-The goal `e7a39a73-d302-4a05-8bd2-4b5397c00701` has `created_by: NULL` and zero rows in `flow_members`. When you update its visibility to "private", the UPDATE succeeds but the row immediately becomes unreadable by the SELECT policy (`visibility='public' OR is_flow_member(...)`). The Supabase client interprets this as an RLS violation.
-
-The UPDATE policy also lacks an explicit `WITH CHECK` clause, which can cause issues in some edge cases.
+Refactor the flowchart from flex-based tier layout to absolute positioning with saved coordinates, add a visible drag handle, and make connectors track actual block positions.
 
 ### Changes
 
-**1. Database migration**
-- Drop and recreate the UPDATE policy on `goals` with explicit `WITH CHECK (true)` to guarantee updates always pass
-- Backfill: for any goals with `created_by IS NOT NULL` that are missing from `flow_members`, insert an owner row (same as the earlier backfill but catching any new gaps)
-- For goals with `created_by IS NULL`, set `created_by` to the current user's auth.uid if there's a known owner, or leave as-is
+**1. Add drag handle to BlockCard** (`BlockFlowChart.tsx`)
+- Import `GripVertical` from lucide-react
+- Add a 6-dot grip icon (two columns of three dots) in the top-right corner of every block card
+- Style: muted gray, `w-4 h-4`, purely visual — no button semantics
+- Move `onMouseDown` from the card div to only the grip handle area
+- Clicking elsewhere on the card navigates (existing `onClick` behavior preserved)
+- Files blocks are already excluded from the flowchart, so no handle needed there
 
-**2. Move visibility toggle into the edit form** (`MissionView.tsx`)
-- In the editing state (lines 143-151), add a Public/Private toggle below the description textarea — two buttons styled like the creation dialog, showing the current selection
-- Add `editVisibility` state initialized from `goal.visibility` when editing starts
-- Include visibility changes in `saveEdit()` — if changed, log edit history and include in the update mutation
-- Remove the clickable badge logic from the non-editing header (lines 156-195) — replace with a static read-only badge (globe/lock icon + text) that is not interactive
-- Keep the static badge for logged-out users as-is
+**2. Switch to absolute positioning layout** (`BlockFlowChart.tsx`)
+- Replace the tier-based flex layout with a container using `position: relative`
+- For each block: if `position_x`/`position_y` are set, place at those coordinates using `position: absolute`
+- For blocks without saved positions, compute default positions from the existing tier layout algorithm (tier index × vertical spacing, slot index × horizontal spacing) and use those as initial coordinates
+- On drag end, save the new absolute position via `useUpdateBlockPosition` (already wired)
+- The container's height/width adjusts dynamically to fit all block positions
 
-**3. Files to edit**
-- New SQL migration (RLS fix + backfill)
-- `src/pages/MissionView.tsx` (move toggle to edit form, simplify header badge)
+**3. Rewrite connectors to use actual coordinates** (`BlockFlowChart.tsx`)
+- Replace `TierConnectors` with a single SVG overlay that spans the entire container
+- For each dependency edge, draw a line from the source block's bottom-center to the target block's top-center using the blocks' known absolute positions
+- Lines update immediately during drag (use the drag offset to compute in-flight positions)
+- Keep existing styling: dashed for incomplete deps, solid for complete
+
+**4. Keep Files Block behavior unchanged**
+- Files Block is already filtered out of the flowchart blocks array
+- It remains pinned at the top in its own styled row, never draggable
+
+### Files to edit
+- `src/components/BlockFlowChart.tsx` — all changes are in this single file
+
+### No database changes needed
+- `position_x` and `position_y` already exist on `blocks`
+- `useUpdateBlockPosition` hook already saves positions correctly
 
