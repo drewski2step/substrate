@@ -661,7 +661,8 @@ export function BlockFlowChart({
         <div className="overflow-auto pb-4">
           <div
             className="relative border border-dashed border-muted-foreground/20 rounded-lg"
-            style={{ width: containerWidth, height: containerHeight }}
+            style={{ width: containerWidth, height: containerHeight, transition: 'width 0.3s ease, height 0.3s ease' }}
+          >
           >
             <AbsoluteConnectors blocks={blocks} positions={positions} dragOffsets={new Map()} />
             {blocks.map((block) => {
