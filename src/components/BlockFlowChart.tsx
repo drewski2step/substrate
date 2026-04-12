@@ -44,7 +44,7 @@ const GAP_X = 24;
 const GAP_Y = 24;
 const COLS = 3;
 const EXPAND_THRESHOLD = 80;
-const EXPAND_AMOUNT = 200;
+const EXPAND_AMOUNT = 40;
 
 /** Compute grid positions for auto-laid blocks (no saved position). Sorted by created_at ascending. */
 function computeGridPositions(autoBlocks: BlockWithDeps[]): Map<string, { x: number; y: number }> {
