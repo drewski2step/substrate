@@ -70,7 +70,7 @@ export function useCreateGoal() {
 export function useUpdateGoal() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Pick<GoalRow, "title" | "description" | "status" | "deleted_at">> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Pick<GoalRow, "title" | "description" | "status" | "deleted_at" | "visibility">> }) => {
       const { error } = await supabase.from("goals").update(updates as any).eq("id", id);
       if (error) throw error;
     },
