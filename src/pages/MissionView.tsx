@@ -96,6 +96,7 @@ export default function MissionView() {
   const startEditing = () => {
     setEditTitle(goal.title);
     setEditDesc(goal.description || "");
+    setEditVisibility(goal.visibility);
     setEditing(true);
   };
 
@@ -104,6 +105,7 @@ export default function MissionView() {
     const changes: { field: string; old: string | null; new_val: string | null }[] = [];
     if (editTitle.trim() !== goal.title) changes.push({ field: "title", old: goal.title, new_val: editTitle.trim() });
     if (editDesc.trim() !== (goal.description || "")) changes.push({ field: "description", old: goal.description, new_val: editDesc.trim() || null });
+    if (editVisibility !== goal.visibility) changes.push({ field: "visibility", old: goal.visibility, new_val: editVisibility });
 
     for (const c of changes) {
       await logEdit.mutateAsync({ entity_type: "goal", entity_id: goal.id, changed_by: user.id, field_changed: c.field, old_value: c.old, new_value: c.new_val });
@@ -112,6 +114,7 @@ export default function MissionView() {
     const updates: any = {};
     if (editTitle.trim() !== goal.title) updates.title = editTitle.trim();
     if (editDesc.trim() !== (goal.description || "")) updates.description = editDesc.trim() || null;
+    if (editVisibility !== goal.visibility) updates.visibility = editVisibility;
 
     if (Object.keys(updates).length > 0) {
       updateGoal.mutate({ id: goal.id, updates }, {
