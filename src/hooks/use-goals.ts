@@ -48,19 +48,20 @@ export function useCreateGoal() {
   return useMutation({
     mutationFn: async (goal: { title: string; description?: string; status?: string; visibility?: string }) => {
       const { data: { session } } = await supabase.auth.getSession();
-      const { data, error } = await supabase
+      if (!session?.user?.id) throw new Error("You must be logged in to create a goal");
+      const id = crypto.randomUUID();
+      const { error } = await supabase
         .from("goals")
         .insert({
+          id,
           title: goal.title,
           description: goal.description || null,
           status: goal.status || "active",
           visibility: goal.visibility || "public",
-          created_by: session?.user?.id || null,
-        } as any)
-        .select()
-        .single();
+          created_by: session.user.id,
+        } as any);
       if (error) throw error;
-      return data;
+      return { id };
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["goals"] }),
   });
