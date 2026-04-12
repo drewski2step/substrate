@@ -21,7 +21,7 @@ export default function SignUp() {
     if (username.length < 3) return "Username must be at least 3 characters";
     if (!/^[a-zA-Z0-9_-]+$/.test(username)) return "Username can only contain letters, numbers, hyphens, and underscores";
     if (password.length < 8) return "Password must be at least 8 characters";
-    if (!/\d/.test(password)) return "Password must contain at least one number";
+    if (!/[!@#$%^&*]/.test(password)) return "Password must contain at least one special character (!@#$%^&*)";
     if (password !== confirm) return "Passwords do not match";
     return null;
   };
@@ -59,7 +59,7 @@ export default function SignUp() {
           </div>
           <div>
             <Label htmlFor="password" className="text-xs">Password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 chars, include a number" className="mt-1" />
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 chars, include a special character" className="mt-1" />
           </div>
           <div>
             <Label htmlFor="confirm" className="text-xs">Confirm Password</Label>

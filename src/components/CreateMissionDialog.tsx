@@ -33,7 +33,7 @@ export function CreateMissionDialog() {
           if (data?.id) navigate(`/mission/${data.id}`);
         },
         onError: (err: any) => {
-          toast.error(`Failed to create goal: ${err.message}`);
+          toast.error(`Failed to create mission: ${err.message}`);
         },
       }
     );
@@ -47,16 +47,16 @@ export function CreateMissionDialog() {
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); setOpen(o); }}>
       <DialogTrigger asChild>
         <Button size="sm" className="gap-1.5">
-          <Plus className="w-3.5 h-3.5" /> New Goal
+          <Plus className="w-3.5 h-3.5" /> New Mission
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-sm">Create a new goal</DialogTitle>
+          <DialogTitle className="text-sm">Create a new mission</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <Input placeholder="Goal title" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
-          <Textarea placeholder="Describe the goal..." value={description} onChange={(e) => setDescription(e.target.value)} className="text-sm min-h-[80px]" />
+          <Input placeholder="Mission title" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
+          <Textarea placeholder="Describe the mission..." value={description} onChange={(e) => setDescription(e.target.value)} className="text-sm min-h-[80px]" />
 
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground">Visibility</label>
@@ -102,7 +102,7 @@ export function CreateMissionDialog() {
         </div>
         <DialogFooter>
           <Button size="sm" onClick={handleCreate} disabled={!title.trim() || createGoal.isPending}>
-            {createGoal.isPending ? "Creating..." : "Create goal"}
+            {createGoal.isPending ? "Creating..." : "Create mission"}
           </Button>
         </DialogFooter>
       </DialogContent>

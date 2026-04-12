@@ -127,6 +127,12 @@ export default function BlockView() {
                 { onError: (err: any) => toast.error(err.message) });
             }}>Mark complete</Button>
           )}
+          {status === "complete" && (
+            <Button variant="outline" onClick={() => {
+              updateBlock.mutate({ id: block.id, goalId: goal.id, updates: { status: "pending" } },
+                { onError: (err: any) => toast.error(err.message) });
+            }}>Reopen block</Button>
+          )}
           {user && (
             <Button
               variant={userPledged ? "default" : "outline"}
