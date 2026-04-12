@@ -38,11 +38,13 @@ function getFlameColor(heat: number): string {
   return "text-red-500";
 }
 
-const BLOCK_W = 192; // w-48 = 12rem = 192px
+const BLOCK_W = 192;
 const BLOCK_H = 80;
 const GAP_X = 24;
 const GAP_Y = 24;
 const COLS = 3;
+const EXPAND_THRESHOLD = 80;
+const EXPAND_AMOUNT = 200;
 
 /** Compute grid positions for auto-laid blocks (no saved position). Sorted by created_at ascending. */
 function computeGridPositions(autoBlocks: BlockWithDeps[]): Map<string, { x: number; y: number }> {
@@ -63,9 +65,25 @@ function computeGridPositions(autoBlocks: BlockWithDeps[]): Map<string, { x: num
   return positions;
 }
 
+/**
+ * Batch-save position updates for multiple blocks.
+ * TODO: Replace individual updates with a batch upsert when block counts grow large.
+ */
+async function batchSavePositions(
+  blockPositions: { id: string; position_x: number; position_y: number }[],
+) {
+  for (const bp of blockPositions) {
+    await supabase
+      .from("blocks")
+      .update({ position_x: bp.position_x, position_y: bp.position_y } as any)
+      .eq("id", bp.id);
+  }
+}
+
 // --- Block card with heat ---
 function BlockCard({
   block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
+  onDragNearEdge, canvasWidth, canvasHeight,
 }: {
   block: BlockWithDeps;
   posX: number;
@@ -76,6 +94,9 @@ function BlockCard({
   onNavigate: (block: BlockWithDeps) => void;
   onEdit: (block: BlockWithDeps) => void;
   onDragEnd?: (id: string, x: number, y: number) => void;
+  onDragNearEdge?: (id: string, direction: 'up' | 'down' | 'left' | 'right') => void;
+  canvasWidth?: number;
+  canvasHeight?: number;
 }) {
   const didDragRef = useRef(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
@@ -127,6 +148,16 @@ function BlockCard({
         didDragRef.current = true;
       }
       setDragOffset({ x: dx, y: dy });
+
+      // Check proximity to canvas edges for expansion
+      if (onDragNearEdge && canvasWidth && canvasHeight) {
+        const projX = posX + dx;
+        const projY = posY + dy;
+        if (projY < EXPAND_THRESHOLD) onDragNearEdge(block.id, 'up');
+        if (projY + BLOCK_H > canvasHeight - EXPAND_THRESHOLD) onDragNearEdge(block.id, 'down');
+        if (projX < EXPAND_THRESHOLD) onDragNearEdge(block.id, 'left');
+        if (projX + BLOCK_W > canvasWidth - EXPAND_THRESHOLD) onDragNearEdge(block.id, 'right');
+      }
     };
     const handleMouseUp = (ev: MouseEvent) => {
       document.removeEventListener("mousemove", handleMouseMove);
@@ -140,7 +171,7 @@ function BlockCard({
     };
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
-  }, [block.id, posX, posY, onDragEnd]);
+  }, [block.id, posX, posY, onDragEnd, onDragNearEdge, canvasWidth, canvasHeight]);
 
   const left = posX + (dragOffset?.x || 0);
   const top = posY + (dragOffset?.y || 0);
@@ -449,6 +480,10 @@ export function BlockFlowChart({
   const [editBlock, setEditBlock] = useState<BlockWithDeps | null>(null);
   const [filesOpen, setFilesOpen] = useState(false);
 
+  // Canvas expansion state
+  const [canvasExtra, setCanvasExtra] = useState({ top: 0, right: 0, bottom: 0, left: 0 });
+  const lastExpandRef = useRef(0);
+
   // Find the real files block from DB
   const filesBlock = useMemo(() => {
     if (!allGoalBlocks || !parentBlockId) return null;
@@ -461,7 +496,6 @@ export function BlockFlowChart({
   const blocks = useMemo(() => {
     if (!allGoalBlocks) return [];
     return allGoalBlocks.filter((b) => {
-      // Always exclude files blocks from the flowchart
       if ((b as any).is_files_block) return false;
       if (parentBlockId) return b.parent_block_id === parentBlockId;
       return !b.parent_block_id;
@@ -484,14 +518,62 @@ export function BlockFlowChart({
     return result;
   }, [blocks]);
 
-  // Compute container height from positions (width is 100%)
-  const containerHeight = useMemo(() => {
+  // Compute container dimensions from positions + canvas extra
+  const { containerWidth, containerHeight } = useMemo(() => {
+    let maxX = 0;
     let maxY = 0;
     positions.forEach((pos) => {
+      maxX = Math.max(maxX, pos.x + BLOCK_W + 40);
       maxY = Math.max(maxY, pos.y + BLOCK_H + 40);
     });
-    return Math.max(200, maxY);
-  }, [positions]);
+    return {
+      containerWidth: Math.max(COLS * (BLOCK_W + GAP_X), maxX) + canvasExtra.right + canvasExtra.left,
+      containerHeight: Math.max(200, maxY) + canvasExtra.bottom + canvasExtra.top,
+    };
+  }, [positions, canvasExtra]);
+
+  // Handle canvas expansion when a block is dragged near an edge
+  const handleDragNearEdge = useCallback((blockId: string, direction: 'up' | 'down' | 'left' | 'right') => {
+    const now = Date.now();
+    if (now - lastExpandRef.current < 500) return;
+    lastExpandRef.current = now;
+
+    if (direction === 'down') {
+      setCanvasExtra((prev) => ({ ...prev, bottom: prev.bottom + EXPAND_AMOUNT }));
+    } else if (direction === 'right') {
+      setCanvasExtra((prev) => ({ ...prev, right: prev.right + EXPAND_AMOUNT }));
+    } else if (direction === 'up') {
+      // Shift all block positions down by EXPAND_AMOUNT
+      setCanvasExtra((prev) => ({ ...prev, top: prev.top + EXPAND_AMOUNT }));
+      const updates: { id: string; position_x: number; position_y: number }[] = [];
+      blocks.forEach((b) => {
+        const pos = positions.get(b.id);
+        if (!pos) return;
+        updates.push({
+          id: b.id,
+          position_x: pos.x,
+          position_y: pos.y + EXPAND_AMOUNT,
+        });
+      });
+      // Persist shifted positions
+      batchSavePositions(updates);
+    } else if (direction === 'left') {
+      // Shift all block positions right by EXPAND_AMOUNT
+      setCanvasExtra((prev) => ({ ...prev, left: prev.left + EXPAND_AMOUNT }));
+      const updates: { id: string; position_x: number; position_y: number }[] = [];
+      blocks.forEach((b) => {
+        const pos = positions.get(b.id);
+        if (!pos) return;
+        updates.push({
+          id: b.id,
+          position_x: pos.x + EXPAND_AMOUNT,
+          position_y: pos.y,
+        });
+      });
+      // Persist shifted positions
+      batchSavePositions(updates);
+    }
+  }, [blocks, positions]);
 
   const filesBlockLabel = parentBlockTitle ? `${parentBlockTitle} Files` : "Files";
   const filesBlockId = filesBlock?.id || "";
@@ -533,8 +615,11 @@ export function BlockFlowChart({
       {blocks.length === 0 ? (
         <p className="text-muted-foreground text-sm">No blocks yet. Add one to get started.</p>
       ) : (
-        <div className="overflow-x-hidden pb-4">
-          <div className="relative w-full" style={{ height: containerHeight }}>
+        <div className="overflow-auto pb-4">
+          <div
+            className="relative border border-dashed border-muted-foreground/20 rounded-lg"
+            style={{ width: containerWidth, height: containerHeight }}
+          >
             <AbsoluteConnectors blocks={blocks} positions={positions} dragOffsets={new Map()} />
             {blocks.map((block) => {
               const pos = positions.get(block.id) || { x: 0, y: 0 };
@@ -544,12 +629,15 @@ export function BlockFlowChart({
                   block={block}
                   posX={pos.x}
                   posY={pos.y}
+                  canvasWidth={containerWidth}
+                  canvasHeight={containerHeight}
                   onComplete={(id) => updateBlock.mutate({ id, goalId, updates: { status: "complete" } })}
                   onAddSuccessor={(b) => { setSuccessorParent(b); setAddDialogOpen(true); }}
                   onEditDeps={setEditDepsBlock}
                   onNavigate={onNavigateToBlock}
                   onEdit={(b) => user ? setEditBlock(b) : toast.error("Sign in to edit")}
                   onDragEnd={(id, x, y) => updatePosition.mutate({ id, goalId, position_x: x, position_y: y })}
+                  onDragNearEdge={handleDragNearEdge}
                 />
               );
             })}
