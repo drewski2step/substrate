@@ -1,7 +1,8 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { ArrowLeft, Pencil, Trash2, Undo2, Globe, Lock, Loader2 } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Undo2, Globe, Lock } from "lucide-react";
+import { JoinMissionButton } from "@/components/JoinMissionButton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -183,6 +184,7 @@ export default function MissionView() {
                     <Globe className="w-3 h-3" /> Public
                   </span>
                 )}
+                <JoinMissionButton goalId={goal.id} />
                 {user && (
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={startEditing}>
