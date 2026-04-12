@@ -663,7 +663,6 @@ export function BlockFlowChart({
             className="relative border border-dashed border-muted-foreground/20 rounded-lg"
             style={{ width: containerWidth, height: containerHeight, transition: 'width 0.3s ease, height 0.3s ease' }}
           >
-          >
             <AbsoluteConnectors blocks={blocks} positions={positions} dragOffsets={new Map()} />
             {blocks.map((block) => {
               const pos = positions.get(block.id) || { x: 0, y: 0 };
