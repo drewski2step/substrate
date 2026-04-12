@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import UserProfile from "./pages/UserProfile";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/mission/:missionId" element={<MissionView />} />
             <Route path="/mission/:missionId/block/:blockId" element={<BlockView />} />
             <Route path="/mission/:missionId/task/:taskId" element={<BlockView />} />
+            <Route path="/profile/:username" element={<UserProfile />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
