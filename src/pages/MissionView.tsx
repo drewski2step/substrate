@@ -33,6 +33,7 @@ export default function MissionView() {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const [editVisibility, setEditVisibility] = useState("");
 
   const topLevelBlocks = useMemo(() => blocks?.filter((b) => !b.parent_block_id) || [], [blocks]);
   const completeCount = topLevelBlocks.filter((b) => b.status === "complete").length;
@@ -95,6 +96,7 @@ export default function MissionView() {
   const startEditing = () => {
     setEditTitle(goal.title);
     setEditDesc(goal.description || "");
+    setEditVisibility(goal.visibility);
     setEditing(true);
   };
 
@@ -103,6 +105,7 @@ export default function MissionView() {
     const changes: { field: string; old: string | null; new_val: string | null }[] = [];
     if (editTitle.trim() !== goal.title) changes.push({ field: "title", old: goal.title, new_val: editTitle.trim() });
     if (editDesc.trim() !== (goal.description || "")) changes.push({ field: "description", old: goal.description, new_val: editDesc.trim() || null });
+    if (editVisibility !== goal.visibility) changes.push({ field: "visibility", old: goal.visibility, new_val: editVisibility });
 
     for (const c of changes) {
       await logEdit.mutateAsync({ entity_type: "goal", entity_id: goal.id, changed_by: user.id, field_changed: c.field, old_value: c.old, new_value: c.new_val });
@@ -111,6 +114,7 @@ export default function MissionView() {
     const updates: any = {};
     if (editTitle.trim() !== goal.title) updates.title = editTitle.trim();
     if (editDesc.trim() !== (goal.description || "")) updates.description = editDesc.trim() || null;
+    if (editVisibility !== goal.visibility) updates.visibility = editVisibility;
 
     if (Object.keys(updates).length > 0) {
       updateGoal.mutate({ id: goal.id, updates }, {
@@ -144,6 +148,23 @@ export default function MissionView() {
             <div className="space-y-3 mb-4">
               <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-lg font-semibold" />
               <Textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Description" className="text-sm" />
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground font-medium">Visibility:</span>
+                <Button
+                  type="button" size="sm" variant={editVisibility === "public" ? "default" : "outline"}
+                  className="gap-1 h-7 text-xs"
+                  onClick={() => setEditVisibility("public")}
+                >
+                  <Globe className="w-3 h-3" /> Public
+                </Button>
+                <Button
+                  type="button" size="sm" variant={editVisibility === "private" ? "default" : "outline"}
+                  className="gap-1 h-7 text-xs"
+                  onClick={() => setEditVisibility("private")}
+                >
+                  <Lock className="w-3 h-3" /> Private
+                </Button>
+              </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={saveEdit} disabled={!editTitle.trim()}>Save</Button>
                 <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
@@ -153,46 +174,7 @@ export default function MissionView() {
             <>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-semibold leading-tight">{goal.title}</h1>
-                {user ? (
-                  goal.visibility === "private" ? (
-                    <AlertDialog>
-                      <button
-                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted/80 transition-colors cursor-pointer"
-                        onClick={() => {
-                          updateGoal.mutate({ id: goal.id, updates: { visibility: "public" } }, {
-                            onSuccess: () => toast.success("Mission is now public"),
-                            onError: (err: any) => toast.error(err.message),
-                          });
-                        }}
-                      >
-                        <Lock className="w-3 h-3" /> Private
-                      </button>
-                    </AlertDialog>
-                  ) : (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <button className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 hover:bg-emerald-500/20 transition-colors cursor-pointer">
-                          <Globe className="w-3 h-3" /> Public
-                        </button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Make this mission private?</AlertDialogTitle>
-                          <AlertDialogDescription>This mission will become invisible to non-members. Only flow members will be able to see it. Are you sure?</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => {
-                            updateGoal.mutate({ id: goal.id, updates: { visibility: "private" } }, {
-                              onSuccess: () => toast.success("Mission is now private"),
-                              onError: (err: any) => toast.error(err.message),
-                            });
-                          }}>Make Private</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )
-                ) : goal.visibility === "private" ? (
+                {goal.visibility === "private" ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                     <Lock className="w-3 h-3" /> Private
                   </span>
