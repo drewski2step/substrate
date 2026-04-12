@@ -174,46 +174,7 @@ export default function MissionView() {
             <>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-semibold leading-tight">{goal.title}</h1>
-                {user ? (
-                  goal.visibility === "private" ? (
-                    <AlertDialog>
-                      <button
-                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted/80 transition-colors cursor-pointer"
-                        onClick={() => {
-                          updateGoal.mutate({ id: goal.id, updates: { visibility: "public" } }, {
-                            onSuccess: () => toast.success("Mission is now public"),
-                            onError: (err: any) => toast.error(err.message),
-                          });
-                        }}
-                      >
-                        <Lock className="w-3 h-3" /> Private
-                      </button>
-                    </AlertDialog>
-                  ) : (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <button className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 hover:bg-emerald-500/20 transition-colors cursor-pointer">
-                          <Globe className="w-3 h-3" /> Public
-                        </button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Make this mission private?</AlertDialogTitle>
-                          <AlertDialogDescription>This mission will become invisible to non-members. Only flow members will be able to see it. Are you sure?</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => {
-                            updateGoal.mutate({ id: goal.id, updates: { visibility: "private" } }, {
-                              onSuccess: () => toast.success("Mission is now private"),
-                              onError: (err: any) => toast.error(err.message),
-                            });
-                          }}>Make Private</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )
-                ) : goal.visibility === "private" ? (
+                {goal.visibility === "private" ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                     <Lock className="w-3 h-3" /> Private
                   </span>
