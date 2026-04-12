@@ -575,6 +575,49 @@ export function BlockFlowChart({
     }
   }, [blocks, positions]);
 
+  // Shrink canvas after drag ends — reclaim unused space
+  const handleDragEndWithShrink = useCallback((id: string, x: number, y: number) => {
+    // Save the dragged block's new position
+    updatePosition.mutate({ id, goalId, position_x: x, position_y: y });
+
+    // Build an updated positions map with the dragged block's new coords
+    const updatedPositions = new Map(positions);
+    updatedPositions.set(id, { x, y });
+    // Also include auto-laid blocks that don't have saved positions yet
+    blocks.forEach((b) => {
+      if (!updatedPositions.has(b.id)) {
+        updatedPositions.set(b.id, { x: 0, y: 0 });
+      }
+    });
+
+    let minX = Infinity, minY = Infinity;
+    updatedPositions.forEach((pos) => {
+      minX = Math.min(minX, pos.x);
+      minY = Math.min(minY, pos.y);
+    });
+
+    const shiftX = minX > EXPAND_THRESHOLD ? minX - EXPAND_THRESHOLD : 0;
+    const shiftY = minY > EXPAND_THRESHOLD ? minY - EXPAND_THRESHOLD : 0;
+
+    if (shiftX > 0 || shiftY > 0) {
+      const updates: { id: string; position_x: number; position_y: number }[] = [];
+      blocks.forEach((b) => {
+        const pos = updatedPositions.get(b.id);
+        if (!pos) return;
+        updates.push({
+          id: b.id,
+          position_x: pos.x - shiftX,
+          position_y: pos.y - shiftY,
+        });
+      });
+      // TODO: Replace individual updates with a batch upsert when block counts grow large
+      batchSavePositions(updates);
+    }
+
+    // Reset canvas extra — container sizing computes from block positions
+    setCanvasExtra({ top: 0, right: 0, bottom: 0, left: 0 });
+  }, [blocks, positions, goalId, updatePosition]);
+
   const filesBlockLabel = parentBlockTitle ? `${parentBlockTitle} Files` : "Files";
   const filesBlockId = filesBlock?.id || "";
 
