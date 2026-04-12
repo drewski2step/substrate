@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { ArrowLeft, Pencil, Trash2, Undo2 } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Undo2, Globe, Lock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -153,6 +153,15 @@ export default function MissionView() {
             <>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-semibold leading-tight">{goal.title}</h1>
+                {goal.visibility === "private" ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    <Lock className="w-3 h-3" /> Private
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600">
+                    <Globe className="w-3 h-3" /> Public
+                  </span>
+                )}
                 {user && (
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={startEditing}>

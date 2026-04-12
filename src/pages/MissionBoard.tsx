@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { AppHeader } from "@/components/AppHeader";
+import { Globe, Lock } from "lucide-react";
 import { CreateMissionDialog } from "@/components/CreateMissionDialog";
 import { useGoals } from "@/hooks/use-goals";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -59,7 +60,16 @@ export default function MissionBoard() {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-4 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
+                  {goal.visibility === "private" ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      <Lock className="w-3 h-3" /> Private
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600">
+                      <Globe className="w-3 h-3" /> Public
+                    </span>
+                  )}
                   <span className="text-xs text-muted-foreground capitalize font-mono">{goal.status}</span>
                 </div>
               </div>
