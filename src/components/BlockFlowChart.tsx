@@ -38,56 +38,28 @@ function getFlameColor(heat: number): string {
   return "text-red-500";
 }
 
-// --- DAG helpers ---
-function computeDepths(blocks: BlockWithDeps[]): Map<string, number> {
-  const depths = new Map<string, number>();
-  const blockMap = new Map(blocks.map((b) => [b.id, b]));
-  function getDepth(id: string): number {
-    if (depths.has(id)) return depths.get(id)!;
-    const block = blockMap.get(id);
-    if (!block || block.dependencies.length === 0) { depths.set(id, 0); return 0; }
-    const d = Math.max(...block.dependencies.map((dep) => getDepth(dep))) + 1;
-    depths.set(id, d);
-    return d;
-  }
-  blocks.forEach((b) => getDepth(b.id));
-  return depths;
-}
-
-function buildTiers(blocks: BlockWithDeps[]): BlockWithDeps[][] {
-  const depths = computeDepths(blocks);
-  const maxDepth = Math.max(0, ...Array.from(depths.values()));
-  const tiers: BlockWithDeps[][] = Array.from({ length: maxDepth + 1 }, () => []);
-  blocks.forEach((b) => tiers[depths.get(b.id) ?? 0].push(b));
-  return tiers;
-}
-
 const BLOCK_W = 192; // w-48 = 12rem = 192px
 const BLOCK_H = 80;
-const GAP_X = 16;
-const GAP_Y = 64;
+const GAP_X = 24;
+const GAP_Y = 24;
+const COLS = 3;
 
-/** Compute default positions from tier layout (bottom-up, reversed so tier 0 is at bottom) */
-function computeDefaultPositions(blocks: BlockWithDeps[]): Map<string, { x: number; y: number }> {
-  const tiers = buildTiers(blocks);
-  const maxTier = tiers.length - 1;
+/** Compute grid positions for auto-laid blocks (no saved position). Sorted by created_at ascending. */
+function computeGridPositions(autoBlocks: BlockWithDeps[]): Map<string, { x: number; y: number }> {
   const positions = new Map<string, { x: number; y: number }>();
-
-  // Find max tier width for centering
-  const maxTierWidth = Math.max(1, ...tiers.map((t) => t.length));
-  const totalWidth = maxTierWidth * (BLOCK_W + GAP_X);
-
-  tiers.forEach((tier, tierIdx) => {
-    // Reversed: highest tier at top, tier 0 at bottom
-    const y = (maxTier - tierIdx) * (BLOCK_H + GAP_Y);
-    const tierWidth = tier.length * (BLOCK_W + GAP_X) - GAP_X;
-    const offsetX = (totalWidth - tierWidth) / 2;
-    tier.forEach((block, slotIdx) => {
-      const x = offsetX + slotIdx * (BLOCK_W + GAP_X);
-      positions.set(block.id, { x: Math.max(0, x), y });
+  const sorted = [...autoBlocks].sort((a, b) => {
+    const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return aTime - bTime;
+  });
+  sorted.forEach((block, index) => {
+    const col = index % COLS;
+    const row = Math.floor(index / COLS);
+    positions.set(block.id, {
+      x: col * (BLOCK_W + GAP_X),
+      y: row * (BLOCK_H + GAP_Y),
     });
   });
-
   return positions;
 }
 
@@ -496,30 +468,29 @@ export function BlockFlowChart({
     });
   }, [allGoalBlocks, parentBlockId]);
 
-  // Compute positions: use saved positions if available, otherwise default from tier layout
+  // Compute positions: pinned blocks keep saved coords, auto-laid blocks use grid
   const positions = useMemo(() => {
-    const defaults = computeDefaultPositions(blocks);
+    const pinned = blocks.filter((b) => b.position_x != null && b.position_y != null);
+    const autoLaid = blocks.filter((b) => b.position_x == null || b.position_y == null);
+    const gridPositions = computeGridPositions(autoLaid);
     const result = new Map<string, { x: number; y: number }>();
-    blocks.forEach((b) => {
-      if (b.position_x != null && b.position_y != null) {
-        result.set(b.id, { x: b.position_x, y: b.position_y });
-      } else {
-        const def = defaults.get(b.id);
-        result.set(b.id, def || { x: 0, y: 0 });
-      }
+    pinned.forEach((b) => {
+      result.set(b.id, { x: b.position_x!, y: b.position_y! });
+    });
+    autoLaid.forEach((b) => {
+      const pos = gridPositions.get(b.id);
+      result.set(b.id, pos || { x: 0, y: 0 });
     });
     return result;
   }, [blocks]);
 
-  // Compute container size from positions
-  const containerSize = useMemo(() => {
-    let maxX = 0;
+  // Compute container height from positions (width is 100%)
+  const containerHeight = useMemo(() => {
     let maxY = 0;
     positions.forEach((pos) => {
-      maxX = Math.max(maxX, pos.x + BLOCK_W + 40);
       maxY = Math.max(maxY, pos.y + BLOCK_H + 40);
     });
-    return { width: Math.max(400, maxX), height: Math.max(200, maxY) };
+    return Math.max(200, maxY);
   }, [positions]);
 
   const filesBlockLabel = parentBlockTitle ? `${parentBlockTitle} Files` : "Files";
@@ -562,8 +533,8 @@ export function BlockFlowChart({
       {blocks.length === 0 ? (
         <p className="text-muted-foreground text-sm">No blocks yet. Add one to get started.</p>
       ) : (
-        <div className="overflow-x-auto pb-4">
-          <div className="relative" style={{ width: containerSize.width, height: containerSize.height }}>
+        <div className="overflow-x-hidden pb-4">
+          <div className="relative w-full" style={{ height: containerHeight }}>
             <AbsoluteConnectors blocks={blocks} positions={positions} dragOffsets={new Map()} />
             {blocks.map((block) => {
               const pos = positions.get(block.id) || { x: 0, y: 0 };
@@ -582,13 +553,6 @@ export function BlockFlowChart({
                 />
               );
             })}
-            {/* Foundation label at bottom */}
-            <div
-              className="absolute left-1/2 -translate-x-1/2 px-3 py-1 bg-muted rounded text-xs text-muted-foreground font-medium font-mono"
-              style={{ top: containerSize.height - 30 }}
-            >
-              Foundation
-            </div>
           </div>
         </div>
       )}
