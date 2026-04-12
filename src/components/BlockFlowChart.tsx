@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen, Pencil, Trash2, Star } from "lucide-react";
+import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen, Pencil, Trash2, Star, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,11 +62,42 @@ function buildTiers(blocks: BlockWithDeps[]): BlockWithDeps[][] {
   return tiers;
 }
 
+const BLOCK_W = 192; // w-48 = 12rem = 192px
+const BLOCK_H = 80;
+const GAP_X = 16;
+const GAP_Y = 64;
+
+/** Compute default positions from tier layout (bottom-up, reversed so tier 0 is at bottom) */
+function computeDefaultPositions(blocks: BlockWithDeps[]): Map<string, { x: number; y: number }> {
+  const tiers = buildTiers(blocks);
+  const maxTier = tiers.length - 1;
+  const positions = new Map<string, { x: number; y: number }>();
+
+  // Find max tier width for centering
+  const maxTierWidth = Math.max(1, ...tiers.map((t) => t.length));
+  const totalWidth = maxTierWidth * (BLOCK_W + GAP_X);
+
+  tiers.forEach((tier, tierIdx) => {
+    // Reversed: highest tier at top, tier 0 at bottom
+    const y = (maxTier - tierIdx) * (BLOCK_H + GAP_Y);
+    const tierWidth = tier.length * (BLOCK_W + GAP_X) - GAP_X;
+    const offsetX = (totalWidth - tierWidth) / 2;
+    tier.forEach((block, slotIdx) => {
+      const x = offsetX + slotIdx * (BLOCK_W + GAP_X);
+      positions.set(block.id, { x: Math.max(0, x), y });
+    });
+  });
+
+  return positions;
+}
+
 // --- Block card with heat ---
 function BlockCard({
-  block, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
+  block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
 }: {
   block: BlockWithDeps;
+  posX: number;
+  posY: number;
   onComplete: (id: string) => void;
   onAddSuccessor: (block: BlockWithDeps) => void;
   onEditDeps: (block: BlockWithDeps) => void;
@@ -74,10 +105,8 @@ function BlockCard({
   onEdit: (block: BlockWithDeps) => void;
   onDragEnd?: (id: string, x: number, y: number) => void;
 }) {
-  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const didDragRef = useRef(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
   const canComplete = block.status === "active" || block.status === "pending";
   const status = block.status || "pending";
   const heat = block.heat || 0;
@@ -112,60 +141,66 @@ function BlockCard({
     })),
   []);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return;
-    didDragRef.current = false;
+  const handleGripMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    const rect = cardRef.current?.parentElement?.getBoundingClientRect();
-    if (!rect) return;
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      origX: cardRef.current?.offsetLeft || 0,
-      origY: cardRef.current?.offsetTop || 0,
-    };
+    e.stopPropagation();
+    didDragRef.current = false;
+    const startX = e.clientX;
+    const startY = e.clientY;
+
     const handleMouseMove = (ev: MouseEvent) => {
-      if (!dragRef.current) return;
-      setDragOffset({
-        x: ev.clientX - dragRef.current.startX,
-        y: ev.clientY - dragRef.current.startY,
-      });
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        didDragRef.current = true;
+      }
+      setDragOffset({ x: dx, y: dy });
     };
     const handleMouseUp = (ev: MouseEvent) => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
-      if (dragRef.current && onDragEnd) {
-        const dx = ev.clientX - dragRef.current.startX;
-        const dy = ev.clientY - dragRef.current.startY;
-        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-          didDragRef.current = true;
-          const newX = (block.position_x || dragRef.current.origX) + dx;
-          const newY = (block.position_y || dragRef.current.origY) + dy;
-          onDragEnd(block.id, Math.max(0, newX), Math.max(0, newY));
-        }
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (didDragRef.current && onDragEnd) {
+        onDragEnd(block.id, Math.max(0, posX + dx), Math.max(0, posY + dy));
       }
-      dragRef.current = null;
       setDragOffset(null);
     };
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
-  }, [block.id, block.position_x, block.position_y, onDragEnd]);
+  }, [block.id, posX, posY, onDragEnd]);
 
-  const dragStyle = dragOffset ? { transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)`, zIndex: 50, transition: 'none' } : {};
+  const left = posX + (dragOffset?.x || 0);
+  const top = posY + (dragOffset?.y || 0);
 
   return (
-    <div ref={cardRef} className="relative group w-48 shrink-0" style={dragStyle}>
+    <div
+      className="absolute group"
+      style={{
+        left, top,
+        width: BLOCK_W,
+        zIndex: dragOffset ? 50 : 1,
+        transition: dragOffset ? 'none' : 'left 0.2s ease, top 0.2s ease',
+      }}
+    >
       <div
-        onMouseDown={handleMouseDown}
         onClick={() => { if (!didDragRef.current) onNavigate(block); }}
         className={cn(
-          "relative border-2 rounded-lg px-4 py-3 cursor-grab active:cursor-grabbing overflow-hidden",
+          "relative border-2 rounded-lg px-4 py-3 cursor-pointer overflow-hidden",
           isPledged ? "border-indigo-400/60 bg-[hsl(230,35%,12%)]" : getHeatColor(heat),
           counts?.openBlockers && counts.openBlockers > 0 && "ring-2 ring-destructive/50",
           heat >= 200 && !isPledged && "animate-flame-rim",
           "hover:shadow-lg"
         )}
       >
+        {/* Drag handle — top right */}
+        <div
+          onMouseDown={handleGripMouseDown}
+          className="absolute top-1.5 right-1.5 cursor-grab active:cursor-grabbing p-0.5 z-20"
+        >
+          <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+        </div>
+
         {/* Night sky stars for pledged blocks */}
         {isPledged && stars.map((s, i) => (
           <span
@@ -175,7 +210,7 @@ function BlockCard({
           />
         ))}
 
-        <div className={cn("flex items-center gap-2 pt-1 relative z-10", isPledged && "text-indigo-100")}>
+        <div className={cn("flex items-center gap-2 pt-1 pr-5 relative z-10", isPledged && "text-indigo-100")}>
           <div className={cn(
             "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
             status === "complete" && "bg-primary border-primary",
@@ -271,33 +306,58 @@ function BlockCard({
   );
 }
 
-// --- SVG connectors ---
-function TierConnectors({ tierAbove, tierBelow }: { tierAbove: BlockWithDeps[]; tierBelow: BlockWithDeps[] }) {
-  const lines: { fromIdx: number; toIdx: number; fromCount: number; toCount: number; complete: boolean }[] = [];
-  tierAbove.forEach((block, fromIdx) => {
+// --- SVG connectors using absolute positions ---
+function AbsoluteConnectors({
+  blocks,
+  positions,
+  dragOffsets,
+}: {
+  blocks: BlockWithDeps[];
+  positions: Map<string, { x: number; y: number }>;
+  dragOffsets: Map<string, { x: number; y: number }>;
+}) {
+  const blockMap = new Map(blocks.map((b) => [b.id, b]));
+  const lines: { fromX: number; fromY: number; toX: number; toY: number; complete: boolean }[] = [];
+
+  blocks.forEach((block) => {
+    const fromPos = positions.get(block.id);
+    if (!fromPos) return;
+    const fromOffset = dragOffsets.get(block.id);
+    const fromCenterX = fromPos.x + (fromOffset?.x || 0) + BLOCK_W / 2;
+    const fromTopY = fromPos.y + (fromOffset?.y || 0);
+
     block.dependencies.forEach((depId) => {
-      const toIdx = tierBelow.findIndex((b) => b.id === depId);
-      if (toIdx !== -1) {
-        lines.push({ fromIdx, toIdx, fromCount: tierAbove.length, toCount: tierBelow.length, complete: tierBelow[toIdx].status === "complete" });
-      }
+      const toPos = positions.get(depId);
+      if (!toPos) return;
+      const dep = blockMap.get(depId);
+      const toOffset = dragOffsets.get(depId);
+      const toCenterX = toPos.x + (toOffset?.x || 0) + BLOCK_W / 2;
+      const toBottomY = toPos.y + (toOffset?.y || 0) + BLOCK_H;
+
+      lines.push({
+        fromX: fromCenterX,
+        fromY: fromTopY,
+        toX: toCenterX,
+        toY: toBottomY,
+        complete: dep?.status === "complete",
+      });
     });
   });
+
   if (lines.length === 0) return null;
-  const width = Math.max(tierAbove.length, tierBelow.length) * 208;
-  const height = 32;
+
   return (
-    <svg width={width} height={height} className="shrink-0 overflow-visible" style={{ minWidth: width }}>
-      {lines.map((line, i) => {
-        const fromX = (line.fromIdx + 0.5) * (width / line.fromCount);
-        const toX = (line.toIdx + 0.5) * (width / line.toCount);
-        return (
-          <line key={i} x1={fromX} y1={0} x2={toX} y2={height}
-            stroke={line.complete ? "hsl(var(--substrate-complete))" : "hsl(var(--border))"}
-            strokeWidth={line.complete ? 2 : 1.5}
-            strokeDasharray={line.complete ? undefined : "4 3"}
-          />
-        );
-      })}
+    <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: 0 }}>
+      {lines.map((line, i) => (
+        <line
+          key={i}
+          x1={line.fromX} y1={line.fromY}
+          x2={line.toX} y2={line.toY}
+          stroke={line.complete ? "hsl(var(--substrate-complete))" : "hsl(var(--border))"}
+          strokeWidth={line.complete ? 2 : 1.5}
+          strokeDasharray={line.complete ? undefined : "4 3"}
+        />
+      ))}
     </svg>
   );
 }
@@ -436,8 +496,31 @@ export function BlockFlowChart({
     });
   }, [allGoalBlocks, parentBlockId]);
 
-  const tiers = useMemo(() => buildTiers(blocks), [blocks]);
-  const reversedTiers = useMemo(() => [...tiers].reverse(), [tiers]);
+  // Compute positions: use saved positions if available, otherwise default from tier layout
+  const positions = useMemo(() => {
+    const defaults = computeDefaultPositions(blocks);
+    const result = new Map<string, { x: number; y: number }>();
+    blocks.forEach((b) => {
+      if (b.position_x != null && b.position_y != null) {
+        result.set(b.id, { x: b.position_x, y: b.position_y });
+      } else {
+        const def = defaults.get(b.id);
+        result.set(b.id, def || { x: 0, y: 0 });
+      }
+    });
+    return result;
+  }, [blocks]);
+
+  // Compute container size from positions
+  const containerSize = useMemo(() => {
+    let maxX = 0;
+    let maxY = 0;
+    positions.forEach((pos) => {
+      maxX = Math.max(maxX, pos.x + BLOCK_W + 40);
+      maxY = Math.max(maxY, pos.y + BLOCK_H + 40);
+    });
+    return { width: Math.max(400, maxX), height: Math.max(200, maxY) };
+  }, [positions]);
 
   const filesBlockLabel = parentBlockTitle ? `${parentBlockTitle} Files` : "Files";
   const filesBlockId = filesBlock?.id || "";
@@ -480,33 +563,32 @@ export function BlockFlowChart({
         <p className="text-muted-foreground text-sm">No blocks yet. Add one to get started.</p>
       ) : (
         <div className="overflow-x-auto pb-4">
-          <div className="flex flex-col items-center gap-0 min-w-fit">
-            {reversedTiers.map((tier, tierIdx) => {
-              const nextTierBelow = tierIdx < reversedTiers.length - 1 ? reversedTiers[tierIdx + 1] : null;
+          <div className="relative" style={{ width: containerSize.width, height: containerSize.height }}>
+            <AbsoluteConnectors blocks={blocks} positions={positions} dragOffsets={new Map()} />
+            {blocks.map((block) => {
+              const pos = positions.get(block.id) || { x: 0, y: 0 };
               return (
-                <div key={tierIdx} className="flex flex-col items-center">
-                  <div className="flex items-start justify-center gap-3">
-                    {tier.map((block) => (
-                      <BlockCard
-                        key={block.id} block={block}
-                        onComplete={(id) => updateBlock.mutate({ id, goalId, updates: { status: "complete" } })}
-                        onAddSuccessor={(b) => { setSuccessorParent(b); setAddDialogOpen(true); }}
-                        onEditDeps={setEditDepsBlock}
-                        onNavigate={onNavigateToBlock}
-                        onEdit={(b) => user ? setEditBlock(b) : toast.error("Sign in to edit")}
-                        onDragEnd={(id, x, y) => updatePosition.mutate({ id, goalId, position_x: x, position_y: y })}
-                      />
-                    ))}
-                  </div>
-                  {nextTierBelow && (
-                    <div className="flex justify-center py-0">
-                      <TierConnectors tierAbove={tier} tierBelow={nextTierBelow} />
-                    </div>
-                  )}
-                </div>
+                <BlockCard
+                  key={block.id}
+                  block={block}
+                  posX={pos.x}
+                  posY={pos.y}
+                  onComplete={(id) => updateBlock.mutate({ id, goalId, updates: { status: "complete" } })}
+                  onAddSuccessor={(b) => { setSuccessorParent(b); setAddDialogOpen(true); }}
+                  onEditDeps={setEditDepsBlock}
+                  onNavigate={onNavigateToBlock}
+                  onEdit={(b) => user ? setEditBlock(b) : toast.error("Sign in to edit")}
+                  onDragEnd={(id, x, y) => updatePosition.mutate({ id, goalId, position_x: x, position_y: y })}
+                />
               );
             })}
-            <div className="mt-3 px-3 py-1 bg-muted rounded text-xs text-muted-foreground font-medium font-mono">Foundation</div>
+            {/* Foundation label at bottom */}
+            <div
+              className="absolute left-1/2 -translate-x-1/2 px-3 py-1 bg-muted rounded text-xs text-muted-foreground font-medium font-mono"
+              style={{ top: containerSize.height - 30 }}
+            >
+              Foundation
+            </div>
           </div>
         </div>
       )}
