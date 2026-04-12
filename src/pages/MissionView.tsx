@@ -148,6 +148,23 @@ export default function MissionView() {
             <div className="space-y-3 mb-4">
               <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-lg font-semibold" />
               <Textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Description" className="text-sm" />
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground font-medium">Visibility:</span>
+                <Button
+                  type="button" size="sm" variant={editVisibility === "public" ? "default" : "outline"}
+                  className="gap-1 h-7 text-xs"
+                  onClick={() => setEditVisibility("public")}
+                >
+                  <Globe className="w-3 h-3" /> Public
+                </Button>
+                <Button
+                  type="button" size="sm" variant={editVisibility === "private" ? "default" : "outline"}
+                  className="gap-1 h-7 text-xs"
+                  onClick={() => setEditVisibility("private")}
+                >
+                  <Lock className="w-3 h-3" /> Private
+                </Button>
+              </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={saveEdit} disabled={!editTitle.trim()}>Save</Button>
                 <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
