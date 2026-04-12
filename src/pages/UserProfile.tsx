@@ -4,12 +4,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { getAvatarUrl } from "@/hooks/use-auth";
+import { useUserFollowedMissions } from "@/hooks/use-mission-followers";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Pencil, ArrowRight } from "lucide-react";
+import { Pencil, ArrowRight, Globe, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 export default function UserProfile() {
@@ -70,6 +71,8 @@ export default function UserProfile() {
     },
     enabled: !!profile?.id,
   });
+
+  const { data: followedMissions } = useUserFollowedMissions(profile?.id);
 
   const updateUsername = useMutation({
     mutationFn: async (uname: string) => {
@@ -177,6 +180,34 @@ export default function UserProfile() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground font-mono">No active pledges.</p>
+          )}
+        </div>
+
+        {/* Followed missions */}
+        <div className="mt-8">
+          <h2 className="text-sm font-semibold font-mono uppercase tracking-wide text-muted-foreground mb-3">Missions</h2>
+          {followedMissions && followedMissions.length > 0 ? (
+            <div className="space-y-2">
+              {followedMissions.map((m: any) => (
+                <Link
+                  key={m.id}
+                  to={`/mission/${m.id}`}
+                  className="flex items-center justify-between rounded-lg border bg-card p-3 hover:bg-muted/50 transition-colors group"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm font-medium font-mono truncate">{m.title}</span>
+                    {m.visibility === "private" ? (
+                      <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+                    ) : (
+                      <Globe className="w-3 h-3 text-emerald-600 shrink-0" />
+                    )}
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground font-mono">Not following any missions.</p>
           )}
         </div>
       </main>

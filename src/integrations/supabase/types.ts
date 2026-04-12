@@ -379,6 +379,8 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           description: string | null
+          heat: number
+          heat_updated_at: string
           id: string
           status: string | null
           title: string
@@ -389,6 +391,8 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
+          heat?: number
+          heat_updated_at?: string
           id?: string
           status?: string | null
           title: string
@@ -399,10 +403,33 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
+          heat?: number
+          heat_updated_at?: string
           id?: string
           status?: string | null
           title?: string
           visibility?: string
+        }
+        Relationships: []
+      }
+      mission_followers: {
+        Row: {
+          followed_at: string
+          goal_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          followed_at?: string
+          goal_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          followed_at?: string
+          goal_id?: string
+          id?: string
+          user_id?: string
         }
         Relationships: []
       }
