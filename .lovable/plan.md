@@ -1,42 +1,32 @@
 
 
-## Plan: Drag Handle + Draggable Blocks with Persistent Positions
+## Plan: Unify BlockView layout to match MissionView
 
-### Summary
-
-Refactor the flowchart from flex-based tier layout to absolute positioning with saved coordinates, add a visible drag handle, and make connectors track actual block positions.
+### Goal
+Make every block level look identical to the mission level: a full-width view with two tabs at the top — "Block Flow" and "Discussions" — instead of the current side-by-side split with a right panel.
 
 ### Changes
 
-**1. Add drag handle to BlockCard** (`BlockFlowChart.tsx`)
-- Import `GripVertical` from lucide-react
-- Add a 6-dot grip icon (two columns of three dots) in the top-right corner of every block card
-- Style: muted gray, `w-4 h-4`, purely visual — no button semantics
-- Move `onMouseDown` from the card div to only the grip handle area
-- Clicking elsewhere on the card navigates (existing `onClick` behavior preserved)
-- Files blocks are already excluded from the flowchart, so no handle needed there
+**1. Rewrite BlockView layout** (`src/pages/BlockView.tsx`)
+- Remove the `grid grid-cols-1 lg:grid-cols-5` two-panel layout
+- Replace with the same `Tabs` pattern from MissionView:
+  - Tab 1: "Block Flow" — full-width `BlockFlowChart` (same props as now)
+  - Tab 2: "Discussions" — full-width `DiscussionPanel` (same props as now, using the existing reddit-style component unchanged)
+- Remove the "Chat" tab entirely (the `BlockChatPanel` import and usage)
+- Keep everything else: breadcrumb, title row, status badge, heat, actions (mark complete, pledge, delete), realtime indicator
+- Change `max-w-7xl` to `max-w-5xl` to match MissionView
 
-**2. Switch to absolute positioning layout** (`BlockFlowChart.tsx`)
-- Replace the tier-based flex layout with a container using `position: relative`
-- For each block: if `position_x`/`position_y` are set, place at those coordinates using `position: absolute`
-- For blocks without saved positions, compute default positions from the existing tier layout algorithm (tier index × vertical spacing, slot index × horizontal spacing) and use those as initial coordinates
-- On drag end, save the new absolute position via `useUpdateBlockPosition` (already wired)
-- The container's height/width adjusts dynamically to fit all block positions
-
-**3. Rewrite connectors to use actual coordinates** (`BlockFlowChart.tsx`)
-- Replace `TierConnectors` with a single SVG overlay that spans the entire container
-- For each dependency edge, draw a line from the source block's bottom-center to the target block's top-center using the blocks' known absolute positions
-- Lines update immediately during drag (use the drag offset to compute in-flight positions)
-- Keep existing styling: dashed for incomplete deps, solid for complete
-
-**4. Keep Files Block behavior unchanged**
-- Files Block is already filtered out of the flowchart blocks array
-- It remains pinned at the top in its own styled row, never draggable
+**2. No changes to DiscussionPanel or MissionFeed**
+- The reddit-style discussion component stays exactly as-is
+- MissionView stays exactly as-is
 
 ### Files to edit
-- `src/components/BlockFlowChart.tsx` — all changes are in this single file
+- `src/pages/BlockView.tsx` — layout refactor only
 
-### No database changes needed
-- `position_x` and `position_y` already exist on `blocks`
-- `useUpdateBlockPosition` hook already saves positions correctly
+### What stays the same
+- Breadcrumb navigation
+- Block title, status badge, heat indicator
+- Action buttons (mark complete, pledge, delete)
+- DiscussionPanel component and its styling
+- BlockFlowChart component
 
