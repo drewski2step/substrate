@@ -338,6 +338,41 @@ export type Database = {
         }
         Relationships: []
       }
+      flow_members: {
+        Row: {
+          goal_id: string
+          id: string
+          invited_by: string | null
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          goal_id: string
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          goal_id?: string
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flow_members_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goals: {
         Row: {
           created_at: string | null
@@ -347,6 +382,7 @@ export type Database = {
           id: string
           status: string | null
           title: string
+          visibility: string
         }
         Insert: {
           created_at?: string | null
@@ -356,6 +392,7 @@ export type Database = {
           id?: string
           status?: string | null
           title: string
+          visibility?: string
         }
         Update: {
           created_at?: string | null
@@ -365,6 +402,7 @@ export type Database = {
           id?: string
           status?: string | null
           title?: string
+          visibility?: string
         }
         Relationships: []
       }
@@ -474,7 +512,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_goal_visibility: { Args: { _goal_id: string }; Returns: string }
+      is_flow_member: {
+        Args: { _goal_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
