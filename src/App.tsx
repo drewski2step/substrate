@@ -13,6 +13,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import UserProfile from "./pages/UserProfile";
+import Discussions from "./pages/Discussions";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<MissionBoard />} />
+            <Route path="/discussions" element={<Discussions />} />
             <Route path="/mission/:missionId" element={<MissionView />} />
             <Route path="/mission/:missionId/block/:blockId" element={<BlockView />} />
             <Route path="/mission/:missionId/task/:taskId" element={<BlockView />} />
