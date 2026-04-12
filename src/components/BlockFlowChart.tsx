@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen, Pencil, Trash2, Star, GripVertical } from "lucide-react";
+import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen, Pencil, Trash2, Star, GripVertical, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -101,6 +101,7 @@ function BlockCard({
   const didDragRef = useRef(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
   const canComplete = block.status === "active" || block.status === "pending";
+  const isComplete = block.status === "complete";
   const status = block.status || "pending";
   const heat = block.heat || 0;
   const { data: counts } = useBlockDiscussionCounts(block.id);
@@ -173,17 +174,17 @@ function BlockCard({
     document.addEventListener("mouseup", handleMouseUp);
   }, [block.id, posX, posY, onDragEnd, onDragNearEdge, canvasWidth, canvasHeight]);
 
-  const left = posX + (dragOffset?.x || 0);
-  const top = posY + (dragOffset?.y || 0);
-
   return (
     <div
       className="absolute group"
+      onMouseDown={() => { didDragRef.current = false; }}
       style={{
-        left, top,
+        left: posX, top: posY,
+        transform: dragOffset ? `translate(${dragOffset.x}px, ${dragOffset.y}px)` : undefined,
         width: BLOCK_W,
         zIndex: dragOffset ? 50 : 1,
-        transition: dragOffset ? 'none' : 'left 0.2s ease, top 0.2s ease',
+        transition: dragOffset ? 'none' : 'left 0.2s ease, top 0.2s ease, transform 0.2s ease',
+        willChange: dragOffset ? 'transform' : undefined,
       }}
     >
       <div
@@ -283,6 +284,11 @@ function BlockCard({
           <button onClick={(e) => { e.stopPropagation(); onComplete(block.id); }}
             className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-substrate-open text-[10px] font-medium text-primary-foreground shadow-sm hover:bg-substrate-open/80 transition-colors"
           ><CheckCircle2 className="w-3 h-3" /> Done</button>
+        )}
+        {isComplete && (
+          <button onClick={(e) => { e.stopPropagation(); onComplete(block.id); }}
+            className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/80 transition-colors"
+          ><Undo2 className="w-3 h-3" /> Reopen</button>
         )}
         <button onClick={(e) => { e.stopPropagation(); onAddSuccessor(block); }}
           className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-accent text-[10px] font-medium text-accent-foreground shadow-sm hover:bg-accent/80 transition-colors"
@@ -618,7 +624,7 @@ export function BlockFlowChart({
     setCanvasExtra({ top: 0, right: 0, bottom: 0, left: 0 });
   }, [blocks, positions, goalId, updatePosition]);
 
-  const filesBlockLabel = parentBlockTitle ? `${parentBlockTitle} Files` : "Files";
+  const filesBlockLabel = "Files";
   const filesBlockId = filesBlock?.id || "";
 
   if (isLoading) {
@@ -674,7 +680,11 @@ export function BlockFlowChart({
                   posY={pos.y}
                   canvasWidth={containerWidth}
                   canvasHeight={containerHeight}
-                  onComplete={(id) => updateBlock.mutate({ id, goalId, updates: { status: "complete" } })}
+                  onComplete={(id) => {
+                    const b = blocks.find((bl) => bl.id === id);
+                    const newStatus = b?.status === "complete" ? "pending" : "complete";
+                    updateBlock.mutate({ id, goalId, updates: { status: newStatus } });
+                  }}
                   onAddSuccessor={(b) => { setSuccessorParent(b); setAddDialogOpen(true); }}
                   onEditDeps={setEditDepsBlock}
                   onNavigate={onNavigateToBlock}
