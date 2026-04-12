@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { AppHeader } from "@/components/AppHeader";
+import { Globe, Lock } from "lucide-react";
 import { CreateMissionDialog } from "@/components/CreateMissionDialog";
 import { useGoals } from "@/hooks/use-goals";
 import { Skeleton } from "@/components/ui/skeleton";
