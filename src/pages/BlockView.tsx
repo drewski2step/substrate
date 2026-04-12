@@ -89,7 +89,7 @@ export default function BlockView() {
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      <main className="mx-auto max-w-7xl px-6 py-8">
+      <main className="mx-auto max-w-5xl px-6 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4 font-mono">
           <Link to={`/mission/${missionId}`} className="hover:underline">{goal.title}</Link>
