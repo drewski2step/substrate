@@ -166,32 +166,23 @@ export default function BlockView() {
           </AlertDialog>
         </div>
 
-      {/* Two panels: Flow + Discussion/Chat */}
-        {/* Two panels: Flow + Discussion/Chat */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-          <div className="lg:col-span-3">
+        <Tabs defaultValue="flow" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="flow">Block Flow</TabsTrigger>
+            <TabsTrigger value="discussions">Discussions</TabsTrigger>
+          </TabsList>
+          <TabsContent value="flow" className="mt-4">
             <BlockFlowChart
               goalId={goal.id}
               parentBlockId={block.id}
               parentBlockTitle={block.title}
               onNavigateToBlock={(b) => navigate(`/mission/${missionId}/block/${b.id}`)}
             />
-          </div>
-          <div className="lg:col-span-2 min-h-[500px]">
-            <Tabs defaultValue="discussions" className="h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="discussions">Discussions</TabsTrigger>
-                <TabsTrigger value="chat">Chat</TabsTrigger>
-              </TabsList>
-              <TabsContent value="discussions" className="flex-1 mt-2">
-                <DiscussionPanel blockId={block.id} goalId={goal.id} />
-              </TabsContent>
-              <TabsContent value="chat" className="flex-1 mt-2">
-                <BlockChatPanel blockId={block.id} />
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
+          </TabsContent>
+          <TabsContent value="discussions" className="mt-4">
+            <DiscussionPanel blockId={block.id} goalId={goal.id} />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
