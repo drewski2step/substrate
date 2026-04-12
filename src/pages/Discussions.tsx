@@ -34,6 +34,7 @@ type EnrichedPost = DiscussionRow & {
   author_avatar_seed?: string;
   author_avatar_url?: string | null;
   reply_count: number;
+  relevance_score: number;
 };
 
 function useGlobalDiscussions() {
