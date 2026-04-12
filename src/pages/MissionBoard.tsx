@@ -15,7 +15,7 @@ export default function MissionBoard() {
         <div className="animate-fade-in-up flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold leading-tight">Missions</h1>
-            <p className="text-sm text-muted-foreground mt-1 font-mono">Active coordination goals on the substrate.</p>
+            <p className="text-sm text-muted-foreground mt-1 font-mono">Active coordination missions on the substrate.</p>
           </div>
           <CreateMissionDialog />
         </div>

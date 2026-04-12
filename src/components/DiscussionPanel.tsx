@@ -366,4 +366,4 @@ function ComposeDialog({ blockId, goalId, open, onOpenChange, defaultScope }: {
 }
 
 // Exported for use in MissionView feed
-export { ComposeDialog, PostCard, TypeBadge };
+export { ComposeDialog, PostCard, TypeBadge, ReplyThread };

@@ -36,7 +36,7 @@ export function AppHeader() {
                 location.pathname === "/" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              Goals
+              Missions
             </Link>
           </nav>
           {user && profile ? (

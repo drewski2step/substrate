@@ -58,7 +58,7 @@ export default function MissionView() {
       <div className="min-h-screen bg-background">
         <AppHeader />
         <main className="mx-auto max-w-5xl px-6 py-12">
-          <p className="text-muted-foreground">Goal not found.</p>
+          <p className="text-muted-foreground">Mission not found.</p>
         </main>
       </div>
     );
@@ -74,13 +74,13 @@ export default function MissionView() {
       <div className="min-h-screen bg-background">
         <AppHeader />
         <main className="mx-auto max-w-5xl px-6 py-12 text-center">
-          <p className="text-muted-foreground mb-4">This goal has been deleted.</p>
+          <p className="text-muted-foreground mb-4">This mission has been deleted.</p>
           {canUndo && user && (
             <Button
               variant="outline" className="gap-1.5"
               onClick={() => {
                 updateGoal.mutate({ id: goal.id, updates: { deleted_at: null } }, {
-                  onSuccess: () => toast.success("Goal restored"),
+                  onSuccess: () => toast.success("Mission restored"),
                   onError: (err: any) => toast.error(err.message),
                 });
               }}
@@ -118,7 +118,7 @@ export default function MissionView() {
 
     if (Object.keys(updates).length > 0) {
       updateGoal.mutate({ id: goal.id, updates }, {
-        onSuccess: () => { setEditing(false); toast.success("Goal updated"); },
+        onSuccess: () => { setEditing(false); toast.success("Mission updated"); },
         onError: (err: any) => toast.error(err.message),
       });
     } else {
@@ -130,7 +130,7 @@ export default function MissionView() {
     if (!user) return;
     logEdit.mutate({ entity_type: "goal", entity_id: goal.id, changed_by: user.id, field_changed: "deleted_at", old_value: null, new_value: new Date().toISOString() });
     updateGoal.mutate({ id: goal.id, updates: { deleted_at: new Date().toISOString() } as any }, {
-      onSuccess: () => { toast.success("Goal deleted. You can undo this within 24 hours."); navigate("/"); },
+      onSuccess: () => { toast.success("Mission deleted. You can undo this within 24 hours."); navigate("/"); },
       onError: (err: any) => toast.error(err.message),
     });
   };
@@ -141,7 +141,7 @@ export default function MissionView() {
       <main className="mx-auto max-w-5xl px-6 py-12">
         <div className="animate-fade-in-up">
           <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mb-6 font-mono">
-            <ArrowLeft className="w-3 h-3" /> Goals
+            <ArrowLeft className="w-3 h-3" /> Missions
           </Link>
 
           {editing ? (
@@ -196,8 +196,8 @@ export default function MissionView() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete this goal?</AlertDialogTitle>
-                          <AlertDialogDescription>Are you sure you want to delete this goal and all its blocks? This can be undone within 24 hours.</AlertDialogDescription>
+                          <AlertDialogTitle>Delete this mission?</AlertDialogTitle>
+                          <AlertDialogDescription>Are you sure you want to delete this mission and all its blocks? This can be undone within 24 hours.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
