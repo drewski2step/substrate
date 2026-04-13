@@ -91,7 +91,28 @@ export function useUpdateBlock() {
 export function useDeleteBlock() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, goalId }: { id: string; goalId: string }) => {
+    mutationFn: async ({ id, goalId, userId }: { id: string; goalId: string; userId?: string }) => {
+      // Rate-limit: new users (< 24h old) can't delete more than 5 blocks in 10 minutes
+      if (userId) {
+        const { data: profile } = await supabase.from("profiles").select("created_at").eq("id", userId).single();
+        if (profile) {
+          const accountAge = Date.now() - new Date(profile.created_at).getTime();
+          const isNewUser = accountAge < 24 * 60 * 60 * 1000;
+          if (isNewUser) {
+            const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+            const { count } = await supabase
+              .from("edit_history")
+              .select("id", { count: "exact", head: true })
+              .eq("entity_type", "block")
+              .eq("field_changed", "deleted_at")
+              .eq("changed_by", userId)
+              .gte("changed_at", tenMinAgo);
+            if ((count ?? 0) >= 5) {
+              throw new Error("You've deleted too many blocks too quickly. Please slow down.");
+            }
+          }
+        }
+      }
       const { error } = await supabase.from("blocks").delete().eq("id", id);
       if (error) throw error;
     },

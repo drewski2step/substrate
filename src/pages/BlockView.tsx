@@ -145,31 +145,33 @@ export default function BlockView() {
               <Star className="w-4 h-4" /> {userPledged ? "Pledged" : "Pledge"}
             </Button>
           )}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5">
-                <Trash2 className="w-4 h-4" /> Delete block
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete this block?</AlertDialogTitle>
-                <AlertDialogDescription>This will permanently remove the block, all its child blocks, and chat messages.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => {
-                    deleteBlock.mutate({ id: block.id, goalId: goal.id }, {
-                      onSuccess: () => navigate(backUrl),
-                      onError: (err: any) => toast.error(err.message),
-                    });
-                  }}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {user && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5">
+                  <Trash2 className="w-4 h-4" /> Delete block
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this block?</AlertDialogTitle>
+                  <AlertDialogDescription>This will permanently remove the block, all its child blocks, and chat messages.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      deleteBlock.mutate({ id: block.id, goalId: goal.id }, {
+                        onSuccess: () => navigate(backUrl),
+                        onError: (err: any) => toast.error(err.message),
+                      });
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
 
         <Tabs defaultValue="flow" className="w-full">
