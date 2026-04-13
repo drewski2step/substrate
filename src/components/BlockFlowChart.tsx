@@ -705,6 +705,7 @@ export function BlockFlowChart({
                   block={block}
                   posX={pos.x}
                   posY={pos.y}
+                  creatorName={block.created_by ? creatorMap.get(block.created_by) : undefined}
                   canvasWidth={containerWidth}
                   canvasHeight={containerHeight}
                   onComplete={(id) => {
