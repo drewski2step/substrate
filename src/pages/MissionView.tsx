@@ -129,6 +129,10 @@ export default function MissionView() {
 
   const handleDelete = () => {
     if (!user) return;
+    if (goal.created_by !== user.id) {
+      toast.error("Only the mission owner can delete this mission.");
+      return;
+    }
     logEdit.mutate({ entity_type: "goal", entity_id: goal.id, changed_by: user.id, field_changed: "deleted_at", old_value: null, new_value: new Date().toISOString() });
     updateGoal.mutate({ id: goal.id, updates: { deleted_at: new Date().toISOString() } as any }, {
       onSuccess: () => { toast.success("Mission deleted. You can undo this within 24 hours."); navigate("/"); },
@@ -190,23 +194,25 @@ export default function MissionView() {
                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={startEditing}>
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete this mission?</AlertDialogTitle>
-                          <AlertDialogDescription>Are you sure you want to delete this mission and all its blocks? This can be undone within 24 hours.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    {goal.created_by === user.id && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this mission?</AlertDialogTitle>
+                            <AlertDialogDescription>Are you sure you want to delete this mission and all its blocks? This can be undone within 24 hours.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 )}
               </div>
