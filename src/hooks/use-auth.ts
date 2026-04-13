@@ -65,6 +65,10 @@ export function useAuth() {
       },
     });
     if (error) throw error;
+    // If no session returned, signup didn't fully complete (e.g. confirmation required)
+    if (!data.session) {
+      throw new Error("Signup succeeded but no session was returned. Please try logging in.");
+    }
     return data;
   };
 
