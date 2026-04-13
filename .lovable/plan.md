@@ -1,26 +1,25 @@
 
 
-## Plan: Show creator avatar on every block card
+## Plan: Fix blocks not saving creator info
 
-### Problem
-Creator info exists but is displayed as barely-visible 9px text ("by username"). The user wants a prominent avatar display on every block, similar to how pledged blocks show avatar circles.
+### Root cause
+The `useCreateBlock` hook inserts blocks without setting `created_by`. Every block in the database has `created_by = null`, so the avatar/username display code works but has no data to show.
 
 ### Changes
 
+**`src/hooks/use-blocks.ts`**
+- Update `useCreateBlock` to accept the current user's ID and include `created_by: userId` in the insert payload
+- The mutation function signature changes to accept `created_by?: string`
+
 **`src/components/BlockFlowChart.tsx`**
+- Where `createBlock.mutate(...)` is called, pass `created_by: user?.id` so new blocks are attributed to the logged-in user
 
-1. Update the `BlockCard` props to accept `creatorAvatarSeed` in addition to `creatorName`
-2. Add a creator avatar circle (using DiceBear) that always appears on each block card — positioned in the bottom-left of the card, showing the creator's robot avatar with a hover tooltip displaying their username
-3. Update the batch profile fetch to also return `avatar_seed` (it already does — line 528)
-4. Update the `creatorMap` to store `{ username, avatar_seed }` instead of just the username string
-5. Pass both `creatorName` and `creatorAvatarSeed` when rendering each `BlockCard`
-6. The avatar will be styled like the pledger avatars: small circle (w-5 h-5), border, hover tooltip with username
+**`src/pages/MissionView.tsx`** (if blocks are created here too)
+- Same fix: pass `created_by` when creating blocks
 
-### Visual result
-Every block card will show a small robot avatar in the bottom-left corner (next to the heat/discussion badges row), with the creator's username on hover — matching the visual language of the pledger avatars.
+### Backfill existing blocks (optional)
+- Run a one-time SQL update to set `created_by` on existing blocks where possible (e.g. from `edit_history` records), or leave them as anonymous
 
-### Files to modify
-- `src/components/BlockFlowChart.tsx` — update `creatorMap`, `BlockCard` props, and rendering
-
-### No database or backend changes needed
+### No database schema changes needed
+The `created_by` column already exists on the `blocks` table.
 
