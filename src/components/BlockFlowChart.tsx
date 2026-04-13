@@ -83,11 +83,12 @@ async function batchSavePositions(
 // --- Block card with heat ---
 function BlockCard({
   block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
-  onDragNearEdge, canvasWidth, canvasHeight,
+  onDragNearEdge, canvasWidth, canvasHeight, creatorName,
 }: {
   block: BlockWithDeps;
   posX: number;
   posY: number;
+  creatorName?: string;
   onComplete: (id: string) => void;
   onAddSuccessor: (block: BlockWithDeps) => void;
   onEditDeps: (block: BlockWithDeps) => void;
@@ -229,6 +230,11 @@ function BlockCard({
             {block.description && (
               <span className={cn("text-[10px] leading-tight block mt-0.5 font-mono truncate", isPledged ? "text-indigo-300/70" : "text-muted-foreground")}>
                 {block.description}
+              </span>
+            )}
+            {creatorName && (
+              <span className={cn("text-[9px] leading-tight block mt-0.5 font-mono", isPledged ? "text-indigo-400/60" : "text-muted-foreground/60")}>
+                by {creatorName}
               </span>
             )}
           </div>
@@ -508,6 +514,27 @@ export function BlockFlowChart({
     });
   }, [allGoalBlocks, parentBlockId]);
 
+  // Batch-fetch creator profiles for all blocks
+  const creatorIds = useMemo(() => {
+    const ids = new Set<string>();
+    blocks.forEach((b) => { if (b.created_by) ids.add(b.created_by); });
+    return Array.from(ids);
+  }, [blocks]);
+  const { data: creatorProfiles } = useQuery({
+    queryKey: ["block-creator-profiles", creatorIds.join(",")],
+    queryFn: async () => {
+      if (creatorIds.length === 0) return [];
+      const { data } = await supabase.from("profiles").select("id, username").in("id", creatorIds);
+      return data || [];
+    },
+    enabled: creatorIds.length > 0,
+  });
+  const creatorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    creatorProfiles?.forEach((p) => map.set(p.id, p.username));
+    return map;
+  }, [creatorProfiles]);
+
   // Compute positions: pinned blocks keep saved coords, auto-laid blocks use grid
   const positions = useMemo(() => {
     const pinned = blocks.filter((b) => b.position_x != null && b.position_y != null);
@@ -678,6 +705,7 @@ export function BlockFlowChart({
                   block={block}
                   posX={pos.x}
                   posY={pos.y}
+                  creatorName={block.created_by ? creatorMap.get(block.created_by) : undefined}
                   canvasWidth={containerWidth}
                   canvasHeight={containerHeight}
                   onComplete={(id) => {

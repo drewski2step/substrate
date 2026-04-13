@@ -17,6 +17,8 @@ import { useBlockPledges, usePledgeBlock, useUnpledgeBlock } from "@/hooks/use-p
 import { useAuth } from "@/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 const statusLabel: Record<string, string> = { pending: "Pending", active: "Active", complete: "Complete", stalled: "Stalled" };
 const statusColor: Record<string, string> = {
@@ -41,6 +43,17 @@ export default function BlockView() {
   const unpledgeBlock = useUnpledgeBlock();
   const userPledged = pledges?.some((p) => p.user_id === user?.id);
   const deleteBlock = useDeleteBlock();
+
+  const creatorId = blocks?.find((b) => b.id === resolvedBlockId)?.created_by;
+  const { data: creatorProfile } = useQuery({
+    queryKey: ["profile", creatorId],
+    queryFn: async () => {
+      if (!creatorId) return null;
+      const { data } = await supabase.from("profiles").select("id, username, avatar_seed").eq("id", creatorId).maybeSingle();
+      return data;
+    },
+    enabled: !!creatorId,
+  });
 
   const isLoading = goalLoading || blocksLoading || ancestorsLoading;
   const block = blocks?.find((b) => b.id === resolvedBlockId);
@@ -117,7 +130,16 @@ export default function BlockView() {
           <RealtimeIndicator connected={connected} />
         </div>
 
-        {block.description && <p className="text-sm text-muted-foreground mb-4 max-w-2xl">{block.description}</p>}
+        {block.description && <p className="text-sm text-muted-foreground mb-2 max-w-2xl">{block.description}</p>}
+        {creatorProfile && (
+          <p className="text-xs text-muted-foreground mb-4 font-mono">
+            Created by{" "}
+            <Link to={`/profile/${creatorProfile.username}`} className="text-primary hover:underline">
+              {creatorProfile.username}
+            </Link>
+          </p>
+        )}
+        {!creatorProfile && <div className="mb-4" />}
 
         {/* Actions */}
         <div className="flex items-center gap-3 mb-8">

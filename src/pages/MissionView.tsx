@@ -13,6 +13,8 @@ import { useGoal, useUpdateGoal } from "@/hooks/use-goals";
 import { useBlocks } from "@/hooks/use-blocks";
 import { useLogEdit } from "@/hooks/use-edit-history";
 import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { BlockFlowChart } from "@/components/BlockFlowChart";
 import { MissionFeed } from "@/components/MissionFeed";
 
@@ -29,6 +31,16 @@ export default function MissionView() {
   const logEdit = useLogEdit();
   const { user } = useAuth();
   const { connected } = useRealtimeSync(missionId || "");
+  const creatorId = goal?.created_by;
+  const { data: creatorProfile } = useQuery({
+    queryKey: ["profile", creatorId],
+    queryFn: async () => {
+      if (!creatorId) return null;
+      const { data } = await supabase.from("profiles").select("id, username, avatar_seed").eq("id", creatorId).maybeSingle();
+      return data;
+    },
+    enabled: !!creatorId,
+  });
   const isLoading = goalLoading || blocksLoading;
 
   const [editing, setEditing] = useState(false);
@@ -217,6 +229,14 @@ export default function MissionView() {
                 )}
               </div>
               {goal.description && <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{goal.description}</p>}
+              {creatorProfile && (
+                <p className="text-xs text-muted-foreground mt-1 font-mono">
+                  Created by{" "}
+                  <Link to={`/profile/${creatorProfile.username}`} className="text-primary hover:underline">
+                    {creatorProfile.username}
+                  </Link>
+                </p>
+              )}
             </>
           )}
 
