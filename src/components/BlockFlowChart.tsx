@@ -514,6 +514,27 @@ export function BlockFlowChart({
     });
   }, [allGoalBlocks, parentBlockId]);
 
+  // Batch-fetch creator profiles for all blocks
+  const creatorIds = useMemo(() => {
+    const ids = new Set<string>();
+    blocks.forEach((b) => { if (b.created_by) ids.add(b.created_by); });
+    return Array.from(ids);
+  }, [blocks]);
+  const { data: creatorProfiles } = useQuery({
+    queryKey: ["block-creator-profiles", creatorIds.join(",")],
+    queryFn: async () => {
+      if (creatorIds.length === 0) return [];
+      const { data } = await supabase.from("profiles").select("id, username").in("id", creatorIds);
+      return data || [];
+    },
+    enabled: creatorIds.length > 0,
+  });
+  const creatorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    creatorProfiles?.forEach((p) => map.set(p.id, p.username));
+    return map;
+  }, [creatorProfiles]);
+
   // Compute positions: pinned blocks keep saved coords, auto-laid blocks use grid
   const positions = useMemo(() => {
     const pinned = blocks.filter((b) => b.position_x != null && b.position_y != null);
