@@ -23,7 +23,14 @@ export default function Login() {
       toast.success("Welcome back!");
       navigate("/");
     } catch (err: any) {
-      toast.error(err.message || "Failed to log in");
+      const msg = err.message || "";
+      if (msg.includes("Invalid login credentials")) {
+        toast.error("Incorrect email or password. Please try again.");
+      } else if (msg.includes("Email not confirmed")) {
+        toast.error("Your email has not been confirmed. Please use 'Forgot password' to reset and activate your account.");
+      } else {
+        toast.error(msg || "Failed to log in");
+      }
     } finally {
       setLoading(false);
     }
