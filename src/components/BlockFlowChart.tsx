@@ -401,11 +401,12 @@ function AddBlockDialog({ goalId, parentBlockId, dependsOnBlock, open, onOpenCha
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const createBlock = useCreateBlock();
+  const { user } = useAuth();
 
   const handleCreate = () => {
     if (!title.trim()) return;
     createBlock.mutate(
-      { goal_id: goalId, title: title.trim(), description: description.trim() || undefined, parent_block_id: parentBlockId || undefined, dependsOnId: dependsOnBlock?.id },
+      { goal_id: goalId, title: title.trim(), description: description.trim() || undefined, parent_block_id: parentBlockId || undefined, dependsOnId: dependsOnBlock?.id, created_by: user?.id },
       {
         onSuccess: () => { setTitle(""); setDescription(""); onOpenChange(false); },
         onError: (err: any) => toast.error(err.message),

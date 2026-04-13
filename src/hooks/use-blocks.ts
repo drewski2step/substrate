@@ -57,10 +57,10 @@ export function useBlocks(goalId: string) {
 export function useCreateBlock() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (block: { goal_id: string; title: string; description?: string; status?: string; dependsOnId?: string; parent_block_id?: string }) => {
+    mutationFn: async (block: { goal_id: string; title: string; description?: string; status?: string; dependsOnId?: string; parent_block_id?: string; created_by?: string }) => {
       const { data, error } = await supabase
         .from("blocks")
-        .insert({ goal_id: block.goal_id, title: block.title, description: block.description || null, status: block.status || "pending", parent_block_id: block.parent_block_id || null })
+        .insert({ goal_id: block.goal_id, title: block.title, description: block.description || null, status: block.status || "pending", parent_block_id: block.parent_block_id || null, created_by: block.created_by || null })
         .select()
         .single();
       if (error) throw error;
