@@ -83,11 +83,12 @@ async function batchSavePositions(
 // --- Block card with heat ---
 function BlockCard({
   block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
-  onDragNearEdge, canvasWidth, canvasHeight,
+  onDragNearEdge, canvasWidth, canvasHeight, creatorName,
 }: {
   block: BlockWithDeps;
   posX: number;
   posY: number;
+  creatorName?: string;
   onComplete: (id: string) => void;
   onAddSuccessor: (block: BlockWithDeps) => void;
   onEditDeps: (block: BlockWithDeps) => void;
@@ -229,6 +230,11 @@ function BlockCard({
             {block.description && (
               <span className={cn("text-[10px] leading-tight block mt-0.5 font-mono truncate", isPledged ? "text-indigo-300/70" : "text-muted-foreground")}>
                 {block.description}
+              </span>
+            )}
+            {creatorName && (
+              <span className={cn("text-[9px] leading-tight block mt-0.5 font-mono", isPledged ? "text-indigo-400/60" : "text-muted-foreground/60")}>
+                by {creatorName}
               </span>
             )}
           </div>
