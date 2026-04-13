@@ -17,6 +17,7 @@ import Discussions from "./pages/Discussions";
 
 const queryClient = new QueryClient();
 
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
