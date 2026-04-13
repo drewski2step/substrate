@@ -39,9 +39,14 @@ export function CreateMissionDialog() {
     );
   };
 
-  if (!user) {
-    return <AuthGate />;
-  }
+  const handleOpenChange = (o: boolean) => {
+    if (o && !user) {
+      navigate("/signup");
+      return;
+    }
+    if (!o) reset();
+    setOpen(o);
+  };
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); setOpen(o); }}>
