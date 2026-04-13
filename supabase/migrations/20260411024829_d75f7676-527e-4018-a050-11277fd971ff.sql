@@ -4,7 +4,7 @@ CREATE TABLE public.profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username text UNIQUE NOT NULL,
   avatar_url text,
-  avatar_seed text NOT NULL DEFAULT encode(gen_random_bytes(8), 'hex'),
+  avatar_seed text NOT NULL DEFAULT encode(extensions.gen_random_bytes(8), 'hex'),
   created_at timestamp with time zone NOT NULL DEFAULT now()
 );
 
@@ -47,7 +47,7 @@ BEGIN
   END LOOP;
 
   INSERT INTO public.profiles (id, username, avatar_seed)
-  VALUES (NEW.id, final_username, encode(gen_random_bytes(8), 'hex'));
+  VALUES (NEW.id, final_username, encode(extensions.gen_random_bytes(8), 'hex'));
   
   RETURN NEW;
 END;
