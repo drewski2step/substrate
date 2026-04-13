@@ -230,7 +230,7 @@ export default function MissionView() {
           <Tabs defaultValue="flowchart">
             <TabsList>
               <TabsTrigger value="flowchart">Block Flow</TabsTrigger>
-              <TabsTrigger value="feed">Mission Feed</TabsTrigger>
+              <TabsTrigger value="feed">Discussions</TabsTrigger>
             </TabsList>
             <TabsContent value="flowchart" className="mt-4">
               <BlockFlowChart
