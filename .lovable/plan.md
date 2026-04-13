@@ -1,31 +1,26 @@
 
 
-## Plan: Show creator profiles on missions and blocks
+## Plan: Show creator avatar on every block card
 
-### What changes
-Display the username (linked to their profile) of the person who created each mission and block, visible to all users.
+### Problem
+Creator info exists but is displayed as barely-visible 9px text ("by username"). The user wants a prominent avatar display on every block, similar to how pledged blocks show avatar circles.
 
-### 1. Mission page — show creator under title
-**`src/pages/MissionView.tsx`**
-- Add a query to fetch the creator's profile using `goal.created_by` from the `profiles` table
-- Below the mission title/description area, render "Created by [username]" with a link to `/profile/[username]`
+### Changes
 
-### 2. Block cards in flow chart — show creator
 **`src/components/BlockFlowChart.tsx`**
-- The `blocks` table has `created_by` but the flow chart doesn't display it
-- Batch-fetch profiles for all unique `created_by` IDs in the current block set
-- Show the creator username on each block card (small text below the title)
 
-### 3. Block detail page — show creator
-**`src/pages/BlockView.tsx`**
-- Fetch the profile for `block.created_by`
-- Display "Created by [username]" near the block title, linked to their profile
+1. Update the `BlockCard` props to accept `creatorAvatarSeed` in addition to `creatorName`
+2. Add a creator avatar circle (using DiceBear) that always appears on each block card — positioned in the bottom-left of the card, showing the creator's robot avatar with a hover tooltip displaying their username
+3. Update the batch profile fetch to also return `avatar_seed` (it already does — line 528)
+4. Update the `creatorMap` to store `{ username, avatar_seed }` instead of just the username string
+5. Pass both `creatorName` and `creatorAvatarSeed` when rendering each `BlockCard`
+6. The avatar will be styled like the pledger avatars: small circle (w-5 h-5), border, hover tooltip with username
+
+### Visual result
+Every block card will show a small robot avatar in the bottom-left corner (next to the heat/discussion badges row), with the creator's username on hover — matching the visual language of the pledger avatars.
 
 ### Files to modify
-- `src/pages/MissionView.tsx` — add creator profile fetch and display
-- `src/components/BlockFlowChart.tsx` — batch fetch creator profiles, show on cards
-- `src/pages/BlockView.tsx` — add creator profile fetch and display
+- `src/components/BlockFlowChart.tsx` — update `creatorMap`, `BlockCard` props, and rendering
 
-### No database changes needed
-The `profiles` table is publicly readable and `created_by` already exists on both `goals` and `blocks`.
+### No database or backend changes needed
 
