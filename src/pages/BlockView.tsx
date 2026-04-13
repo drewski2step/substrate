@@ -161,7 +161,7 @@ export default function BlockView() {
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={() => {
-                      deleteBlock.mutate({ id: block.id, goalId: goal.id }, {
+                      deleteBlock.mutate({ id: block.id, goalId: goal.id, userId: user?.id }, {
                         onSuccess: () => navigate(backUrl),
                         onError: (err: any) => toast.error(err.message),
                       });
