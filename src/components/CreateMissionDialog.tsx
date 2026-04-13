@@ -39,12 +39,17 @@ export function CreateMissionDialog() {
     );
   };
 
-  if (!user) {
-    return <AuthGate />;
-  }
+  const handleOpenChange = (o: boolean) => {
+    if (o && !user) {
+      navigate("/signup");
+      return;
+    }
+    if (!o) reset();
+    setOpen(o);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); setOpen(o); }}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button size="sm" className="gap-1.5">
           <Plus className="w-3.5 h-3.5" /> New Mission
