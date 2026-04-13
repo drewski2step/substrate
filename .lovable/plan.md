@@ -1,11 +1,20 @@
 
 
-## Plan: Force fresh production build
+## Plan: Show Join button and follower count to all users
+
+### Problem
+The `JoinMissionButton` component currently renders `<AuthGate>` for logged-out users, which replaces the "Join" button with a "Join the network to contribute" link. The follower count is hidden from logged-out users.
 
 ### Changes
 
-1. **`index.html`** — Update build comment from `<!-- build 2026-04-13 -->` to `<!-- build 2026-04-13b -->`
-2. **`src/main.tsx`** — Add `console.info('Substrate build 2026-04-13b');` before the `createRoot` call
+**`src/components/JoinMissionButton.tsx`**
+- Remove the early return that renders `<AuthGate>` for unauthenticated users
+- Always render the same button UI showing "Join" label and follower count
+- For logged-out users: on click, navigate to `/signup` (consistent with `CreateMissionDialog` behavior)
+- For logged-in users: existing toggle behavior (follow/unfollow) remains unchanged
 
-After changes, click **Publish → Update** to deploy.
+This is a single-file change. All other features (mission card stats, mission page header button, user profile followed missions section) are already implemented and working.
+
+### Files
+- `src/components/JoinMissionButton.tsx` — restructure to always show button with count
 
