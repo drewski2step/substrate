@@ -83,12 +83,13 @@ async function batchSavePositions(
 // --- Block card with heat ---
 function BlockCard({
   block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
-  onDragNearEdge, canvasWidth, canvasHeight, creatorName,
+  onDragNearEdge, canvasWidth, canvasHeight, creatorName, creatorAvatarSeed,
 }: {
   block: BlockWithDeps;
   posX: number;
   posY: number;
   creatorName?: string;
+  creatorAvatarSeed?: string;
   onComplete: (id: string) => void;
   onAddSuccessor: (block: BlockWithDeps) => void;
   onEditDeps: (block: BlockWithDeps) => void;
@@ -232,10 +233,26 @@ function BlockCard({
                 {block.description}
               </span>
             )}
-            {creatorName && (
-              <span className={cn("text-[9px] leading-tight block mt-0.5 font-mono", isPledged ? "text-indigo-400/60" : "text-muted-foreground/60")}>
-                by {creatorName}
-              </span>
+            {creatorAvatarSeed && (
+              <div className="flex items-center gap-1 mt-0.5">
+                <div className="group/creator relative">
+                  <img
+                    src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${creatorAvatarSeed}`}
+                    alt={creatorName || "creator"}
+                    className="w-4 h-4 rounded-full border border-border/50"
+                  />
+                  {creatorName && (
+                    <span className="absolute -top-5 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[8px] px-1 py-0.5 rounded opacity-0 group-hover/creator:opacity-100 whitespace-nowrap pointer-events-none z-30">
+                      {creatorName}
+                    </span>
+                  )}
+                </div>
+                {creatorName && (
+                  <span className={cn("text-[9px] leading-tight font-mono", isPledged ? "text-indigo-400/60" : "text-muted-foreground/60")}>
+                    {creatorName}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -524,14 +541,14 @@ export function BlockFlowChart({
     queryKey: ["block-creator-profiles", creatorIds.join(",")],
     queryFn: async () => {
       if (creatorIds.length === 0) return [];
-      const { data } = await supabase.from("profiles").select("id, username").in("id", creatorIds);
+      const { data } = await supabase.from("profiles").select("id, username, avatar_seed").in("id", creatorIds);
       return data || [];
     },
     enabled: creatorIds.length > 0,
   });
   const creatorMap = useMemo(() => {
-    const map = new Map<string, string>();
-    creatorProfiles?.forEach((p) => map.set(p.id, p.username));
+    const map = new Map<string, { username: string; avatar_seed: string }>();
+    creatorProfiles?.forEach((p) => map.set(p.id, { username: p.username, avatar_seed: p.avatar_seed }));
     return map;
   }, [creatorProfiles]);
 
@@ -705,7 +722,8 @@ export function BlockFlowChart({
                   block={block}
                   posX={pos.x}
                   posY={pos.y}
-                  creatorName={block.created_by ? creatorMap.get(block.created_by) : undefined}
+                  creatorName={block.created_by ? creatorMap.get(block.created_by)?.username : undefined}
+                  creatorAvatarSeed={block.created_by ? creatorMap.get(block.created_by)?.avatar_seed : undefined}
                   canvasWidth={containerWidth}
                   canvasHeight={containerHeight}
                   onComplete={(id) => {
