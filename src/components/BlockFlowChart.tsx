@@ -83,12 +83,13 @@ async function batchSavePositions(
 // --- Block card with heat ---
 function BlockCard({
   block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
-  onDragNearEdge, canvasWidth, canvasHeight, creatorName,
+  onDragNearEdge, canvasWidth, canvasHeight, creatorName, creatorAvatarSeed,
 }: {
   block: BlockWithDeps;
   posX: number;
   posY: number;
   creatorName?: string;
+  creatorAvatarSeed?: string;
   onComplete: (id: string) => void;
   onAddSuccessor: (block: BlockWithDeps) => void;
   onEditDeps: (block: BlockWithDeps) => void;
