@@ -1,16 +1,11 @@
 
 
-## Plan: Fix white screen on published site
+## Plan: Force fresh production build
 
-### Problem
-The published site at thesubstrate.lovable.app crashes with `supabaseUrl is required.` because the Vite build that was deployed does not have the `VITE_SUPABASE_URL` environment variable embedded. The preview works fine because the dev server injects these at runtime.
+### Changes
 
-### Fix
-Make a trivial change to force a new build deployment:
-- Add or update a harmless HTML comment in `index.html` (e.g., change the `<meta>` description or add a build timestamp comment)
-- This triggers a fresh Vite build that will include the environment variables
-- After the build completes, click **Publish → Update** to deploy the new build
+1. **`index.html`** — Update build comment from `<!-- build 2026-04-13 -->` to `<!-- build 2026-04-13b -->`
+2. **`src/main.tsx`** — Add `console.info('Substrate build 2026-04-13b');` before the `createRoot` call
 
-### Files
-- `index.html` — trivial edit to force rebuild
+After changes, click **Publish → Update** to deploy.
 
