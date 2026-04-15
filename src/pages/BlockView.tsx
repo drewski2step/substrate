@@ -32,6 +32,12 @@ const statusColor: Record<string, string> = {
 };
 
 export default function BlockView() {
+  const [editingBlock, setEditingBlock] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editStatus, setEditStatus] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
+  const [editRecurrence, setEditRecurrence] = useState("");
   const navigate = useNavigate();
   const { missionId, blockId, taskId } = useParams<{ missionId: string; blockId?: string; taskId?: string }>();
   const resolvedBlockId = blockId || taskId || "";
