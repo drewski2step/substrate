@@ -342,15 +342,17 @@ function BlockCard({
   );
 }
 
-// --- SVG connectors using absolute positions ---
+// --- SVG connectors with arrowheads ---
 function AbsoluteConnectors({
   blocks,
   positions,
   dragOffsets,
+  blockSizes,
 }: {
   blocks: BlockWithDeps[];
   positions: Map<string, { x: number; y: number }>;
   dragOffsets: Map<string, { x: number; y: number }>;
+  blockSizes?: Map<string, { w: number; h: number }>;
 }) {
   const blockMap = new Map(blocks.map((b) => [b.id, b]));
   const lines: { fromX: number; fromY: number; toX: number; toY: number; complete: boolean }[] = [];
@@ -359,7 +361,8 @@ function AbsoluteConnectors({
     const fromPos = positions.get(block.id);
     if (!fromPos) return;
     const fromOffset = dragOffsets.get(block.id);
-    const fromCenterX = fromPos.x + (fromOffset?.x || 0) + BLOCK_W / 2;
+    const fromSize = blockSizes?.get(block.id) || { w: BLOCK_W, h: BLOCK_H };
+    const fromCenterX = fromPos.x + (fromOffset?.x || 0) + fromSize.w / 2;
     const fromTopY = fromPos.y + (fromOffset?.y || 0);
 
     block.dependencies.forEach((depId) => {
@@ -367,8 +370,9 @@ function AbsoluteConnectors({
       if (!toPos) return;
       const dep = blockMap.get(depId);
       const toOffset = dragOffsets.get(depId);
-      const toCenterX = toPos.x + (toOffset?.x || 0) + BLOCK_W / 2;
-      const toBottomY = toPos.y + (toOffset?.y || 0) + BLOCK_H;
+      const toSize = blockSizes?.get(depId) || { w: BLOCK_W, h: BLOCK_H };
+      const toCenterX = toPos.x + (toOffset?.x || 0) + toSize.w / 2;
+      const toBottomY = toPos.y + (toOffset?.y || 0) + toSize.h;
 
       lines.push({
         fromX: fromCenterX,
@@ -384,14 +388,23 @@ function AbsoluteConnectors({
 
   return (
     <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: 0 }}>
+      <defs>
+        <marker id="arrow-default" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L0,6 L8,3 Z" fill="hsl(var(--border))" />
+        </marker>
+        <marker id="arrow-complete" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L0,6 L8,3 Z" fill="hsl(var(--substrate-complete))" />
+        </marker>
+      </defs>
       {lines.map((line, i) => (
         <line
           key={i}
-          x1={line.fromX} y1={line.fromY}
-          x2={line.toX} y2={line.toY}
+          x1={line.toX} y1={line.toY}
+          x2={line.fromX} y2={line.fromY}
           stroke={line.complete ? "hsl(var(--substrate-complete))" : "hsl(var(--border))"}
           strokeWidth={line.complete ? 2 : 1.5}
           strokeDasharray={line.complete ? undefined : "4 3"}
+          markerEnd={line.complete ? "url(#arrow-complete)" : "url(#arrow-default)"}
         />
       ))}
     </svg>
