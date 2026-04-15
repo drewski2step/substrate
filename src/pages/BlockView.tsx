@@ -3,7 +3,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Trash2, ChevronLeft, Flame, Star, FolderOpen } from "lucide-react";
+import { Trash2, ChevronLeft, Flame, Star, FolderOpen, Pencil, Calendar, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGoal } from "@/hooks/use-goals";
 import { useBlocks, useUpdateBlock, useDeleteBlock } from "@/hooks/use-blocks";
@@ -16,6 +16,9 @@ import { RealtimeIndicator } from "@/components/RealtimeIndicator";
 import { useBlockPledges, usePledgeBlock, useUnpledgeBlock } from "@/hooks/use-pledges";
 import { useAuth } from "@/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -119,6 +122,11 @@ export default function BlockView() {
         {/* Title row */}
         <div className="flex items-center gap-3 mb-2">
           <h1 className="text-2xl font-bold">{block.title}</h1>
+          {user && (
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditingBlock(true)}>
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+          )}
           <span className={cn("inline-flex items-center px-3 py-1 text-xs font-medium rounded border", statusColor[status] || statusColor.pending)}>
             {statusLabel[status] || status}
           </span>
@@ -131,6 +139,25 @@ export default function BlockView() {
         </div>
 
         {block.description && <p className="text-sm text-muted-foreground mb-2 max-w-2xl">{block.description}</p>}
+        
+        {/* Deadline & recurrence info */}
+        <div className="flex items-center gap-3 mb-2">
+          {(block as any).deadline_at && (
+            <span className={cn("inline-flex items-center gap-1 text-xs font-mono",
+              new Date((block as any).deadline_at) < new Date() ? "text-red-500" : "text-muted-foreground"
+            )}>
+              <Calendar className="w-3.5 h-3.5" />
+              Deadline: {new Date((block as any).deadline_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+            </span>
+          )}
+          {(block as any).recurrence_interval && (
+            <span className="inline-flex items-center gap-1 text-xs font-mono text-muted-foreground">
+              <Clock className="w-3.5 h-3.5" />
+              Recurs {(block as any).recurrence_interval}
+            </span>
+          )}
+        </div>
+
         {creatorProfile && (
           <p className="text-xs text-muted-foreground mb-4 font-mono">
             Created by{" "}
