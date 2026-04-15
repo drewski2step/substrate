@@ -247,6 +247,76 @@ export default function BlockView() {
             <DiscussionPanel blockId={block.id} goalId={goal.id} />
           </TabsContent>
         </Tabs>
+
+        {/* Edit block dialog */}
+        <Dialog open={editingBlock} onOpenChange={(o) => { if (!o) setEditingBlock(false); else {
+          setEditTitle(block.title);
+          setEditDesc(block.description || "");
+          setEditStatus(block.status || "pending");
+          setEditDeadline((block as any).deadline_at ? new Date((block as any).deadline_at).toISOString().slice(0, 16) : "");
+          setEditRecurrence((block as any).recurrence_interval || "");
+        }}}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-sm">Edit block</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input placeholder="Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-sm" />
+              <Textarea placeholder="Description" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="text-sm min-h-[60px]" />
+              <Select value={editStatus} onValueChange={setEditStatus}>
+                <SelectTrigger className="text-xs h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="complete">Complete</SelectItem>
+                  <SelectItem value="stalled">Stalled</SelectItem>
+                </SelectContent>
+              </Select>
+              <div>
+                <label className="text-xs text-muted-foreground font-medium flex items-center gap-1 mb-1">
+                  <Calendar className="w-3 h-3" /> Deadline
+                </label>
+                <Input type="datetime-local" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} className="text-sm" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground font-medium flex items-center gap-1 mb-1">
+                  <Clock className="w-3 h-3" /> Recurring reopen
+                </label>
+                <Select value={editRecurrence} onValueChange={setEditRecurrence}>
+                  <SelectTrigger className="text-xs h-8"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="biweekly">Every 2 weeks</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button size="sm" disabled={!editTitle.trim()} onClick={async () => {
+                if (!user || !editTitle.trim()) return;
+                const updates: any = {};
+                if (editTitle.trim() !== block.title) updates.title = editTitle.trim();
+                if (editDesc.trim() !== (block.description || "")) updates.description = editDesc.trim() || null;
+                if (editStatus !== (block.status || "pending")) updates.status = editStatus;
+                const newDeadline = editDeadline ? new Date(editDeadline).toISOString() : null;
+                if (newDeadline !== ((block as any).deadline_at || null)) updates.deadline_at = newDeadline;
+                const newRecurrence = editRecurrence || null;
+                if (newRecurrence !== ((block as any).recurrence_interval || null)) updates.recurrence_interval = newRecurrence;
+                if (Object.keys(updates).length > 0) {
+                  updateBlock.mutate({ id: block.id, goalId: goal.id, updates }, {
+                    onSuccess: () => { setEditingBlock(false); toast.success("Block updated"); },
+                    onError: (err: any) => toast.error(err.message),
+                  });
+                } else {
+                  setEditingBlock(false);
+                }
+              }}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
