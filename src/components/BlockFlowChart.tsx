@@ -417,22 +417,23 @@ function AddBlockDialog({ goalId, parentBlockId, dependsOnBlock, open, onOpenCha
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [deadlineAt, setDeadlineAt] = useState("");
   const createBlock = useCreateBlock();
   const { user } = useAuth();
 
   const handleCreate = () => {
     if (!title.trim()) return;
     createBlock.mutate(
-      { goal_id: goalId, title: title.trim(), description: description.trim() || undefined, parent_block_id: parentBlockId || undefined, dependsOnId: dependsOnBlock?.id, created_by: user?.id },
+      { goal_id: goalId, title: title.trim(), description: description.trim() || undefined, parent_block_id: parentBlockId || undefined, dependsOnId: dependsOnBlock?.id, created_by: user?.id, deadline_at: deadlineAt || undefined },
       {
-        onSuccess: () => { setTitle(""); setDescription(""); onOpenChange(false); },
+        onSuccess: () => { setTitle(""); setDescription(""); setDeadlineAt(""); onOpenChange(false); },
         onError: (err: any) => toast.error(err.message),
       }
     );
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { setTitle(""); setDescription(""); } onOpenChange(o); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { setTitle(""); setDescription(""); setDeadlineAt(""); } onOpenChange(o); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-sm">
@@ -442,6 +443,12 @@ function AddBlockDialog({ goalId, parentBlockId, dependsOnBlock, open, onOpenCha
         <div className="space-y-3">
           <Input placeholder="Block title" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
           <Textarea placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} className="text-sm min-h-[60px]" />
+          <div>
+            <label className="text-xs text-muted-foreground font-medium flex items-center gap-1 mb-1">
+              <Calendar className="w-3 h-3" /> Deadline (optional)
+            </label>
+            <Input type="datetime-local" value={deadlineAt} onChange={(e) => setDeadlineAt(e.target.value)} className="text-sm" />
+          </div>
         </div>
         <DialogFooter>
           <Button size="sm" onClick={handleCreate} disabled={!title.trim() || createBlock.isPending}>
@@ -802,6 +809,8 @@ function EditBlockDialog({ block, goalId, open, onOpenChange }: {
   const [title, setTitle] = useState(block.title);
   const [description, setDescription] = useState(block.description || "");
   const [status, setStatus] = useState(block.status || "pending");
+  const [deadlineAt, setDeadlineAt] = useState((block as any).deadline_at ? new Date((block as any).deadline_at).toISOString().slice(0, 16) : "");
+  const [recurrenceInterval, setRecurrenceInterval] = useState((block as any).recurrence_interval || "");
   const updateBlock = useUpdateBlock();
   const deleteBlock = useDeleteBlock();
   const logEdit = useLogEdit();
@@ -822,6 +831,14 @@ function EditBlockDialog({ block, goalId, open, onOpenChange }: {
     if (title.trim() !== block.title) updates.title = title.trim();
     if (description.trim() !== (block.description || "")) updates.description = description.trim() || null;
     if (status !== (block.status || "pending")) updates.status = status;
+    
+    const newDeadline = deadlineAt ? new Date(deadlineAt).toISOString() : null;
+    const oldDeadline = (block as any).deadline_at || null;
+    if (newDeadline !== oldDeadline) updates.deadline_at = newDeadline;
+    
+    const newRecurrence = recurrenceInterval || null;
+    const oldRecurrence = (block as any).recurrence_interval || null;
+    if (newRecurrence !== oldRecurrence) updates.recurrence_interval = newRecurrence;
 
     if (Object.keys(updates).length > 0) {
       updateBlock.mutate({ id: block.id, goalId, updates }, {
@@ -862,6 +879,29 @@ function EditBlockDialog({ block, goalId, open, onOpenChange }: {
               <SelectItem value="stalled">Stalled</SelectItem>
             </SelectContent>
           </Select>
+          <div>
+            <label className="text-xs text-muted-foreground font-medium flex items-center gap-1 mb-1">
+              <Calendar className="w-3 h-3" /> Deadline
+            </label>
+            <Input type="datetime-local" value={deadlineAt} onChange={(e) => setDeadlineAt(e.target.value)} className="text-sm" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground font-medium flex items-center gap-1 mb-1">
+              <Clock className="w-3 h-3" /> Recurring reopen
+            </label>
+            <Select value={recurrenceInterval} onValueChange={setRecurrenceInterval}>
+              <SelectTrigger className="text-xs h-8">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="biweekly">Every 2 weeks</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <DialogFooter className="flex justify-between">
           {user && (
