@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Trash2, ChevronLeft, Flame, Star, FolderOpen } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Trash2, ChevronLeft, Flame, Star, FolderOpen, Pencil, Calendar, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGoal } from "@/hooks/use-goals";
 import { useBlocks, useUpdateBlock, useDeleteBlock } from "@/hooks/use-blocks";
@@ -16,6 +18,9 @@ import { RealtimeIndicator } from "@/components/RealtimeIndicator";
 import { useBlockPledges, usePledgeBlock, useUnpledgeBlock } from "@/hooks/use-pledges";
 import { useAuth } from "@/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -29,6 +34,12 @@ const statusColor: Record<string, string> = {
 };
 
 export default function BlockView() {
+  const [editingBlock, setEditingBlock] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editStatus, setEditStatus] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
+  const [editRecurrence, setEditRecurrence] = useState("");
   const navigate = useNavigate();
   const { missionId, blockId, taskId } = useParams<{ missionId: string; blockId?: string; taskId?: string }>();
   const resolvedBlockId = blockId || taskId || "";
@@ -119,6 +130,11 @@ export default function BlockView() {
         {/* Title row */}
         <div className="flex items-center gap-3 mb-2">
           <h1 className="text-2xl font-bold">{block.title}</h1>
+          {user && (
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditingBlock(true)}>
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+          )}
           <span className={cn("inline-flex items-center px-3 py-1 text-xs font-medium rounded border", statusColor[status] || statusColor.pending)}>
             {statusLabel[status] || status}
           </span>
@@ -131,6 +147,25 @@ export default function BlockView() {
         </div>
 
         {block.description && <p className="text-sm text-muted-foreground mb-2 max-w-2xl">{block.description}</p>}
+        
+        {/* Deadline & recurrence info */}
+        <div className="flex items-center gap-3 mb-2">
+          {(block as any).deadline_at && (
+            <span className={cn("inline-flex items-center gap-1 text-xs font-mono",
+              new Date((block as any).deadline_at) < new Date() ? "text-red-500" : "text-muted-foreground"
+            )}>
+              <Calendar className="w-3.5 h-3.5" />
+              Deadline: {new Date((block as any).deadline_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+            </span>
+          )}
+          {(block as any).recurrence_interval && (
+            <span className="inline-flex items-center gap-1 text-xs font-mono text-muted-foreground">
+              <Clock className="w-3.5 h-3.5" />
+              Recurs {(block as any).recurrence_interval}
+            </span>
+          )}
+        </div>
+
         {creatorProfile && (
           <p className="text-xs text-muted-foreground mb-4 font-mono">
             Created by{" "}
@@ -213,6 +248,76 @@ export default function BlockView() {
             <DiscussionPanel blockId={block.id} goalId={goal.id} />
           </TabsContent>
         </Tabs>
+
+        {/* Edit block dialog */}
+        <Dialog open={editingBlock} onOpenChange={(o) => { if (!o) setEditingBlock(false); else {
+          setEditTitle(block.title);
+          setEditDesc(block.description || "");
+          setEditStatus(block.status || "pending");
+          setEditDeadline((block as any).deadline_at ? new Date((block as any).deadline_at).toISOString().slice(0, 16) : "");
+          setEditRecurrence((block as any).recurrence_interval || "");
+        }}}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-sm">Edit block</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input placeholder="Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-sm" />
+              <Textarea placeholder="Description" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="text-sm min-h-[60px]" />
+              <Select value={editStatus} onValueChange={setEditStatus}>
+                <SelectTrigger className="text-xs h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="complete">Complete</SelectItem>
+                  <SelectItem value="stalled">Stalled</SelectItem>
+                </SelectContent>
+              </Select>
+              <div>
+                <label className="text-xs text-muted-foreground font-medium flex items-center gap-1 mb-1">
+                  <Calendar className="w-3 h-3" /> Deadline
+                </label>
+                <Input type="datetime-local" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} className="text-sm" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground font-medium flex items-center gap-1 mb-1">
+                  <Clock className="w-3 h-3" /> Recurring reopen
+                </label>
+                <Select value={editRecurrence} onValueChange={setEditRecurrence}>
+                  <SelectTrigger className="text-xs h-8"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="biweekly">Every 2 weeks</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button size="sm" disabled={!editTitle.trim()} onClick={async () => {
+                if (!user || !editTitle.trim()) return;
+                const updates: any = {};
+                if (editTitle.trim() !== block.title) updates.title = editTitle.trim();
+                if (editDesc.trim() !== (block.description || "")) updates.description = editDesc.trim() || null;
+                if (editStatus !== (block.status || "pending")) updates.status = editStatus;
+                const newDeadline = editDeadline ? new Date(editDeadline).toISOString() : null;
+                if (newDeadline !== ((block as any).deadline_at || null)) updates.deadline_at = newDeadline;
+                const newRecurrence = editRecurrence || null;
+                if (newRecurrence !== ((block as any).recurrence_interval || null)) updates.recurrence_interval = newRecurrence;
+                if (Object.keys(updates).length > 0) {
+                  updateBlock.mutate({ id: block.id, goalId: goal.id, updates }, {
+                    onSuccess: () => { setEditingBlock(false); toast.success("Block updated"); },
+                    onError: (err: any) => toast.error(err.message),
+                  });
+                } else {
+                  setEditingBlock(false);
+                }
+              }}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

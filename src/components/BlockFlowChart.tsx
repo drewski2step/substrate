@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen, Pencil, Trash2, Star, GripVertical, Undo2 } from "lucide-react";
+import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen, Pencil, Trash2, Star, GripVertical, Undo2, Clock, Calendar, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,8 +38,12 @@ function getFlameColor(heat: number): string {
   return "text-red-500";
 }
 
-const BLOCK_W = 192;
-const BLOCK_H = 80;
+const DEFAULT_BLOCK_W = 192;
+const DEFAULT_BLOCK_H = 80;
+const MIN_BLOCK_W = 140;
+const MIN_BLOCK_H = 60;
+const BLOCK_W = DEFAULT_BLOCK_W;
+const BLOCK_H = DEFAULT_BLOCK_H;
 const GAP_X = 24;
 const GAP_Y = 24;
 const COLS = 3;
@@ -280,6 +284,21 @@ function BlockCard({
 
         {/* Heat + discussion badges */}
         <div className={cn("flex items-center gap-2 mt-1.5 flex-wrap relative z-10", isPledged && "text-indigo-300")}>
+          {/* Deadline badge */}
+          {(block as any).deadline_at && (
+            <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums",
+              new Date((block as any).deadline_at) < new Date() ? "text-red-500" : isPledged ? "text-indigo-300" : "text-muted-foreground"
+            )}>
+              <Calendar className="w-3 h-3" />
+              {new Date((block as any).deadline_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            </span>
+          )}
+          {/* Recurrence badge */}
+          {(block as any).recurrence_interval && (
+            <span className={cn("flex items-center gap-0.5 text-[10px] font-mono", isPledged ? "text-indigo-300" : "text-muted-foreground")}>
+              <Clock className="w-3 h-3" />{(block as any).recurrence_interval}
+            </span>
+          )}
           {heat > 0 && (
             <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums", isPledged ? "text-amber-300" : getFlameColor(heat))}>
               <Flame className="w-3 h-3" />{heat}
@@ -338,15 +357,17 @@ function BlockCard({
   );
 }
 
-// --- SVG connectors using absolute positions ---
+// --- SVG connectors with arrowheads ---
 function AbsoluteConnectors({
   blocks,
   positions,
   dragOffsets,
+  blockSizes,
 }: {
   blocks: BlockWithDeps[];
   positions: Map<string, { x: number; y: number }>;
   dragOffsets: Map<string, { x: number; y: number }>;
+  blockSizes?: Map<string, { w: number; h: number }>;
 }) {
   const blockMap = new Map(blocks.map((b) => [b.id, b]));
   const lines: { fromX: number; fromY: number; toX: number; toY: number; complete: boolean }[] = [];
@@ -355,7 +376,8 @@ function AbsoluteConnectors({
     const fromPos = positions.get(block.id);
     if (!fromPos) return;
     const fromOffset = dragOffsets.get(block.id);
-    const fromCenterX = fromPos.x + (fromOffset?.x || 0) + BLOCK_W / 2;
+    const fromSize = blockSizes?.get(block.id) || { w: BLOCK_W, h: BLOCK_H };
+    const fromCenterX = fromPos.x + (fromOffset?.x || 0) + fromSize.w / 2;
     const fromTopY = fromPos.y + (fromOffset?.y || 0);
 
     block.dependencies.forEach((depId) => {
@@ -363,8 +385,9 @@ function AbsoluteConnectors({
       if (!toPos) return;
       const dep = blockMap.get(depId);
       const toOffset = dragOffsets.get(depId);
-      const toCenterX = toPos.x + (toOffset?.x || 0) + BLOCK_W / 2;
-      const toBottomY = toPos.y + (toOffset?.y || 0) + BLOCK_H;
+      const toSize = blockSizes?.get(depId) || { w: BLOCK_W, h: BLOCK_H };
+      const toCenterX = toPos.x + (toOffset?.x || 0) + toSize.w / 2;
+      const toBottomY = toPos.y + (toOffset?.y || 0) + toSize.h;
 
       lines.push({
         fromX: fromCenterX,
@@ -380,14 +403,23 @@ function AbsoluteConnectors({
 
   return (
     <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: 0 }}>
+      <defs>
+        <marker id="arrow-default" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L0,6 L8,3 Z" fill="hsl(var(--border))" />
+        </marker>
+        <marker id="arrow-complete" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L0,6 L8,3 Z" fill="hsl(var(--substrate-complete))" />
+        </marker>
+      </defs>
       {lines.map((line, i) => (
         <line
           key={i}
-          x1={line.fromX} y1={line.fromY}
-          x2={line.toX} y2={line.toY}
+          x1={line.toX} y1={line.toY}
+          x2={line.fromX} y2={line.fromY}
           stroke={line.complete ? "hsl(var(--substrate-complete))" : "hsl(var(--border))"}
           strokeWidth={line.complete ? 2 : 1.5}
           strokeDasharray={line.complete ? undefined : "4 3"}
+          markerEnd={line.complete ? "url(#arrow-complete)" : "url(#arrow-default)"}
         />
       ))}
     </svg>
@@ -400,22 +432,23 @@ function AddBlockDialog({ goalId, parentBlockId, dependsOnBlock, open, onOpenCha
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [deadlineAt, setDeadlineAt] = useState("");
   const createBlock = useCreateBlock();
   const { user } = useAuth();
 
   const handleCreate = () => {
     if (!title.trim()) return;
     createBlock.mutate(
-      { goal_id: goalId, title: title.trim(), description: description.trim() || undefined, parent_block_id: parentBlockId || undefined, dependsOnId: dependsOnBlock?.id, created_by: user?.id },
+      { goal_id: goalId, title: title.trim(), description: description.trim() || undefined, parent_block_id: parentBlockId || undefined, dependsOnId: dependsOnBlock?.id, created_by: user?.id, deadline_at: deadlineAt || undefined },
       {
-        onSuccess: () => { setTitle(""); setDescription(""); onOpenChange(false); },
+        onSuccess: () => { setTitle(""); setDescription(""); setDeadlineAt(""); onOpenChange(false); },
         onError: (err: any) => toast.error(err.message),
       }
     );
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { setTitle(""); setDescription(""); } onOpenChange(o); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { setTitle(""); setDescription(""); setDeadlineAt(""); } onOpenChange(o); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-sm">
@@ -425,6 +458,12 @@ function AddBlockDialog({ goalId, parentBlockId, dependsOnBlock, open, onOpenCha
         <div className="space-y-3">
           <Input placeholder="Block title" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
           <Textarea placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} className="text-sm min-h-[60px]" />
+          <div>
+            <label className="text-xs text-muted-foreground font-medium flex items-center gap-1 mb-1">
+              <Calendar className="w-3 h-3" /> Deadline (optional)
+            </label>
+            <Input type="datetime-local" value={deadlineAt} onChange={(e) => setDeadlineAt(e.target.value)} className="text-sm" />
+          </div>
         </div>
         <DialogFooter>
           <Button size="sm" onClick={handleCreate} disabled={!title.trim() || createBlock.isPending}>
@@ -714,7 +753,7 @@ export function BlockFlowChart({
             className="relative border border-dashed border-muted-foreground/20 rounded-lg"
             style={{ width: containerWidth, height: containerHeight, transition: 'width 0.3s ease, height 0.3s ease' }}
           >
-            <AbsoluteConnectors blocks={blocks} positions={positions} dragOffsets={new Map()} />
+            <AbsoluteConnectors blocks={blocks} positions={positions} dragOffsets={new Map()} blockSizes={new Map()} />
             {blocks.map((block) => {
               const pos = positions.get(block.id) || { x: 0, y: 0 };
               return (
@@ -785,6 +824,8 @@ function EditBlockDialog({ block, goalId, open, onOpenChange }: {
   const [title, setTitle] = useState(block.title);
   const [description, setDescription] = useState(block.description || "");
   const [status, setStatus] = useState(block.status || "pending");
+  const [deadlineAt, setDeadlineAt] = useState((block as any).deadline_at ? new Date((block as any).deadline_at).toISOString().slice(0, 16) : "");
+  const [recurrenceInterval, setRecurrenceInterval] = useState((block as any).recurrence_interval || "");
   const updateBlock = useUpdateBlock();
   const deleteBlock = useDeleteBlock();
   const logEdit = useLogEdit();
@@ -805,6 +846,14 @@ function EditBlockDialog({ block, goalId, open, onOpenChange }: {
     if (title.trim() !== block.title) updates.title = title.trim();
     if (description.trim() !== (block.description || "")) updates.description = description.trim() || null;
     if (status !== (block.status || "pending")) updates.status = status;
+    
+    const newDeadline = deadlineAt ? new Date(deadlineAt).toISOString() : null;
+    const oldDeadline = (block as any).deadline_at || null;
+    if (newDeadline !== oldDeadline) updates.deadline_at = newDeadline;
+    
+    const newRecurrence = recurrenceInterval || null;
+    const oldRecurrence = (block as any).recurrence_interval || null;
+    if (newRecurrence !== oldRecurrence) updates.recurrence_interval = newRecurrence;
 
     if (Object.keys(updates).length > 0) {
       updateBlock.mutate({ id: block.id, goalId, updates }, {
@@ -845,6 +894,29 @@ function EditBlockDialog({ block, goalId, open, onOpenChange }: {
               <SelectItem value="stalled">Stalled</SelectItem>
             </SelectContent>
           </Select>
+          <div>
+            <label className="text-xs text-muted-foreground font-medium flex items-center gap-1 mb-1">
+              <Calendar className="w-3 h-3" /> Deadline
+            </label>
+            <Input type="datetime-local" value={deadlineAt} onChange={(e) => setDeadlineAt(e.target.value)} className="text-sm" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground font-medium flex items-center gap-1 mb-1">
+              <Clock className="w-3 h-3" /> Recurring reopen
+            </label>
+            <Select value={recurrenceInterval} onValueChange={setRecurrenceInterval}>
+              <SelectTrigger className="text-xs h-8">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="biweekly">Every 2 weeks</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <DialogFooter className="flex justify-between">
           {user && (
