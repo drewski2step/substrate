@@ -38,8 +38,12 @@ function getFlameColor(heat: number): string {
   return "text-red-500";
 }
 
-const BLOCK_W = 192;
-const BLOCK_H = 80;
+const DEFAULT_BLOCK_W = 192;
+const DEFAULT_BLOCK_H = 80;
+const MIN_BLOCK_W = 140;
+const MIN_BLOCK_H = 60;
+const BLOCK_W = DEFAULT_BLOCK_W;
+const BLOCK_H = DEFAULT_BLOCK_H;
 const GAP_X = 24;
 const GAP_Y = 24;
 const COLS = 3;
