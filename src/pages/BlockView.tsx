@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Trash2, ChevronLeft, Flame, Star, FolderOpen, Pencil, Calendar, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGoal } from "@/hooks/use-goals";
