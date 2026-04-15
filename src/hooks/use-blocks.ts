@@ -17,6 +17,8 @@ export type BlockRow = {
   is_files_block?: boolean;
   position_x?: number | null;
   position_y?: number | null;
+  deadline_at?: string | null;
+  recurrence_interval?: string | null;
 };
 
 export type BlockWithDeps = BlockRow & { dependencies: string[] };
@@ -57,10 +59,10 @@ export function useBlocks(goalId: string) {
 export function useCreateBlock() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (block: { goal_id: string; title: string; description?: string; status?: string; dependsOnId?: string; parent_block_id?: string; created_by?: string }) => {
+    mutationFn: async (block: { goal_id: string; title: string; description?: string; status?: string; dependsOnId?: string; parent_block_id?: string; created_by?: string; deadline_at?: string }) => {
       const { data, error } = await supabase
         .from("blocks")
-        .insert({ goal_id: block.goal_id, title: block.title, description: block.description || null, status: block.status || "pending", parent_block_id: block.parent_block_id || null, created_by: block.created_by || null })
+        .insert({ goal_id: block.goal_id, title: block.title, description: block.description || null, status: block.status || "pending", parent_block_id: block.parent_block_id || null, created_by: block.created_by || null, deadline_at: block.deadline_at || null } as any)
         .select()
         .single();
       if (error) throw error;
