@@ -284,6 +284,21 @@ function BlockCard({
 
         {/* Heat + discussion badges */}
         <div className={cn("flex items-center gap-2 mt-1.5 flex-wrap relative z-10", isPledged && "text-indigo-300")}>
+          {/* Deadline badge */}
+          {(block as any).deadline_at && (
+            <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums",
+              new Date((block as any).deadline_at) < new Date() ? "text-red-500" : isPledged ? "text-indigo-300" : "text-muted-foreground"
+            )}>
+              <Calendar className="w-3 h-3" />
+              {new Date((block as any).deadline_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            </span>
+          )}
+          {/* Recurrence badge */}
+          {(block as any).recurrence_interval && (
+            <span className={cn("flex items-center gap-0.5 text-[10px] font-mono", isPledged ? "text-indigo-300" : "text-muted-foreground")}>
+              <Clock className="w-3 h-3" />{(block as any).recurrence_interval}
+            </span>
+          )}
           {heat > 0 && (
             <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums", isPledged ? "text-amber-300" : getFlameColor(heat))}>
               <Flame className="w-3 h-3" />{heat}
@@ -738,7 +753,7 @@ export function BlockFlowChart({
             className="relative border border-dashed border-muted-foreground/20 rounded-lg"
             style={{ width: containerWidth, height: containerHeight, transition: 'width 0.3s ease, height 0.3s ease' }}
           >
-            <AbsoluteConnectors blocks={blocks} positions={positions} dragOffsets={new Map()} />
+            <AbsoluteConnectors blocks={blocks} positions={positions} dragOffsets={new Map()} blockSizes={new Map()} />
             {blocks.map((block) => {
               const pos = positions.get(block.id) || { x: 0, y: 0 };
               return (
