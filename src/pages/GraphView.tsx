@@ -40,7 +40,7 @@ const GOAL_PALETTE = [
 
 export default function GraphView() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const graphRef = useRef<ReturnType<typeof ForceGraph3D> | null>(null);
+  const graphRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
   const [blockCount, setBlockCount] = useState(0);
   const [linkCount, setLinkCount] = useState(0);
@@ -95,7 +95,7 @@ export default function GraphView() {
       setLinkCount(links.length);
       setLoading(false);
 
-      const Graph = ForceGraph3D()(containerRef.current)
+      const Graph = (ForceGraph3D as any)()(containerRef.current)
         .graphData({ nodes, links })
         .backgroundColor("#09090b")
         .nodeLabel("name")
