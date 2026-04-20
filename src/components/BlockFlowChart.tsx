@@ -803,6 +803,11 @@ export function BlockFlowChart({
                       : { status: "pending", brick_color: null, completed_by: null, completed_at: null };
                     if (isCompleting) setAnimatingOutId(id);
                     updateBlock.mutate({ id, goalId, updates }, {
+                      onError: (err: any) => {
+                        console.error("Block completion failed:", err);
+                        toast.error(err?.message || "Failed to update block");
+                        setAnimatingOutId(null);
+                      },
                       onSettled: () => { if (isCompleting) setTimeout(() => setAnimatingOutId(null), 450); },
                     });
                   }}
@@ -884,8 +889,8 @@ function BrickStrip({
       <TooltipProvider delayDuration={150}>
         <div className="flex flex-wrap gap-1">
           {bricks.map((b) => {
-            const color = (b as any).brick_color || "#9CA3AF";
-            const isLight = color.toUpperCase() === "#E8E4D9";
+            const color = (b as any).brick_color || "#D3D1C7";
+            const isLight = color.toUpperCase() === "#E8E4D9" || color.toUpperCase() === "#D3D1C7";
             const completer = (b as any).completed_by ? creatorMap.get((b as any).completed_by) : null;
             const completedAt = (b as any).completed_at ? new Date((b as any).completed_at) : null;
             return (
