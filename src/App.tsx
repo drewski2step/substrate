@@ -14,6 +14,7 @@ import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import UserProfile from "./pages/UserProfile";
 import Discussions from "./pages/Discussions";
+import GraphView from "./pages/GraphView";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<MissionBoard />} />
             <Route path="/discussions" element={<Discussions />} />
+            <Route path="/graph" element={<GraphView />} />
             <Route path="/mission/:missionId" element={<MissionView />} />
             <Route path="/mission/:missionId/block/:blockId" element={<BlockView />} />
             <Route path="/mission/:missionId/task/:taskId" element={<BlockView />} />

@@ -47,6 +47,15 @@ export function AppHeader() {
             >
               Discussions
             </Link>
+            <Link
+              to="/graph"
+              className={cn(
+                "text-sm font-mono transition-colors",
+                location.pathname.startsWith("/graph") ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Graph
+            </Link>
           </nav>
           {user && profile ? (
             <DropdownMenu>
