@@ -19,7 +19,19 @@ export type BlockRow = {
   position_y?: number | null;
   deadline_at?: string | null;
   recurrence_interval?: string | null;
+  brick_color?: string | null;
+  completed_by?: string | null;
+  completed_at?: string | null;
 };
+
+export const UTAH_COLORS = [
+  "#B5311A", "#C4956A", "#7D9B76", "#E8E4D9", "#3D5A47", "#C4622D",
+  "#6B5B7B", "#C4922A", "#D4622A", "#4A6B8A", "#B5892A", "#8B4513",
+];
+
+export function pickUtahColor(): string {
+  return UTAH_COLORS[Math.floor(Math.random() * UTAH_COLORS.length)];
+}
 
 export type BlockWithDeps = BlockRow & { dependencies: string[] };
 
