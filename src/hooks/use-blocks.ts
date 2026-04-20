@@ -94,7 +94,7 @@ export function useCreateBlock() {
 export function useUpdateBlock() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, goalId, updates }: { id: string; goalId: string; updates: Partial<Pick<BlockRow, "title" | "description" | "status" | "signal_strength" | "heat" | "deadline_at" | "recurrence_interval">> & Record<string, any> }) => {
+    mutationFn: async ({ id, goalId, updates }: { id: string; goalId: string; updates: Partial<Pick<BlockRow, "title" | "description" | "status" | "signal_strength" | "heat" | "deadline_at" | "recurrence_interval" | "brick_color" | "completed_by" | "completed_at">> & Record<string, any> }) => {
       const { error } = await supabase.from("blocks").update(updates as any).eq("id", id);
       if (error) throw error;
     },
