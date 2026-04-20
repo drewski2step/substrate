@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Trash2, ChevronLeft, Flame, Star, FolderOpen, Pencil, Calendar, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGoal } from "@/hooks/use-goals";
-import { useBlocks, useUpdateBlock, useDeleteBlock } from "@/hooks/use-blocks";
+import { useBlocks, useUpdateBlock, useDeleteBlock, pickUtahColor } from "@/hooks/use-blocks";
 import { useBlockAncestors } from "@/hooks/use-block-ancestors";
 import { BlockFlowChart } from "@/components/BlockFlowChart";
 import { DiscussionPanel } from "@/components/DiscussionPanel";
