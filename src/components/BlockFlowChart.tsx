@@ -551,6 +551,7 @@ export function BlockFlowChart({
   const [editDepsBlock, setEditDepsBlock] = useState<BlockWithDeps | null>(null);
   const [editBlock, setEditBlock] = useState<BlockWithDeps | null>(null);
   const [filesOpen, setFilesOpen] = useState(false);
+  const [animatingOutId, setAnimatingOutId] = useState<string | null>(null);
 
   // Canvas expansion state
   const [canvasExtra, setCanvasExtra] = useState({ top: 0, right: 0, bottom: 0, left: 0 });
