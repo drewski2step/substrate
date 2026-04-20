@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Trash2, ChevronLeft, Flame, Star, FolderOpen, Pencil, Calendar, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGoal } from "@/hooks/use-goals";
-import { useBlocks, useUpdateBlock, useDeleteBlock } from "@/hooks/use-blocks";
+import { useBlocks, useUpdateBlock, useDeleteBlock, pickUtahColor } from "@/hooks/use-blocks";
 import { useBlockAncestors } from "@/hooks/use-block-ancestors";
 import { BlockFlowChart } from "@/components/BlockFlowChart";
 import { DiscussionPanel } from "@/components/DiscussionPanel";
@@ -180,14 +180,20 @@ export default function BlockView() {
         <div className="flex items-center gap-3 mb-8">
           {canComplete && (
             <Button onClick={() => {
-              updateBlock.mutate({ id: block.id, goalId: goal.id, updates: { status: "complete" } },
-                { onError: (err: any) => toast.error(err.message) });
+              updateBlock.mutate({
+                id: block.id,
+                goalId: goal.id,
+                updates: { status: "complete", brick_color: pickUtahColor(), completed_by: user?.id || null, completed_at: new Date().toISOString() },
+              }, { onError: (err: any) => toast.error(err.message) });
             }}>Mark complete</Button>
           )}
           {status === "complete" && (
             <Button variant="outline" onClick={() => {
-              updateBlock.mutate({ id: block.id, goalId: goal.id, updates: { status: "pending" } },
-                { onError: (err: any) => toast.error(err.message) });
+              updateBlock.mutate({
+                id: block.id,
+                goalId: goal.id,
+                updates: { status: "pending", brick_color: null, completed_by: null, completed_at: null },
+              }, { onError: (err: any) => toast.error(err.message) });
             }}>Reopen block</Button>
           )}
           {user && (

@@ -7,7 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock, useSetDependencies, useUpdateBlockPosition, BlockWithDeps } from "@/hooks/use-blocks";
+import { useBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock, useSetDependencies, useUpdateBlockPosition, BlockWithDeps, pickUtahColor } from "@/hooks/use-blocks";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useBlockDiscussionCounts } from "@/hooks/use-discussions";
 import { useLogEdit } from "@/hooks/use-edit-history";
 import { useAuth } from "@/hooks/use-auth";
@@ -87,13 +89,14 @@ async function batchSavePositions(
 // --- Block card with heat ---
 function BlockCard({
   block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
-  onDragNearEdge, canvasWidth, canvasHeight, creatorName, creatorAvatarSeed,
+  onDragNearEdge, canvasWidth, canvasHeight, creatorName, creatorAvatarSeed, isAnimatingOut,
 }: {
   block: BlockWithDeps;
   posX: number;
   posY: number;
   creatorName?: string;
   creatorAvatarSeed?: string;
+  isAnimatingOut?: boolean;
   onComplete: (id: string) => void;
   onAddSuccessor: (block: BlockWithDeps) => void;
   onEditDeps: (block: BlockWithDeps) => void;
@@ -548,6 +551,7 @@ export function BlockFlowChart({
   const [editDepsBlock, setEditDepsBlock] = useState<BlockWithDeps | null>(null);
   const [editBlock, setEditBlock] = useState<BlockWithDeps | null>(null);
   const [filesOpen, setFilesOpen] = useState(false);
+  const [animatingOutId, setAnimatingOutId] = useState<string | null>(null);
 
   // Canvas expansion state
   const [canvasExtra, setCanvasExtra] = useState({ top: 0, right: 0, bottom: 0, left: 0 });
@@ -571,20 +575,39 @@ export function BlockFlowChart({
     });
   }, [allGoalBlocks, parentBlockId]);
 
-  // Batch-fetch creator profiles for all blocks
-  const creatorIds = useMemo(() => {
+  // Partition: completed bricks vs active blocks (active includes the one currently animating out)
+  const completedBricks = useMemo(
+    () => blocks
+      .filter((b) => b.status === "complete" && b.id !== animatingOutId)
+      .sort((a, b) => {
+        const at = (a as any).completed_at ? new Date((a as any).completed_at).getTime() : 0;
+        const bt = (b as any).completed_at ? new Date((b as any).completed_at).getTime() : 0;
+        return at - bt;
+      }),
+    [blocks, animatingOutId]
+  );
+  const activeBlocks = useMemo(
+    () => blocks.filter((b) => b.status !== "complete" || b.id === animatingOutId),
+    [blocks, animatingOutId]
+  );
+
+  // Batch-fetch profiles for creators AND completers
+  const profileIds = useMemo(() => {
     const ids = new Set<string>();
-    blocks.forEach((b) => { if (b.created_by) ids.add(b.created_by); });
+    blocks.forEach((b) => {
+      if (b.created_by) ids.add(b.created_by);
+      if ((b as any).completed_by) ids.add((b as any).completed_by);
+    });
     return Array.from(ids);
   }, [blocks]);
   const { data: creatorProfiles } = useQuery({
-    queryKey: ["block-creator-profiles", creatorIds.join(",")],
+    queryKey: ["block-creator-profiles", profileIds.join(",")],
     queryFn: async () => {
-      if (creatorIds.length === 0) return [];
-      const { data } = await supabase.from("profiles").select("id, username, avatar_seed").in("id", creatorIds);
+      if (profileIds.length === 0) return [];
+      const { data } = await supabase.from("profiles").select("id, username, avatar_seed").in("id", profileIds);
       return data || [];
     },
-    enabled: creatorIds.length > 0,
+    enabled: profileIds.length > 0,
   });
   const creatorMap = useMemo(() => {
     const map = new Map<string, { username: string; avatar_seed: string }>();
@@ -592,10 +615,10 @@ export function BlockFlowChart({
     return map;
   }, [creatorProfiles]);
 
-  // Compute positions: pinned blocks keep saved coords, auto-laid blocks use grid
+  // Compute positions for ACTIVE blocks only (completed blocks live in the brick strip)
   const positions = useMemo(() => {
-    const pinned = blocks.filter((b) => b.position_x != null && b.position_y != null);
-    const autoLaid = blocks.filter((b) => b.position_x == null || b.position_y == null);
+    const pinned = activeBlocks.filter((b) => b.position_x != null && b.position_y != null);
+    const autoLaid = activeBlocks.filter((b) => b.position_x == null || b.position_y == null);
     const gridPositions = computeGridPositions(autoLaid);
     const result = new Map<string, { x: number; y: number }>();
     pinned.forEach((b) => {
@@ -606,7 +629,7 @@ export function BlockFlowChart({
       result.set(b.id, pos || { x: 0, y: 0 });
     });
     return result;
-  }, [blocks]);
+  }, [activeBlocks]);
 
   // Compute container dimensions from positions + canvas extra
   const { containerWidth, containerHeight } = useMemo(() => {
@@ -753,8 +776,13 @@ export function BlockFlowChart({
             className="relative border border-dashed border-muted-foreground/20 rounded-lg"
             style={{ width: containerWidth, height: containerHeight, transition: 'width 0.3s ease, height 0.3s ease' }}
           >
-            <AbsoluteConnectors blocks={blocks} positions={positions} dragOffsets={new Map()} blockSizes={new Map()} />
-            {blocks.map((block) => {
+            <AbsoluteConnectors
+              blocks={activeBlocks.map((b) => ({ ...b, dependencies: b.dependencies.filter((d) => positions.has(d)) }))}
+              positions={positions}
+              dragOffsets={new Map()}
+              blockSizes={new Map()}
+            />
+            {activeBlocks.map((block) => {
               const pos = positions.get(block.id) || { x: 0, y: 0 };
               return (
                 <BlockCard
@@ -764,12 +792,19 @@ export function BlockFlowChart({
                   posY={pos.y}
                   creatorName={block.created_by ? creatorMap.get(block.created_by)?.username : undefined}
                   creatorAvatarSeed={block.created_by ? creatorMap.get(block.created_by)?.avatar_seed : undefined}
+                  isAnimatingOut={animatingOutId === block.id}
                   canvasWidth={containerWidth}
                   canvasHeight={containerHeight}
                   onComplete={(id) => {
                     const b = blocks.find((bl) => bl.id === id);
-                    const newStatus = b?.status === "complete" ? "pending" : "complete";
-                    updateBlock.mutate({ id, goalId, updates: { status: newStatus } });
+                    const isCompleting = b?.status !== "complete";
+                    const updates: any = isCompleting
+                      ? { status: "complete", brick_color: pickUtahColor(), completed_by: user?.id || null, completed_at: new Date().toISOString() }
+                      : { status: "pending", brick_color: null, completed_by: null, completed_at: null };
+                    if (isCompleting) setAnimatingOutId(id);
+                    updateBlock.mutate({ id, goalId, updates }, {
+                      onSettled: () => { if (isCompleting) setTimeout(() => setAnimatingOutId(null), 450); },
+                    });
                   }}
                   onAddSuccessor={(b) => { setSuccessorParent(b); setAddDialogOpen(true); }}
                   onEditDeps={setEditDepsBlock}
@@ -781,6 +816,19 @@ export function BlockFlowChart({
               );
             })}
           </div>
+
+          {/* Brick strip — completed blocks as compact bricks */}
+          <BrickStrip
+            bricks={completedBricks}
+            creatorMap={creatorMap}
+            onReopen={(id) => {
+              updateBlock.mutate({
+                id,
+                goalId,
+                updates: { status: "pending", brick_color: null, completed_by: null, completed_at: null },
+              });
+            }}
+          />
         </div>
       )}
 
@@ -817,7 +865,80 @@ export function BlockFlowChart({
   );
 }
 
-// --- Edit Block dialog ---
+// --- Brick strip: completed blocks rendered as compact colored bricks ---
+function BrickStrip({
+  bricks,
+  creatorMap,
+  onReopen,
+}: {
+  bricks: BlockWithDeps[];
+  creatorMap: Map<string, { username: string; avatar_seed: string }>;
+  onReopen: (id: string) => void;
+}) {
+  if (bricks.length === 0) return null;
+  return (
+    <div className="mt-4 pt-4 border-t border-dashed border-muted-foreground/20">
+      <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider font-mono mb-2">
+        Completed ({bricks.length})
+      </h3>
+      <TooltipProvider delayDuration={150}>
+        <div className="flex flex-wrap gap-1">
+          {bricks.map((b) => {
+            const color = (b as any).brick_color || "#7D9B76";
+            const isLight = color.toUpperCase() === "#E8E4D9";
+            const completer = (b as any).completed_by ? creatorMap.get((b as any).completed_by) : null;
+            const completedAt = (b as any).completed_at ? new Date((b as any).completed_at) : null;
+            return (
+              <Popover key={b.id}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <PopoverTrigger asChild>
+                      <button
+                        aria-label={`Completed: ${b.title}`}
+                        className="rounded-md transition-transform hover:scale-105 animate-fade-in"
+                        style={{
+                          width: 120,
+                          height: 36,
+                          backgroundColor: color,
+                          border: isLight ? "1px solid #B4B2A9" : "none",
+                        }}
+                      />
+                    </PopoverTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    className="bg-[#1a1a1a] text-white border-0 px-2 py-2 rounded-md text-[13px] max-w-xs"
+                  >
+                    <div className="font-bold leading-tight">{b.title}</div>
+                    {completer && (
+                      <div className="text-white/80 leading-tight mt-0.5">
+                        Completed by {completer.username}
+                      </div>
+                    )}
+                    {completedAt && (
+                      <div className="text-white/60 leading-tight mt-0.5">
+                        {completedAt.toLocaleString(undefined, {
+                          month: "short", day: "numeric", year: "numeric",
+                          hour: "numeric", minute: "2-digit",
+                        })}
+                      </div>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+                <PopoverContent side="top" className="w-auto p-2 flex items-center gap-2">
+                  <span className="text-xs">Reopen this block?</span>
+                  <Button size="sm" className="h-6 text-[11px]" onClick={() => onReopen(b.id)}>
+                    Confirm
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            );
+          })}
+        </div>
+      </TooltipProvider>
+    </div>
+  );
+}
 function EditBlockDialog({ block, goalId, open, onOpenChange }: {
   block: BlockWithDeps; goalId: string; open: boolean; onOpenChange: (o: boolean) => void;
 }) {
