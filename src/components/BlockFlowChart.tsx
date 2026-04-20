@@ -803,6 +803,11 @@ export function BlockFlowChart({
                       : { status: "pending", brick_color: null, completed_by: null, completed_at: null };
                     if (isCompleting) setAnimatingOutId(id);
                     updateBlock.mutate({ id, goalId, updates }, {
+                      onError: (err: any) => {
+                        console.error("Block completion failed:", err);
+                        toast.error(err?.message || "Failed to update block");
+                        setAnimatingOutId(null);
+                      },
                       onSettled: () => { if (isCompleting) setTimeout(() => setAnimatingOutId(null), 450); },
                     });
                   }}
