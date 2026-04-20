@@ -162,6 +162,9 @@ export type Database = {
       }
       blocks: {
         Row: {
+          brick_color: string | null
+          completed_at: string | null
+          completed_by: string | null
           created_at: string | null
           created_by: string | null
           deadline_at: string | null
@@ -181,6 +184,9 @@ export type Database = {
           title: string
         }
         Insert: {
+          brick_color?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string | null
           created_by?: string | null
           deadline_at?: string | null
@@ -200,6 +206,9 @@ export type Database = {
           title: string
         }
         Update: {
+          brick_color?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string | null
           created_by?: string | null
           deadline_at?: string | null
