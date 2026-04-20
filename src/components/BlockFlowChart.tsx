@@ -591,20 +591,23 @@ export function BlockFlowChart({
     [blocks, animatingOutId]
   );
 
-  // Batch-fetch creator profiles for all blocks
-  const creatorIds = useMemo(() => {
+  // Batch-fetch profiles for creators AND completers
+  const profileIds = useMemo(() => {
     const ids = new Set<string>();
-    blocks.forEach((b) => { if (b.created_by) ids.add(b.created_by); });
+    blocks.forEach((b) => {
+      if (b.created_by) ids.add(b.created_by);
+      if ((b as any).completed_by) ids.add((b as any).completed_by);
+    });
     return Array.from(ids);
   }, [blocks]);
   const { data: creatorProfiles } = useQuery({
-    queryKey: ["block-creator-profiles", creatorIds.join(",")],
+    queryKey: ["block-creator-profiles", profileIds.join(",")],
     queryFn: async () => {
-      if (creatorIds.length === 0) return [];
-      const { data } = await supabase.from("profiles").select("id, username, avatar_seed").in("id", creatorIds);
+      if (profileIds.length === 0) return [];
+      const { data } = await supabase.from("profiles").select("id, username, avatar_seed").in("id", profileIds);
       return data || [];
     },
-    enabled: creatorIds.length > 0,
+    enabled: profileIds.length > 0,
   });
   const creatorMap = useMemo(() => {
     const map = new Map<string, { username: string; avatar_seed: string }>();
