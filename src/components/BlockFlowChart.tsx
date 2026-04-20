@@ -884,7 +884,7 @@ function BrickStrip({
       <TooltipProvider delayDuration={150}>
         <div className="flex flex-wrap gap-1">
           {bricks.map((b) => {
-            const color = (b as any).brick_color || "#7D9B76";
+            const color = (b as any).brick_color || "#9CA3AF";
             const isLight = color.toUpperCase() === "#E8E4D9";
             const completer = (b as any).completed_by ? creatorMap.get((b as any).completed_by) : null;
             const completedAt = (b as any).completed_at ? new Date((b as any).completed_at) : null;
@@ -895,14 +895,25 @@ function BrickStrip({
                     <PopoverTrigger asChild>
                       <button
                         aria-label={`Completed: ${b.title}`}
-                        className="rounded-md transition-transform hover:scale-105 animate-fade-in"
+                        className="rounded-md transition-transform hover:scale-105 animate-fade-in flex items-center"
                         style={{
-                          width: 120,
+                          width: 148,
                           height: 36,
                           backgroundColor: color,
                           border: isLight ? "1px solid #B4B2A9" : "none",
+                          paddingLeft: 6,
                         }}
-                      />
+                      >
+                        {completer ? (
+                          <img
+                            src={`https://api.dicebear.com/7.x/bottts/svg?seed=${completer.avatar_seed}`}
+                            alt={completer.username}
+                            className="w-6 h-6 rounded-full bg-white/30 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-gray-400/60 shrink-0" />
+                        )}
+                      </button>
                     </PopoverTrigger>
                   </TooltipTrigger>
                   <TooltipContent
