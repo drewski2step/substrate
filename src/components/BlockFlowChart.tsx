@@ -575,6 +575,22 @@ export function BlockFlowChart({
     });
   }, [allGoalBlocks, parentBlockId]);
 
+  // Partition: completed bricks vs active blocks (active includes the one currently animating out)
+  const completedBricks = useMemo(
+    () => blocks
+      .filter((b) => b.status === "complete" && b.id !== animatingOutId)
+      .sort((a, b) => {
+        const at = (a as any).completed_at ? new Date((a as any).completed_at).getTime() : 0;
+        const bt = (b as any).completed_at ? new Date((b as any).completed_at).getTime() : 0;
+        return at - bt;
+      }),
+    [blocks, animatingOutId]
+  );
+  const activeBlocks = useMemo(
+    () => blocks.filter((b) => b.status !== "complete" || b.id === animatingOutId),
+    [blocks, animatingOutId]
+  );
+
   // Batch-fetch creator profiles for all blocks
   const creatorIds = useMemo(() => {
     const ids = new Set<string>();
