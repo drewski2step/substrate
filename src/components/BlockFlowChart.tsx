@@ -776,8 +776,13 @@ export function BlockFlowChart({
             className="relative border border-dashed border-muted-foreground/20 rounded-lg"
             style={{ width: containerWidth, height: containerHeight, transition: 'width 0.3s ease, height 0.3s ease' }}
           >
-            <AbsoluteConnectors blocks={blocks} positions={positions} dragOffsets={new Map()} blockSizes={new Map()} />
-            {blocks.map((block) => {
+            <AbsoluteConnectors
+              blocks={activeBlocks.map((b) => ({ ...b, dependencies: b.dependencies.filter((d) => positions.has(d)) }))}
+              positions={positions}
+              dragOffsets={new Map()}
+              blockSizes={new Map()}
+            />
+            {activeBlocks.map((block) => {
               const pos = positions.get(block.id) || { x: 0, y: 0 };
               return (
                 <BlockCard
@@ -787,12 +792,19 @@ export function BlockFlowChart({
                   posY={pos.y}
                   creatorName={block.created_by ? creatorMap.get(block.created_by)?.username : undefined}
                   creatorAvatarSeed={block.created_by ? creatorMap.get(block.created_by)?.avatar_seed : undefined}
+                  isAnimatingOut={animatingOutId === block.id}
                   canvasWidth={containerWidth}
                   canvasHeight={containerHeight}
                   onComplete={(id) => {
                     const b = blocks.find((bl) => bl.id === id);
-                    const newStatus = b?.status === "complete" ? "pending" : "complete";
-                    updateBlock.mutate({ id, goalId, updates: { status: newStatus } });
+                    const isCompleting = b?.status !== "complete";
+                    const updates: any = isCompleting
+                      ? { status: "complete", brick_color: pickUtahColor(), completed_by: user?.id || null, completed_at: new Date().toISOString() }
+                      : { status: "pending", brick_color: null, completed_by: null, completed_at: null };
+                    if (isCompleting) setAnimatingOutId(id);
+                    updateBlock.mutate({ id, goalId, updates }, {
+                      onSettled: () => { if (isCompleting) setTimeout(() => setAnimatingOutId(null), 450); },
+                    });
                   }}
                   onAddSuccessor={(b) => { setSuccessorParent(b); setAddDialogOpen(true); }}
                   onEditDeps={setEditDepsBlock}
@@ -804,6 +816,19 @@ export function BlockFlowChart({
               );
             })}
           </div>
+
+          {/* Brick strip — completed blocks as compact bricks */}
+          <BrickStrip
+            bricks={completedBricks}
+            creatorMap={creatorMap}
+            onReopen={(id) => {
+              updateBlock.mutate({
+                id,
+                goalId,
+                updates: { status: "pending", brick_color: null, completed_by: null, completed_at: null },
+              });
+            }}
+          />
         </div>
       )}
 
