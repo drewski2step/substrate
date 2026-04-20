@@ -180,13 +180,11 @@ export default function BlockView() {
         <div className="flex items-center gap-3 mb-8">
           {canComplete && (
             <Button onClick={() => {
-              import("@/hooks/use-blocks").then(({ pickUtahColor }) => {
-                updateBlock.mutate({
-                  id: block.id,
-                  goalId: goal.id,
-                  updates: { status: "complete", brick_color: pickUtahColor(), completed_by: user?.id || null, completed_at: new Date().toISOString() },
-                }, { onError: (err: any) => toast.error(err.message) });
-              });
+              updateBlock.mutate({
+                id: block.id,
+                goalId: goal.id,
+                updates: { status: "complete", brick_color: pickUtahColor(), completed_by: user?.id || null, completed_at: new Date().toISOString() },
+              }, { onError: (err: any) => toast.error(err.message) });
             }}>Mark complete</Button>
           )}
           {status === "complete" && (
