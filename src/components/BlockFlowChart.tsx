@@ -865,7 +865,80 @@ export function BlockFlowChart({
   );
 }
 
-// --- Edit Block dialog ---
+// --- Brick strip: completed blocks rendered as compact colored bricks ---
+function BrickStrip({
+  bricks,
+  creatorMap,
+  onReopen,
+}: {
+  bricks: BlockWithDeps[];
+  creatorMap: Map<string, { username: string; avatar_seed: string }>;
+  onReopen: (id: string) => void;
+}) {
+  if (bricks.length === 0) return null;
+  return (
+    <div className="mt-4 pt-4 border-t border-dashed border-muted-foreground/20">
+      <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider font-mono mb-2">
+        Completed ({bricks.length})
+      </h3>
+      <TooltipProvider delayDuration={150}>
+        <div className="flex flex-wrap gap-1">
+          {bricks.map((b) => {
+            const color = (b as any).brick_color || "#7D9B76";
+            const isLight = color.toUpperCase() === "#E8E4D9";
+            const completer = (b as any).completed_by ? creatorMap.get((b as any).completed_by) : null;
+            const completedAt = (b as any).completed_at ? new Date((b as any).completed_at) : null;
+            return (
+              <Popover key={b.id}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <PopoverTrigger asChild>
+                      <button
+                        aria-label={`Completed: ${b.title}`}
+                        className="rounded-md transition-transform hover:scale-105 animate-fade-in"
+                        style={{
+                          width: 120,
+                          height: 36,
+                          backgroundColor: color,
+                          border: isLight ? "1px solid #B4B2A9" : "none",
+                        }}
+                      />
+                    </PopoverTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    className="bg-[#1a1a1a] text-white border-0 px-2 py-2 rounded-md text-[13px] max-w-xs"
+                  >
+                    <div className="font-bold leading-tight">{b.title}</div>
+                    {completer && (
+                      <div className="text-white/80 leading-tight mt-0.5">
+                        Completed by {completer.username}
+                      </div>
+                    )}
+                    {completedAt && (
+                      <div className="text-white/60 leading-tight mt-0.5">
+                        {completedAt.toLocaleString(undefined, {
+                          month: "short", day: "numeric", year: "numeric",
+                          hour: "numeric", minute: "2-digit",
+                        })}
+                      </div>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+                <PopoverContent side="top" className="w-auto p-2 flex items-center gap-2">
+                  <span className="text-xs">Reopen this block?</span>
+                  <Button size="sm" className="h-6 text-[11px]" onClick={() => onReopen(b.id)}>
+                    Confirm
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            );
+          })}
+        </div>
+      </TooltipProvider>
+    </div>
+  );
+}
 function EditBlockDialog({ block, goalId, open, onOpenChange }: {
   block: BlockWithDeps; goalId: string; open: boolean; onOpenChange: (o: boolean) => void;
 }) {
