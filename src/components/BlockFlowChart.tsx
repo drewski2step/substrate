@@ -615,10 +615,10 @@ export function BlockFlowChart({
     return map;
   }, [creatorProfiles]);
 
-  // Compute positions: pinned blocks keep saved coords, auto-laid blocks use grid
+  // Compute positions for ACTIVE blocks only (completed blocks live in the brick strip)
   const positions = useMemo(() => {
-    const pinned = blocks.filter((b) => b.position_x != null && b.position_y != null);
-    const autoLaid = blocks.filter((b) => b.position_x == null || b.position_y == null);
+    const pinned = activeBlocks.filter((b) => b.position_x != null && b.position_y != null);
+    const autoLaid = activeBlocks.filter((b) => b.position_x == null || b.position_y == null);
     const gridPositions = computeGridPositions(autoLaid);
     const result = new Map<string, { x: number; y: number }>();
     pinned.forEach((b) => {
@@ -629,7 +629,7 @@ export function BlockFlowChart({
       result.set(b.id, pos || { x: 0, y: 0 });
     });
     return result;
-  }, [blocks]);
+  }, [activeBlocks]);
 
   // Compute container dimensions from positions + canvas extra
   const { containerWidth, containerHeight } = useMemo(() => {
