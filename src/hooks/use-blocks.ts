@@ -22,6 +22,8 @@ export type BlockRow = {
   brick_color?: string | null;
   completed_by?: string | null;
   completed_at?: string | null;
+  width?: number | null;
+  height?: number | null;
 };
 
 export const UTAH_COLORS = [
@@ -156,6 +158,17 @@ export function useUpdateBlockPosition() {
   return useMutation({
     mutationFn: async ({ id, goalId, position_x, position_y }: { id: string; goalId: string; position_x: number; position_y: number }) => {
       const { error } = await supabase.from("blocks").update({ position_x, position_y } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ["blocks", vars.goalId] }),
+  });
+}
+
+export function useUpdateBlockSize() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, width, height }: { id: string; goalId: string; width: number; height: number }) => {
+      const { error } = await supabase.from("blocks").update({ width, height } as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ["blocks", vars.goalId] }),

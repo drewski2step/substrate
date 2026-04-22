@@ -173,6 +173,7 @@ export type Database = {
           goal_id: string | null
           heat: number
           heat_updated_at: string
+          height: number | null
           id: string
           is_files_block: boolean
           parent_block_id: string | null
@@ -182,6 +183,7 @@ export type Database = {
           signal_strength: number | null
           status: string | null
           title: string
+          width: number | null
         }
         Insert: {
           brick_color?: string | null
@@ -195,6 +197,7 @@ export type Database = {
           goal_id?: string | null
           heat?: number
           heat_updated_at?: string
+          height?: number | null
           id?: string
           is_files_block?: boolean
           parent_block_id?: string | null
@@ -204,6 +207,7 @@ export type Database = {
           signal_strength?: number | null
           status?: string | null
           title: string
+          width?: number | null
         }
         Update: {
           brick_color?: string | null
@@ -217,6 +221,7 @@ export type Database = {
           goal_id?: string | null
           heat?: number
           heat_updated_at?: string
+          height?: number | null
           id?: string
           is_files_block?: boolean
           parent_block_id?: string | null
@@ -226,6 +231,7 @@ export type Database = {
           signal_strength?: number | null
           status?: string | null
           title?: string
+          width?: number | null
         }
         Relationships: [
           {
