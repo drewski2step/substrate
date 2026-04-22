@@ -636,6 +636,9 @@ export function BlockFlowChart({
   const { data: allGoalBlocks, isLoading } = useBlocks(goalId);
   const updateBlock = useUpdateBlock();
   const updatePosition = useUpdateBlockPosition();
+  const updateSize = useUpdateBlockSize();
+  // Live (in-progress) resize sizes for blocks. Keyed by block id.
+  const [liveSizes, setLiveSizes] = useState<Map<string, { w: number; h: number }>>(new Map());
   const deleteBlock = useDeleteBlock();
   const logEdit = useLogEdit();
   const { user } = useAuth();
