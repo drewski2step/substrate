@@ -400,20 +400,20 @@ function BlockCard({
           )}
         </div>
 
-        {/* Resize handle — bottom right (hidden on Files Block) */}
+        {/* Resize handle — top left (hidden on Files Block) */}
         {!isFiles && (
           <div
             onPointerDown={handleResizePointerDown}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            className="absolute bottom-0 right-0 w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-end justify-end"
+            className="absolute top-0 left-0 w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-start justify-start"
             style={{ cursor: "nw-resize" }}
             title="Resize"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" className="text-muted-foreground/60">
-              <line x1="11" y1="3" x2="3" y2="11" stroke="currentColor" strokeWidth="1" />
-              <line x1="11" y1="6" x2="6" y2="11" stroke="currentColor" strokeWidth="1" />
-              <line x1="11" y1="9" x2="9" y2="11" stroke="currentColor" strokeWidth="1" />
+              <line x1="1" y1="9" x2="9" y2="1" stroke="currentColor" strokeWidth="1" />
+              <line x1="1" y1="6" x2="6" y2="1" stroke="currentColor" strokeWidth="1" />
+              <line x1="1" y1="3" x2="3" y2="1" stroke="currentColor" strokeWidth="1" />
             </svg>
           </div>
         )}
