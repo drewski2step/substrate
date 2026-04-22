@@ -163,3 +163,14 @@ export function useUpdateBlockPosition() {
     onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ["blocks", vars.goalId] }),
   });
 }
+
+export function useUpdateBlockSize() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, width, height }: { id: string; goalId: string; width: number; height: number }) => {
+      const { error } = await supabase.from("blocks").update({ width, height } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ["blocks", vars.goalId] }),
+  });
+}
