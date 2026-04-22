@@ -649,6 +649,8 @@ export function BlockFlowChart({
   const updateSize = useUpdateBlockSize();
   // Live (in-progress) resize sizes for blocks. Keyed by block id.
   const [liveSizes, setLiveSizes] = useState<Map<string, { w: number; h: number }>>(new Map());
+  // Live (in-progress) position offsets caused by top-left resize. Keyed by block id.
+  const [liveOffsets, setLiveOffsets] = useState<Map<string, { x: number; y: number }>>(new Map());
   const deleteBlock = useDeleteBlock();
   const logEdit = useLogEdit();
   const { user } = useAuth();
