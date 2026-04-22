@@ -244,7 +244,11 @@ function BlockCard({
       onMouseDown={() => { didDragRef.current = false; }}
       style={{
         left: posX, top: posY,
-        transform: dragOffset ? `translate(${dragOffset.x}px, ${dragOffset.y}px)` : undefined,
+        transform: dragOffset
+          ? `translate(${dragOffset.x}px, ${dragOffset.y}px)`
+          : liveSize
+            ? `translate(${liveSize.dx}px, ${liveSize.dy}px)`
+            : undefined,
         width: w,
         height: h,
         zIndex: dragOffset || liveSize ? 50 : 1,
