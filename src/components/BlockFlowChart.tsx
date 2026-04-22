@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock, useSetDependencies, useUpdateBlockPosition, BlockWithDeps, pickUtahColor } from "@/hooks/use-blocks";
+import { useBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock, useSetDependencies, useUpdateBlockPosition, useUpdateBlockSize, BlockWithDeps, pickUtahColor } from "@/hooks/use-blocks";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useBlockDiscussionCounts } from "@/hooks/use-discussions";
