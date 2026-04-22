@@ -112,8 +112,8 @@ function BlockCard({
   onDragNearEdge?: (id: string, direction: 'up' | 'down' | 'left' | 'right') => void;
   canvasWidth?: number;
   canvasHeight?: number;
-  onResizeLive?: (id: string, w: number, h: number) => void;
-  onResizeEnd?: (id: string, w: number, h: number) => void;
+  onResizeLive?: (id: string, w: number, h: number, dx: number, dy: number) => void;
+  onResizeEnd?: (id: string, w: number, h: number, dx: number, dy: number) => void;
 }) {
   const didDragRef = useRef(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
