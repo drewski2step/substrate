@@ -22,6 +22,8 @@ export type BlockRow = {
   brick_color?: string | null;
   completed_by?: string | null;
   completed_at?: string | null;
+  width?: number | null;
+  height?: number | null;
 };
 
 export const UTAH_COLORS = [
