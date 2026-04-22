@@ -207,16 +207,17 @@ function BlockCard({
     const startH = h;
 
     const move = (ev: PointerEvent) => {
-      const newW = Math.min(RESIZE_MAX_W, Math.max(RESIZE_MIN_W, startW + (ev.clientX - startX)));
-      const newH = Math.min(RESIZE_MAX_H, Math.max(RESIZE_MIN_H, startH + (ev.clientY - startY)));
+      // Top-left handle: dragging up/left enlarges, so invert the delta
+      const newW = Math.min(RESIZE_MAX_W, Math.max(RESIZE_MIN_W, startW - (ev.clientX - startX)));
+      const newH = Math.min(RESIZE_MAX_H, Math.max(RESIZE_MIN_H, startH - (ev.clientY - startY)));
       setLiveSize({ w: newW, h: newH });
       onResizeLive?.(block.id, newW, newH);
     };
     const up = (ev: PointerEvent) => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
-      const finalW = Math.min(RESIZE_MAX_W, Math.max(RESIZE_MIN_W, startW + (ev.clientX - startX)));
-      const finalH = Math.min(RESIZE_MAX_H, Math.max(RESIZE_MIN_H, startH + (ev.clientY - startY)));
+      const finalW = Math.min(RESIZE_MAX_W, Math.max(RESIZE_MIN_W, startW - (ev.clientX - startX)));
+      const finalH = Math.min(RESIZE_MAX_H, Math.max(RESIZE_MIN_H, startH - (ev.clientY - startY)));
       setLiveSize(null);
       onResizeEnd?.(block.id, finalW, finalH);
     };
