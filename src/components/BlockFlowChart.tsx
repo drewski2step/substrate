@@ -876,7 +876,17 @@ export function BlockFlowChart({
               blocks={activeBlocks.map((b) => ({ ...b, dependencies: b.dependencies.filter((d) => positions.has(d)) }))}
               positions={positions}
               dragOffsets={new Map()}
-              blockSizes={new Map()}
+              blockSizes={(() => {
+                const m = new Map<string, { w: number; h: number }>();
+                activeBlocks.forEach((b) => {
+                  const live = liveSizes.get(b.id);
+                  m.set(b.id, {
+                    w: live?.w ?? (b as any).width ?? BLOCK_W,
+                    h: live?.h ?? (b as any).height ?? BLOCK_H,
+                  });
+                });
+                return m;
+              })()}
             />
             {activeBlocks.map((block) => {
               const pos = positions.get(block.id) || { x: 0, y: 0 };
@@ -891,6 +901,21 @@ export function BlockFlowChart({
                   isAnimatingOut={animatingOutId === block.id}
                   canvasWidth={containerWidth}
                   canvasHeight={containerHeight}
+                  onResizeLive={(id, w, h) => {
+                    setLiveSizes((prev) => {
+                      const next = new Map(prev);
+                      next.set(id, { w, h });
+                      return next;
+                    });
+                  }}
+                  onResizeEnd={(id, w, h) => {
+                    setLiveSizes((prev) => {
+                      const next = new Map(prev);
+                      next.delete(id);
+                      return next;
+                    });
+                    updateSize.mutate({ id, goalId, width: w, height: h });
+                  }}
                   onComplete={(id) => {
                     const b = blocks.find((bl) => bl.id === id);
                     const isCompleting = b?.status !== "complete";
