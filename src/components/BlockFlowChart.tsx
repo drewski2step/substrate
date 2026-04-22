@@ -727,19 +727,24 @@ export function BlockFlowChart({
     return result;
   }, [activeBlocks]);
 
-  // Compute container dimensions from positions + canvas extra
+  // Compute container dimensions from positions + sizes + canvas extra
   const { containerWidth, containerHeight } = useMemo(() => {
     let maxX = 0;
     let maxY = 0;
-    positions.forEach((pos) => {
-      maxX = Math.max(maxX, pos.x + BLOCK_W + 40);
-      maxY = Math.max(maxY, pos.y + BLOCK_H + 40);
+    activeBlocks.forEach((b) => {
+      const pos = positions.get(b.id);
+      if (!pos) return;
+      const live = liveSizes.get(b.id);
+      const w = live?.w ?? (b as any).width ?? BLOCK_W;
+      const h = live?.h ?? (b as any).height ?? BLOCK_H;
+      maxX = Math.max(maxX, pos.x + w + 40);
+      maxY = Math.max(maxY, pos.y + h + 40);
     });
     return {
       containerWidth: Math.max(COLS * (BLOCK_W + GAP_X), maxX) + canvasExtra.right + canvasExtra.left,
       containerHeight: Math.max(200, maxY) + canvasExtra.bottom + canvasExtra.top,
     };
-  }, [positions, canvasExtra]);
+  }, [positions, canvasExtra, activeBlocks, liveSizes]);
 
   // Handle canvas expansion when a block is dragged near an edge
   const handleDragNearEdge = useCallback((blockId: string, direction: 'up' | 'down' | 'left' | 'right') => {
