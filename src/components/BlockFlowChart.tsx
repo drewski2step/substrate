@@ -120,7 +120,7 @@ function BlockCard({
   // Live resize size (overrides saved size during a drag)
   const savedW = (block as any).width as number | null | undefined;
   const savedH = (block as any).height as number | null | undefined;
-  const [liveSize, setLiveSize] = useState<{ w: number; h: number } | null>(null);
+  const [liveSize, setLiveSize] = useState<{ w: number; h: number; dx: number; dy: number } | null>(null);
   const w = liveSize?.w ?? savedW ?? BLOCK_W;
   const h = liveSize?.h ?? savedH ?? BLOCK_H;
   const canComplete = block.status === "active" || block.status === "pending";
