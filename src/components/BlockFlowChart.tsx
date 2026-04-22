@@ -892,7 +892,7 @@ export function BlockFlowChart({
             <AbsoluteConnectors
               blocks={activeBlocks.map((b) => ({ ...b, dependencies: b.dependencies.filter((d) => positions.has(d)) }))}
               positions={positions}
-              dragOffsets={new Map()}
+              dragOffsets={liveOffsets}
               blockSizes={(() => {
                 const m = new Map<string, { w: number; h: number }>();
                 activeBlocks.forEach((b) => {
@@ -918,20 +918,36 @@ export function BlockFlowChart({
                   isAnimatingOut={animatingOutId === block.id}
                   canvasWidth={containerWidth}
                   canvasHeight={containerHeight}
-                  onResizeLive={(id, w, h) => {
+                  onResizeLive={(id, w, h, dx, dy) => {
                     setLiveSizes((prev) => {
                       const next = new Map(prev);
                       next.set(id, { w, h });
                       return next;
                     });
+                    setLiveOffsets((prev) => {
+                      const next = new Map(prev);
+                      next.set(id, { x: dx, y: dy });
+                      return next;
+                    });
                   }}
-                  onResizeEnd={(id, w, h) => {
+                  onResizeEnd={(id, w, h, dx, dy) => {
+                    const curPos = positions.get(id) || { x: 0, y: 0 };
+                    const newX = Math.max(0, curPos.x + dx);
+                    const newY = Math.max(0, curPos.y + dy);
                     setLiveSizes((prev) => {
                       const next = new Map(prev);
                       next.delete(id);
                       return next;
                     });
+                    setLiveOffsets((prev) => {
+                      const next = new Map(prev);
+                      next.delete(id);
+                      return next;
+                    });
                     updateSize.mutate({ id, goalId, width: w, height: h });
+                    if (dx !== 0 || dy !== 0) {
+                      updatePosition.mutate({ id, goalId, position_x: newX, position_y: newY });
+                    }
                   }}
                   onComplete={(id) => {
                     const b = blocks.find((bl) => bl.id === id);
