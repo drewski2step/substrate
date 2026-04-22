@@ -44,6 +44,11 @@ const DEFAULT_BLOCK_W = 192;
 const DEFAULT_BLOCK_H = 80;
 const MIN_BLOCK_W = 140;
 const MIN_BLOCK_H = 60;
+// Resize bounds (per spec)
+const RESIZE_MIN_W = 160;
+const RESIZE_MIN_H = 80;
+const RESIZE_MAX_W = 480;
+const RESIZE_MAX_H = 400;
 const BLOCK_W = DEFAULT_BLOCK_W;
 const BLOCK_H = DEFAULT_BLOCK_H;
 const GAP_X = 24;
