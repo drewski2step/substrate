@@ -95,6 +95,7 @@ async function batchSavePositions(
 function BlockCard({
   block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
   onDragNearEdge, canvasWidth, canvasHeight, creatorName, creatorAvatarSeed, isAnimatingOut,
+  onResizeLive, onResizeEnd,
 }: {
   block: BlockWithDeps;
   posX: number;
@@ -111,9 +112,17 @@ function BlockCard({
   onDragNearEdge?: (id: string, direction: 'up' | 'down' | 'left' | 'right') => void;
   canvasWidth?: number;
   canvasHeight?: number;
+  onResizeLive?: (id: string, w: number, h: number) => void;
+  onResizeEnd?: (id: string, w: number, h: number) => void;
 }) {
   const didDragRef = useRef(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
+  // Live resize size (overrides saved size during a drag)
+  const savedW = (block as any).width as number | null | undefined;
+  const savedH = (block as any).height as number | null | undefined;
+  const [liveSize, setLiveSize] = useState<{ w: number; h: number } | null>(null);
+  const w = liveSize?.w ?? savedW ?? BLOCK_W;
+  const h = liveSize?.h ?? savedH ?? BLOCK_H;
   const canComplete = block.status === "active" || block.status === "pending";
   const isComplete = block.status === "complete";
   const status = block.status || "pending";
@@ -169,9 +178,9 @@ function BlockCard({
         const projX = posX + dx;
         const projY = posY + dy;
         if (projY < EXPAND_THRESHOLD) onDragNearEdge(block.id, 'up');
-        if (projY + BLOCK_H > canvasHeight - EXPAND_THRESHOLD) onDragNearEdge(block.id, 'down');
+        if (projY + h > canvasHeight - EXPAND_THRESHOLD) onDragNearEdge(block.id, 'down');
         if (projX < EXPAND_THRESHOLD) onDragNearEdge(block.id, 'left');
-        if (projX + BLOCK_W > canvasWidth - EXPAND_THRESHOLD) onDragNearEdge(block.id, 'right');
+        if (projX + w > canvasWidth - EXPAND_THRESHOLD) onDragNearEdge(block.id, 'right');
       }
     };
     const handleMouseUp = (ev: MouseEvent) => {
@@ -186,7 +195,42 @@ function BlockCard({
     };
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
-  }, [block.id, posX, posY, onDragEnd, onDragNearEdge, canvasWidth, canvasHeight]);
+  }, [block.id, posX, posY, onDragEnd, onDragNearEdge, canvasWidth, canvasHeight, w, h]);
+
+  // --- Resize handle ---
+  const handleResizePointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = w;
+    const startH = h;
+
+    const move = (ev: PointerEvent) => {
+      const newW = Math.min(RESIZE_MAX_W, Math.max(RESIZE_MIN_W, startW + (ev.clientX - startX)));
+      const newH = Math.min(RESIZE_MAX_H, Math.max(RESIZE_MIN_H, startH + (ev.clientY - startY)));
+      setLiveSize({ w: newW, h: newH });
+      onResizeLive?.(block.id, newW, newH);
+    };
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      const finalW = Math.min(RESIZE_MAX_W, Math.max(RESIZE_MIN_W, startW + (ev.clientX - startX)));
+      const finalH = Math.min(RESIZE_MAX_H, Math.max(RESIZE_MIN_H, startH + (ev.clientY - startY)));
+      setLiveSize(null);
+      onResizeEnd?.(block.id, finalW, finalH);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }, [block.id, w, h, onResizeLive, onResizeEnd]);
+
+  // Adaptive thresholds
+  const isMinWidth = w <= RESIZE_MIN_W + 8;
+  const compactIndicators = w <= RESIZE_MIN_W + 24;
+  const showDescription = h > 120 && !!block.description;
+  const descLines = showDescription ? Math.max(1, Math.floor((h - 110) / 14)) : 0;
+  const maxAvatars = compactIndicators ? 2 : w < 280 ? 3 : w < 360 ? 5 : 8;
+  const isFiles = (block as any).is_files_block === true;
 
   return (
     <div
@@ -195,16 +239,17 @@ function BlockCard({
       style={{
         left: posX, top: posY,
         transform: dragOffset ? `translate(${dragOffset.x}px, ${dragOffset.y}px)` : undefined,
-        width: BLOCK_W,
-        zIndex: dragOffset ? 50 : 1,
-        transition: dragOffset ? 'none' : 'left 0.2s ease, top 0.2s ease, transform 0.2s ease',
-        willChange: dragOffset ? 'transform' : undefined,
+        width: w,
+        height: h,
+        zIndex: dragOffset || liveSize ? 50 : 1,
+        transition: dragOffset || liveSize ? 'none' : 'left 0.2s ease, top 0.2s ease, transform 0.2s ease',
+        willChange: dragOffset || liveSize ? 'transform' : undefined,
       }}
     >
       <div
-        onClick={() => { if (!didDragRef.current) onNavigate(block); }}
+        onClick={() => { if (!didDragRef.current && !liveSize) onNavigate(block); }}
         className={cn(
-          "relative border-2 rounded-lg px-4 py-3 cursor-pointer overflow-hidden",
+          "relative border-2 rounded-lg px-4 py-3 cursor-pointer overflow-hidden h-full w-full flex flex-col",
           isPledged ? "border-indigo-400/60 bg-[hsl(230,35%,12%)]" : getHeatColor(heat),
           counts?.openBlockers && counts.openBlockers > 0 && "ring-2 ring-destructive/50",
           heat >= 200 && !isPledged && "animate-flame-rim",
@@ -228,7 +273,7 @@ function BlockCard({
           />
         ))}
 
-        <div className={cn("flex items-center gap-2 pt-1 pr-5 relative z-10", isPledged && "text-indigo-100")}>
+        <div className={cn("flex items-start gap-2 pt-1 pr-5 relative z-10 min-w-0", isPledged && "text-indigo-100")}>
           <div className={cn(
             "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
             status === "complete" && "bg-primary border-primary",
@@ -239,9 +284,33 @@ function BlockCard({
             {status === "complete" && <Check className="w-3 h-3 text-primary-foreground" />}
           </div>
           <div className="min-w-0 flex-1">
-            <span className={cn("text-xs font-semibold leading-tight", isPledged && "text-indigo-50")}>{block.title}</span>
-            {block.description && (
-              <span className={cn("text-[10px] leading-tight block mt-0.5 font-mono truncate", isPledged ? "text-indigo-300/70" : "text-muted-foreground")}>
+            <span
+              className={cn(
+                "text-xs font-semibold leading-tight block break-words",
+                isPledged && "text-indigo-50",
+              )}
+              style={{
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: isMinWidth ? 1 : 3,
+                overflow: "hidden",
+              }}
+            >
+              {block.title}
+            </span>
+            {showDescription && (
+              <span
+                className={cn(
+                  "text-[10px] leading-tight block mt-0.5 font-mono",
+                  isPledged ? "text-indigo-300/70" : "text-muted-foreground",
+                )}
+                style={{
+                  display: "-webkit-box",
+                  WebkitBoxOrient: "vertical",
+                  WebkitLineClamp: descLines,
+                  overflow: "hidden",
+                }}
+              >
                 {block.description}
               </span>
             )}
@@ -259,8 +328,8 @@ function BlockCard({
                     </span>
                   )}
                 </div>
-                {creatorName && (
-                  <span className={cn("text-[9px] leading-tight font-mono", isPledged ? "text-indigo-400/60" : "text-muted-foreground/60")}>
+                {creatorName && !compactIndicators && (
+                  <span className={cn("text-[9px] leading-tight font-mono truncate", isPledged ? "text-indigo-400/60" : "text-muted-foreground/60")}>
                     {creatorName}
                   </span>
                 )}
@@ -272,7 +341,7 @@ function BlockCard({
         {/* Pledger avatars */}
         {isPledged && pledgerProfiles && pledgerProfiles.length > 0 && (
           <div className="flex items-center gap-1 mt-1.5 relative z-10">
-            {pledgerProfiles.slice(0, 5).map((p) => (
+            {pledgerProfiles.slice(0, maxAvatars).map((p) => (
               <div key={p.id} className="group/avatar relative">
                 <img
                   src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${p.avatar_seed}`}
@@ -284,27 +353,27 @@ function BlockCard({
                 </span>
               </div>
             ))}
-            {pledgerProfiles.length > 5 && (
-              <span className="text-[10px] text-indigo-300">+{pledgerProfiles.length - 5}</span>
+            {pledgerProfiles.length > maxAvatars && (
+              <span className="text-[10px] text-indigo-300">+{pledgerProfiles.length - maxAvatars}</span>
             )}
           </div>
         )}
 
         {/* Heat + discussion badges */}
-        <div className={cn("flex items-center gap-2 mt-1.5 flex-wrap relative z-10", isPledged && "text-indigo-300")}>
+        <div className={cn("flex items-center gap-2 mt-auto pt-1.5 flex-wrap relative z-10", isPledged && "text-indigo-300")}>
           {/* Deadline badge */}
           {(block as any).deadline_at && (
             <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums",
               new Date((block as any).deadline_at) < new Date() ? "text-red-500" : isPledged ? "text-indigo-300" : "text-muted-foreground"
             )}>
               <Calendar className="w-3 h-3" />
-              {new Date((block as any).deadline_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+              {!compactIndicators && new Date((block as any).deadline_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
             </span>
           )}
           {/* Recurrence badge */}
           {(block as any).recurrence_interval && (
             <span className={cn("flex items-center gap-0.5 text-[10px] font-mono", isPledged ? "text-indigo-300" : "text-muted-foreground")}>
-              <Clock className="w-3 h-3" />{(block as any).recurrence_interval}
+              <Clock className="w-3 h-3" />{!compactIndicators && (block as any).recurrence_interval}
             </span>
           )}
           {heat > 0 && (
@@ -323,11 +392,30 @@ function BlockCard({
             </span>
           ) : null}
           {block.dependencies.length > 0 && (
-            <span className="text-[10px] font-mono">
-              {block.dependencies.length} dep{block.dependencies.length > 1 ? "s" : ""}
+            <span className="text-[10px] font-mono flex items-center gap-0.5">
+              <GitBranch className="w-3 h-3" />{block.dependencies.length}
+              {!compactIndicators && <> dep{block.dependencies.length > 1 ? "s" : ""}</>}
             </span>
           )}
         </div>
+
+        {/* Resize handle — bottom right (hidden on Files Block) */}
+        {!isFiles && (
+          <div
+            onPointerDown={handleResizePointerDown}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="absolute bottom-0 right-0 w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-end justify-end"
+            style={{ cursor: "nw-resize" }}
+            title="Resize"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" className="text-muted-foreground/60">
+              <line x1="11" y1="3" x2="3" y2="11" stroke="currentColor" strokeWidth="1" />
+              <line x1="11" y1="6" x2="6" y2="11" stroke="currentColor" strokeWidth="1" />
+              <line x1="11" y1="9" x2="9" y2="11" stroke="currentColor" strokeWidth="1" />
+            </svg>
+          </div>
+        )}
       </div>
       <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
         {canComplete && (
