@@ -112,15 +112,15 @@ function BlockCard({
   onDragNearEdge?: (id: string, direction: 'up' | 'down' | 'left' | 'right') => void;
   canvasWidth?: number;
   canvasHeight?: number;
-  onResizeLive?: (id: string, w: number, h: number) => void;
-  onResizeEnd?: (id: string, w: number, h: number) => void;
+  onResizeLive?: (id: string, w: number, h: number, dx: number, dy: number) => void;
+  onResizeEnd?: (id: string, w: number, h: number, dx: number, dy: number) => void;
 }) {
   const didDragRef = useRef(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
   // Live resize size (overrides saved size during a drag)
   const savedW = (block as any).width as number | null | undefined;
   const savedH = (block as any).height as number | null | undefined;
-  const [liveSize, setLiveSize] = useState<{ w: number; h: number } | null>(null);
+  const [liveSize, setLiveSize] = useState<{ w: number; h: number; dx: number; dy: number } | null>(null);
   const w = liveSize?.w ?? savedW ?? BLOCK_W;
   const h = liveSize?.h ?? savedH ?? BLOCK_H;
   const canComplete = block.status === "active" || block.status === "pending";
@@ -210,16 +210,21 @@ function BlockCard({
       // Top-left handle: dragging up/left enlarges, so invert the delta
       const newW = Math.min(RESIZE_MAX_W, Math.max(RESIZE_MIN_W, startW - (ev.clientX - startX)));
       const newH = Math.min(RESIZE_MAX_H, Math.max(RESIZE_MIN_H, startH - (ev.clientY - startY)));
-      setLiveSize({ w: newW, h: newH });
-      onResizeLive?.(block.id, newW, newH);
+      // Position compensation: as block grows, top-left shifts so bottom-right is anchored
+      const dx = startW - newW;
+      const dy = startH - newH;
+      setLiveSize({ w: newW, h: newH, dx, dy });
+      onResizeLive?.(block.id, newW, newH, dx, dy);
     };
     const up = (ev: PointerEvent) => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       const finalW = Math.min(RESIZE_MAX_W, Math.max(RESIZE_MIN_W, startW - (ev.clientX - startX)));
       const finalH = Math.min(RESIZE_MAX_H, Math.max(RESIZE_MIN_H, startH - (ev.clientY - startY)));
+      const dx = startW - finalW;
+      const dy = startH - finalH;
       setLiveSize(null);
-      onResizeEnd?.(block.id, finalW, finalH);
+      onResizeEnd?.(block.id, finalW, finalH, dx, dy);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -239,7 +244,11 @@ function BlockCard({
       onMouseDown={() => { didDragRef.current = false; }}
       style={{
         left: posX, top: posY,
-        transform: dragOffset ? `translate(${dragOffset.x}px, ${dragOffset.y}px)` : undefined,
+        transform: dragOffset
+          ? `translate(${dragOffset.x}px, ${dragOffset.y}px)`
+          : liveSize
+            ? `translate(${liveSize.dx}px, ${liveSize.dy}px)`
+            : undefined,
         width: w,
         height: h,
         zIndex: dragOffset || liveSize ? 50 : 1,
@@ -640,6 +649,8 @@ export function BlockFlowChart({
   const updateSize = useUpdateBlockSize();
   // Live (in-progress) resize sizes for blocks. Keyed by block id.
   const [liveSizes, setLiveSizes] = useState<Map<string, { w: number; h: number }>>(new Map());
+  // Live (in-progress) position offsets caused by top-left resize. Keyed by block id.
+  const [liveOffsets, setLiveOffsets] = useState<Map<string, { x: number; y: number }>>(new Map());
   const deleteBlock = useDeleteBlock();
   const logEdit = useLogEdit();
   const { user } = useAuth();
@@ -881,7 +892,7 @@ export function BlockFlowChart({
             <AbsoluteConnectors
               blocks={activeBlocks.map((b) => ({ ...b, dependencies: b.dependencies.filter((d) => positions.has(d)) }))}
               positions={positions}
-              dragOffsets={new Map()}
+              dragOffsets={liveOffsets}
               blockSizes={(() => {
                 const m = new Map<string, { w: number; h: number }>();
                 activeBlocks.forEach((b) => {
@@ -907,20 +918,36 @@ export function BlockFlowChart({
                   isAnimatingOut={animatingOutId === block.id}
                   canvasWidth={containerWidth}
                   canvasHeight={containerHeight}
-                  onResizeLive={(id, w, h) => {
+                  onResizeLive={(id, w, h, dx, dy) => {
                     setLiveSizes((prev) => {
                       const next = new Map(prev);
                       next.set(id, { w, h });
                       return next;
                     });
+                    setLiveOffsets((prev) => {
+                      const next = new Map(prev);
+                      next.set(id, { x: dx, y: dy });
+                      return next;
+                    });
                   }}
-                  onResizeEnd={(id, w, h) => {
+                  onResizeEnd={(id, w, h, dx, dy) => {
+                    const curPos = positions.get(id) || { x: 0, y: 0 };
+                    const newX = Math.max(0, curPos.x + dx);
+                    const newY = Math.max(0, curPos.y + dy);
                     setLiveSizes((prev) => {
                       const next = new Map(prev);
                       next.delete(id);
                       return next;
                     });
+                    setLiveOffsets((prev) => {
+                      const next = new Map(prev);
+                      next.delete(id);
+                      return next;
+                    });
                     updateSize.mutate({ id, goalId, width: w, height: h });
+                    if (dx !== 0 || dy !== 0) {
+                      updatePosition.mutate({ id, goalId, position_x: newX, position_y: newY });
+                    }
                   }}
                   onComplete={(id) => {
                     const b = blocks.find((bl) => bl.id === id);
