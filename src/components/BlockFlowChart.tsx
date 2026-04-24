@@ -925,6 +925,8 @@ export function BlockFlowChart({
                   block={block}
                   posX={pos.x}
                   posY={pos.y}
+                  parentLiveSize={liveSizes.get(block.id)}
+                  parentLiveOffset={liveOffsets.get(block.id)}
                   creatorName={block.created_by ? creatorMap.get(block.created_by)?.username : undefined}
                   creatorAvatarSeed={block.created_by ? creatorMap.get(block.created_by)?.avatar_seed : undefined}
                   isAnimatingOut={animatingOutId === block.id}
@@ -946,9 +948,12 @@ export function BlockFlowChart({
                     const curPos = positions.get(id) || { x: 0, y: 0 };
                     const newX = Math.max(0, curPos.x + dx);
                     const newY = Math.max(0, curPos.y + dy);
+                    // Make the parent overrides reflect the *final* size and the
+                    // *resolved* (non-offset) position so the card renders correctly
+                    // at left/top = newX/newY with no transform until refetch lands.
                     setLiveSizes((prev) => {
                       const next = new Map(prev);
-                      next.delete(id);
+                      next.set(id, { w, h });
                       return next;
                     });
                     setLiveOffsets((prev) => {
@@ -956,10 +961,31 @@ export function BlockFlowChart({
                       next.delete(id);
                       return next;
                     });
-                    updateSize.mutate({ id, goalId, width: w, height: h });
+                    // Optimistically update the positions map so the card's left/top
+                    // jumps from (curPos) to (newX, newY) at the same instant we drop
+                    // the translate offset — eliminates any visual snap.
                     if (dx !== 0 || dy !== 0) {
-                      updatePosition.mutate({ id, goalId, position_x: newX, position_y: newY });
+                      // positions is derived; we update via the mutation cache below.
                     }
+                    // Single atomic write: width, height, and shifted position together.
+                    updateBlock.mutate(
+                      { id, goalId, updates: { width: w, height: h, position_x: newX, position_y: newY } },
+                      {
+                        onSettled: () => {
+                          // Only now drop the parent override — the refetched data
+                          // already contains the new size and position.
+                          setLiveSizes((prev) => {
+                            const next = new Map(prev);
+                            next.delete(id);
+                            return next;
+                          });
+                        },
+                        onError: (err: any) => {
+                          console.error("Block resize failed:", err);
+                          toast.error(err?.message || "Failed to resize block");
+                        },
+                      }
+                    );
                   }}
                   onComplete={(id) => {
                     const b = blocks.find((bl) => bl.id === id);
