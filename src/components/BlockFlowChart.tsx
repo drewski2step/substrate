@@ -95,7 +95,7 @@ async function batchSavePositions(
 function BlockCard({
   block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
   onDragNearEdge, canvasWidth, canvasHeight, creatorName, creatorAvatarSeed, isAnimatingOut,
-  onResizeLive, onResizeEnd,
+  onResizeLive, onResizeEnd, parentLiveSize, parentLiveOffset,
 }: {
   block: BlockWithDeps;
   posX: number;
@@ -114,6 +114,8 @@ function BlockCard({
   canvasHeight?: number;
   onResizeLive?: (id: string, w: number, h: number, dx: number, dy: number) => void;
   onResizeEnd?: (id: string, w: number, h: number, dx: number, dy: number) => void;
+  parentLiveSize?: { w: number; h: number };
+  parentLiveOffset?: { x: number; y: number };
 }) {
   const didDragRef = useRef(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
@@ -121,8 +123,14 @@ function BlockCard({
   const savedW = (block as any).width as number | null | undefined;
   const savedH = (block as any).height as number | null | undefined;
   const [liveSize, setLiveSize] = useState<{ w: number; h: number; dx: number; dy: number } | null>(null);
-  const w = liveSize?.w ?? savedW ?? BLOCK_W;
-  const h = liveSize?.h ?? savedH ?? BLOCK_H;
+  // Effective size: local in-progress drag > parent override (post-drop, awaiting refetch) > saved > default
+  const w = liveSize?.w ?? parentLiveSize?.w ?? savedW ?? BLOCK_W;
+  const h = liveSize?.h ?? parentLiveSize?.h ?? savedH ?? BLOCK_H;
+  // Keep refs to current effective size so resize handler always uses up-to-date values
+  const wRef = useRef(w);
+  const hRef = useRef(h);
+  wRef.current = w;
+  hRef.current = h;
   const canComplete = block.status === "active" || block.status === "pending";
   const isComplete = block.status === "complete";
   const status = block.status || "pending";
@@ -203,8 +211,8 @@ function BlockCard({
     e.stopPropagation();
     const startX = e.clientX;
     const startY = e.clientY;
-    const startW = w;
-    const startH = h;
+    const startW = wRef.current;
+    const startH = hRef.current;
 
     const move = (ev: PointerEvent) => {
       // Top-left handle: dragging up/left enlarges, so invert the delta
@@ -223,12 +231,14 @@ function BlockCard({
       const finalH = Math.min(RESIZE_MAX_H, Math.max(RESIZE_MIN_H, startH - (ev.clientY - startY)));
       const dx = startW - finalW;
       const dy = startH - finalH;
-      setLiveSize(null);
+      // Notify parent first (parent will hold its own override until the save settles),
+      // then drop our local override so the parent override takes over seamlessly.
       onResizeEnd?.(block.id, finalW, finalH, dx, dy);
+      setLiveSize(null);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
-  }, [block.id, w, h, onResizeLive, onResizeEnd]);
+  }, [block.id, onResizeLive, onResizeEnd]);
 
   // Adaptive thresholds
   const isMinWidth = w <= RESIZE_MIN_W + 8;
@@ -248,12 +258,14 @@ function BlockCard({
           ? `translate(${dragOffset.x}px, ${dragOffset.y}px)`
           : liveSize
             ? `translate(${liveSize.dx}px, ${liveSize.dy}px)`
-            : undefined,
+            : parentLiveOffset
+              ? `translate(${parentLiveOffset.x}px, ${parentLiveOffset.y}px)`
+              : undefined,
         width: w,
         height: h,
-        zIndex: dragOffset || liveSize ? 50 : 1,
-        transition: dragOffset || liveSize ? 'none' : 'left 0.2s ease, top 0.2s ease, transform 0.2s ease',
-        willChange: dragOffset || liveSize ? 'transform' : undefined,
+        zIndex: dragOffset || liveSize || parentLiveOffset ? 50 : 1,
+        transition: dragOffset || liveSize || parentLiveOffset ? 'none' : 'left 0.2s ease, top 0.2s ease, transform 0.2s ease',
+        willChange: dragOffset || liveSize || parentLiveOffset ? 'transform' : undefined,
       }}
     >
       <div
@@ -913,6 +925,8 @@ export function BlockFlowChart({
                   block={block}
                   posX={pos.x}
                   posY={pos.y}
+                  parentLiveSize={liveSizes.get(block.id)}
+                  parentLiveOffset={liveOffsets.get(block.id)}
                   creatorName={block.created_by ? creatorMap.get(block.created_by)?.username : undefined}
                   creatorAvatarSeed={block.created_by ? creatorMap.get(block.created_by)?.avatar_seed : undefined}
                   isAnimatingOut={animatingOutId === block.id}
@@ -934,20 +948,43 @@ export function BlockFlowChart({
                     const curPos = positions.get(id) || { x: 0, y: 0 };
                     const newX = Math.max(0, curPos.x + dx);
                     const newY = Math.max(0, curPos.y + dy);
+                    // Keep both overrides in place — size AND offset — so the card
+                    // continues to render at its dragged size and dragged screen
+                    // location until the database round-trip settles. Then both are
+                    // cleared simultaneously and the saved left/top + width/height
+                    // from the refetched query data take over with no visual jump.
                     setLiveSizes((prev) => {
                       const next = new Map(prev);
-                      next.delete(id);
+                      next.set(id, { w, h });
                       return next;
                     });
                     setLiveOffsets((prev) => {
                       const next = new Map(prev);
-                      next.delete(id);
+                      next.set(id, { x: dx, y: dy });
                       return next;
                     });
-                    updateSize.mutate({ id, goalId, width: w, height: h });
-                    if (dx !== 0 || dy !== 0) {
-                      updatePosition.mutate({ id, goalId, position_x: newX, position_y: newY });
-                    }
+                    // Single atomic write: width, height, and shifted position together.
+                    updateBlock.mutate(
+                      { id, goalId, updates: { width: w, height: h, position_x: newX, position_y: newY } },
+                      {
+                        onSettled: () => {
+                          setLiveSizes((prev) => {
+                            const next = new Map(prev);
+                            next.delete(id);
+                            return next;
+                          });
+                          setLiveOffsets((prev) => {
+                            const next = new Map(prev);
+                            next.delete(id);
+                            return next;
+                          });
+                        },
+                        onError: (err: any) => {
+                          console.error("Block resize failed:", err);
+                          toast.error(err?.message || "Failed to resize block");
+                        },
+                      }
+                    );
                   }}
                   onComplete={(id) => {
                     const b = blocks.find((bl) => bl.id === id);
