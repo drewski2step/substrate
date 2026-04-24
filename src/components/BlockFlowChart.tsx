@@ -948,9 +948,11 @@ export function BlockFlowChart({
                     const curPos = positions.get(id) || { x: 0, y: 0 };
                     const newX = Math.max(0, curPos.x + dx);
                     const newY = Math.max(0, curPos.y + dy);
-                    // Make the parent overrides reflect the *final* size and the
-                    // *resolved* (non-offset) position so the card renders correctly
-                    // at left/top = newX/newY with no transform until refetch lands.
+                    // Keep both overrides in place — size AND offset — so the card
+                    // continues to render at its dragged size and dragged screen
+                    // location until the database round-trip settles. Then both are
+                    // cleared simultaneously and the saved left/top + width/height
+                    // from the refetched query data take over with no visual jump.
                     setLiveSizes((prev) => {
                       const next = new Map(prev);
                       next.set(id, { w, h });
@@ -958,23 +960,20 @@ export function BlockFlowChart({
                     });
                     setLiveOffsets((prev) => {
                       const next = new Map(prev);
-                      next.delete(id);
+                      next.set(id, { x: dx, y: dy });
                       return next;
                     });
-                    // Optimistically update the positions map so the card's left/top
-                    // jumps from (curPos) to (newX, newY) at the same instant we drop
-                    // the translate offset — eliminates any visual snap.
-                    if (dx !== 0 || dy !== 0) {
-                      // positions is derived; we update via the mutation cache below.
-                    }
                     // Single atomic write: width, height, and shifted position together.
                     updateBlock.mutate(
                       { id, goalId, updates: { width: w, height: h, position_x: newX, position_y: newY } },
                       {
                         onSettled: () => {
-                          // Only now drop the parent override — the refetched data
-                          // already contains the new size and position.
                           setLiveSizes((prev) => {
+                            const next = new Map(prev);
+                            next.delete(id);
+                            return next;
+                          });
+                          setLiveOffsets((prev) => {
                             const next = new Map(prev);
                             next.delete(id);
                             return next;
