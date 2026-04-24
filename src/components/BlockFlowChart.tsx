@@ -211,8 +211,8 @@ function BlockCard({
     e.stopPropagation();
     const startX = e.clientX;
     const startY = e.clientY;
-    const startW = w;
-    const startH = h;
+    const startW = wRef.current;
+    const startH = hRef.current;
 
     const move = (ev: PointerEvent) => {
       // Top-left handle: dragging up/left enlarges, so invert the delta
@@ -231,12 +231,14 @@ function BlockCard({
       const finalH = Math.min(RESIZE_MAX_H, Math.max(RESIZE_MIN_H, startH - (ev.clientY - startY)));
       const dx = startW - finalW;
       const dy = startH - finalH;
-      setLiveSize(null);
+      // Notify parent first (parent will hold its own override until the save settles),
+      // then drop our local override so the parent override takes over seamlessly.
       onResizeEnd?.(block.id, finalW, finalH, dx, dy);
+      setLiveSize(null);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
-  }, [block.id, w, h, onResizeLive, onResizeEnd]);
+  }, [block.id, onResizeLive, onResizeEnd]);
 
   // Adaptive thresholds
   const isMinWidth = w <= RESIZE_MIN_W + 8;
