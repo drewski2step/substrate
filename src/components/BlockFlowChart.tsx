@@ -95,7 +95,7 @@ async function batchSavePositions(
 function BlockCard({
   block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
   onDragNearEdge, canvasWidth, canvasHeight, creatorName, creatorAvatarSeed, isAnimatingOut,
-  onResizeLive, onResizeEnd,
+  onResizeLive, onResizeEnd, parentLiveSize, parentLiveOffset,
 }: {
   block: BlockWithDeps;
   posX: number;
@@ -114,6 +114,8 @@ function BlockCard({
   canvasHeight?: number;
   onResizeLive?: (id: string, w: number, h: number, dx: number, dy: number) => void;
   onResizeEnd?: (id: string, w: number, h: number, dx: number, dy: number) => void;
+  parentLiveSize?: { w: number; h: number };
+  parentLiveOffset?: { x: number; y: number };
 }) {
   const didDragRef = useRef(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
@@ -121,8 +123,14 @@ function BlockCard({
   const savedW = (block as any).width as number | null | undefined;
   const savedH = (block as any).height as number | null | undefined;
   const [liveSize, setLiveSize] = useState<{ w: number; h: number; dx: number; dy: number } | null>(null);
-  const w = liveSize?.w ?? savedW ?? BLOCK_W;
-  const h = liveSize?.h ?? savedH ?? BLOCK_H;
+  // Effective size: local in-progress drag > parent override (post-drop, awaiting refetch) > saved > default
+  const w = liveSize?.w ?? parentLiveSize?.w ?? savedW ?? BLOCK_W;
+  const h = liveSize?.h ?? parentLiveSize?.h ?? savedH ?? BLOCK_H;
+  // Keep refs to current effective size so resize handler always uses up-to-date values
+  const wRef = useRef(w);
+  const hRef = useRef(h);
+  wRef.current = w;
+  hRef.current = h;
   const canComplete = block.status === "active" || block.status === "pending";
   const isComplete = block.status === "complete";
   const status = block.status || "pending";
