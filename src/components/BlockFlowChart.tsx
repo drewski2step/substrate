@@ -258,12 +258,14 @@ function BlockCard({
           ? `translate(${dragOffset.x}px, ${dragOffset.y}px)`
           : liveSize
             ? `translate(${liveSize.dx}px, ${liveSize.dy}px)`
-            : undefined,
+            : parentLiveOffset
+              ? `translate(${parentLiveOffset.x}px, ${parentLiveOffset.y}px)`
+              : undefined,
         width: w,
         height: h,
-        zIndex: dragOffset || liveSize ? 50 : 1,
-        transition: dragOffset || liveSize ? 'none' : 'left 0.2s ease, top 0.2s ease, transform 0.2s ease',
-        willChange: dragOffset || liveSize ? 'transform' : undefined,
+        zIndex: dragOffset || liveSize || parentLiveOffset ? 50 : 1,
+        transition: dragOffset || liveSize || parentLiveOffset ? 'none' : 'left 0.2s ease, top 0.2s ease, transform 0.2s ease',
+        willChange: dragOffset || liveSize || parentLiveOffset ? 'transform' : undefined,
       }}
     >
       <div
