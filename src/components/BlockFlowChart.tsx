@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen, Pencil, Trash2, Star, GripVertical, Undo2, Clock, Calendar, Maximize2 } from "lucide-react";
+import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen, Pencil, Trash2, Star, GripVertical, Undo2, Clock, Calendar, Maximize2, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useBlockDiscussionCounts } from "@/hooks/use-discussions";
 import { useLogEdit } from "@/hooks/use-edit-history";
 import { useAuth } from "@/hooks/use-auth";
+import { useBlockVotes, useVoteBlock } from "@/hooks/use-block-votes";
 import { useBlockPledges, usePledgeBlock, useUnpledgeBlock } from "@/hooks/use-pledges";
 import { DocumentPanel } from "@/components/DocumentPanel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -95,12 +96,13 @@ async function batchSavePositions(
 // --- Block card with heat ---
 function BlockCard({
   block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
-  onDragNearEdge, canvasWidth, canvasHeight, creatorName, creatorAvatarSeed, creatorAvatarUrl, creatorUsername, isAnimatingOut,
+  onDragNearEdge, canvasWidth, canvasHeight, goalId, creatorName, creatorAvatarSeed, creatorAvatarUrl, creatorUsername, isAnimatingOut,
   onResizeLive, onResizeEnd, parentLiveSize, parentLiveOffset,
 }: {
   block: BlockWithDeps;
   posX: number;
   posY: number;
+  goalId: string;
   creatorName?: string;
   creatorAvatarSeed?: string;
   creatorAvatarUrl?: string | null;
@@ -158,6 +160,9 @@ function BlockCard({
 
   const isPledged = pledges && pledges.length > 0;
   const userPledged = pledges?.some((p) => p.user_id === user?.id);
+  const { data: votes } = useBlockVotes(block.id);
+  const voteBlock = useVoteBlock();
+  const userVote = votes?.find((v) => v.user_id === user?.id)?.vote ?? null;
 
   // Generate star positions for night sky
   const stars = useMemo(() =>
@@ -422,10 +427,40 @@ function BlockCard({
               <Clock className="w-3 h-3" />{!compactIndicators && (block as any).recurrence_interval}
             </span>
           )}
-          {heat > 0 && (
-            <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums", isPledged ? "text-amber-300" : getFlameColor(heat))}>
-              <Flame className="w-3 h-3" />{heat}
-            </span>
+          <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums", isPledged ? "text-amber-300" : getFlameColor(heat))}>
+            <Flame className="w-3 h-3" />{heat}
+          </span>
+          {user && (
+            <div
+              className="inline-flex items-center rounded border border-border/50 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); voteBlock.mutate({ blockId: block.id, userId: user.id, vote: 1, goalId, currentVote: userVote, currentHeat: heat }); }}
+                disabled={voteBlock.isPending}
+                className={cn(
+                  "px-1 py-0.5 flex items-center transition-colors",
+                  userVote === 1 ? "text-orange-400 bg-orange-500/20" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+                title="Upvote"
+              >
+                <ArrowUp className="w-2.5 h-2.5" />
+              </button>
+              <div className="w-px h-3 bg-border/50" />
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); voteBlock.mutate({ blockId: block.id, userId: user.id, vote: -1, goalId, currentVote: userVote, currentHeat: heat }); }}
+                disabled={voteBlock.isPending}
+                className={cn(
+                  "px-1 py-0.5 flex items-center transition-colors",
+                  userVote === -1 ? "text-blue-400 bg-blue-500/20" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+                title="Downvote"
+              >
+                <ArrowDown className="w-2.5 h-2.5" />
+              </button>
+            </div>
           )}
           {counts?.openQuestions && counts.openQuestions > 0 ? (
             <span className="flex items-center gap-0.5 text-[10px] text-blue-400 font-mono">
@@ -949,6 +984,7 @@ export function BlockFlowChart({
                   block={block}
                   posX={pos.x}
                   posY={pos.y}
+                  goalId={goalId}
                   parentLiveSize={liveSizes.get(block.id)}
                   parentLiveOffset={liveOffsets.get(block.id)}
                   creatorName={block.created_by ? creatorMap.get(block.created_by)?.username : undefined}

@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Trash2, ChevronLeft, Flame, Star, FolderOpen, Pencil, Calendar, Clock } from "lucide-react";
+import { Trash2, ChevronLeft, Flame, Star, FolderOpen, Pencil, Calendar, Clock, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGoal } from "@/hooks/use-goals";
 import { useBlocks, useUpdateBlock, useDeleteBlock, pickUtahColor } from "@/hooks/use-blocks";
@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useBlockVotes, useVoteBlock } from "@/hooks/use-block-votes";
 
 const statusLabel: Record<string, string> = { pending: "Pending", active: "Active", complete: "Complete", stalled: "Stalled" };
 const statusColor: Record<string, string> = {
@@ -54,6 +55,9 @@ export default function BlockView() {
   const unpledgeBlock = useUnpledgeBlock();
   const userPledged = pledges?.some((p) => p.user_id === user?.id);
   const deleteBlock = useDeleteBlock();
+  const { data: votes } = useBlockVotes(resolvedBlockId);
+  const voteBlock = useVoteBlock();
+  const userVote = votes?.find((v) => v.user_id === user?.id)?.vote ?? null;
 
   const creatorId = blocks?.find((b) => b.id === resolvedBlockId)?.created_by;
   const { data: creatorProfile } = useQuery({
@@ -138,10 +142,35 @@ export default function BlockView() {
           <span className={cn("inline-flex items-center px-3 py-1 text-xs font-medium rounded border", statusColor[status] || statusColor.pending)}>
             {statusLabel[status] || status}
           </span>
-          {heat > 0 && (
-            <span className="inline-flex items-center gap-1 text-sm font-mono tabular-nums text-orange-500">
-              <Flame className="w-4 h-4" />{heat}
-            </span>
+          <span className="inline-flex items-center gap-1 text-sm font-mono tabular-nums text-orange-500">
+            <Flame className="w-4 h-4" />{heat}
+          </span>
+          {user && (
+            <div className="inline-flex items-center rounded-md border border-border overflow-hidden">
+              <button
+                onClick={() => voteBlock.mutate({ blockId: block.id, userId: user.id, vote: 1, goalId: goal.id, currentVote: userVote, currentHeat: heat })}
+                disabled={voteBlock.isPending}
+                className={cn(
+                  "px-2 py-1 text-xs flex items-center gap-1 transition-colors",
+                  userVote === 1 ? "bg-orange-500/20 text-orange-400" : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                )}
+                title="Upvote (increases heat)"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+              <div className="w-px h-5 bg-border" />
+              <button
+                onClick={() => voteBlock.mutate({ blockId: block.id, userId: user.id, vote: -1, goalId: goal.id, currentVote: userVote, currentHeat: heat })}
+                disabled={voteBlock.isPending}
+                className={cn(
+                  "px-2 py-1 text-xs flex items-center gap-1 transition-colors",
+                  userVote === -1 ? "bg-blue-500/20 text-blue-400" : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                )}
+                title="Downvote (decreases heat)"
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
           )}
           <RealtimeIndicator connected={connected} />
         </div>
