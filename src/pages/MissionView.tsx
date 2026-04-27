@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { BlockFlowChart } from "@/components/BlockFlowChart";
+import { KochFractalMap } from "@/components/KochFractalMap";
 import { MissionFeed } from "@/components/MissionFeed";
 
 import { useRealtimeSync } from "@/hooks/use-realtime";
@@ -256,6 +257,7 @@ export default function MissionView() {
           <Tabs defaultValue="flowchart">
             <TabsList>
               <TabsTrigger value="flowchart">Block Flow</TabsTrigger>
+              <TabsTrigger value="fractal">Fractal Map</TabsTrigger>
               <TabsTrigger value="feed">Discussions</TabsTrigger>
             </TabsList>
             <TabsContent value="flowchart" className="mt-4">
@@ -265,6 +267,9 @@ export default function MissionView() {
                 parentBlockTitle={goal.title}
                 onNavigateToBlock={(b) => navigate(`/mission/${missionId}/block/${b.id}`)}
               />
+            </TabsContent>
+            <TabsContent value="fractal" className="mt-4">
+              <KochFractalMap missionId={goal.id} />
             </TabsContent>
             <TabsContent value="feed" className="mt-4">
               <MissionFeed goalId={goal.id} missionId={missionId || ""} />
