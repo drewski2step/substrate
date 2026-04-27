@@ -1,6 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserFollowedMissions } from "@/hooks/use-mission-followers";
 import { AppHeader } from "@/components/AppHeader";
 import { ArrowLeft, ArrowRight, Globe, Lock } from "lucide-react";
 
@@ -16,17 +17,7 @@ export default function UserMissions() {
     enabled: !!username,
   });
 
-  const { data: missions, isLoading } = useQuery({
-    queryKey: ["user-missions-page", profile?.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("mission_followers")
-        .select("goal_id, goals(id, title, description, visibility, created_at)")
-        .eq("user_id", profile!.id);
-      return (data ?? []).map((r: any) => r.goals).filter(Boolean);
-    },
-    enabled: !!profile?.id,
-  });
+  const { data: missions, isLoading } = useUserFollowedMissions(profile?.id);
 
   return (
     <>
