@@ -4,13 +4,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { getAvatarUrl } from "@/hooks/use-auth";
-import { useUserFollowedMissions } from "@/hooks/use-mission-followers";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Pencil, Globe, Lock, ArrowRight } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export default function UserProfile() {
@@ -143,63 +142,27 @@ export default function UserProfile() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           {[
-            { label: "Missions", value: stats?.missions ?? 0, to: null },
-            { label: "Blocks", value: stats?.blocks ?? 0, to: null },
-            { label: "Posts", value: stats?.posts ?? 0, to: null },
+            { label: "Missions", value: stats?.missions ?? 0, to: `/profile/${profile.username}/missions` },
+            { label: "Discussions", value: stats?.posts ?? 0, to: `/profile/${profile.username}/discussions` },
             { label: "Completed", value: stats?.completed ?? 0, to: `/profile/${profile.username}/completed` },
             { label: "Pledged", value: pledgeCount ?? 0, to: `/profile/${profile.username}/pledged` },
           ].map((s) => (
-            s.to ? (
-              <Link key={s.label} to={s.to}>
-                <Card className="cursor-pointer hover:border-orange-400 transition-colors">
-                  <CardContent className="p-3 text-center">
-                    <div className="text-2xl font-bold font-mono">{s.value}</div>
-                    <div className="text-xs text-muted-foreground font-mono uppercase tracking-wide">{s.label}</div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ) : (
-              <Card key={s.label}>
+            <Link key={s.label} to={s.to}>
+              <Card className="cursor-pointer hover:border-orange-400 transition-colors">
                 <CardContent className="p-3 text-center">
                   <div className="text-2xl font-bold font-mono">{s.value}</div>
                   <div className="text-xs text-muted-foreground font-mono uppercase tracking-wide">{s.label}</div>
                 </CardContent>
               </Card>
-            )
+            </Link>
           ))}
         </div>
 
 
 
-        {/* Followed missions */}
-        <div className="mt-8">
-          <h2 className="text-sm font-semibold font-mono uppercase tracking-wide text-muted-foreground mb-3">Missions</h2>
-          {followedMissions && followedMissions.length > 0 ? (
-            <div className="space-y-2">
-              {followedMissions.map((m: any) => (
-                <Link
-                  key={m.id}
-                  to={`/mission/${m.id}`}
-                  className="flex items-center justify-between rounded-lg border bg-card p-3 hover:bg-muted/50 transition-colors group"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm font-medium font-mono truncate">{m.title}</span>
-                    {m.visibility === "private" ? (
-                      <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
-                    ) : (
-                      <Globe className="w-3 h-3 text-emerald-600 shrink-0" />
-                    )}
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground font-mono">Not following any missions.</p>
-          )}
-        </div>
+
       </main>
 
       {/* Edit dialog */}

@@ -17,6 +17,8 @@ import Discussions from "./pages/Discussions";
 import GraphView from "./pages/GraphView";
 import CompletedBlocks from "./pages/CompletedBlocks";
 import PledgedBlocks from "./pages/PledgedBlocks";
+import UserMissions from "./pages/UserMissions";
+import UserDiscussions from "./pages/UserDiscussions";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +36,8 @@ const App = () => (
             <Route path="/graph" element={<GraphView />} />
             <Route path="/profile/:username/completed" element={<CompletedBlocks />} />
             <Route path="/profile/:username/pledged" element={<PledgedBlocks />} />
+            <Route path="/profile/:username/missions" element={<UserMissions />} />
+            <Route path="/profile/:username/discussions" element={<UserDiscussions />} />
             <Route path="/mission/:missionId" element={<MissionView />} />
             <Route path="/mission/:missionId/block/:blockId" element={<BlockView />} />
             <Route path="/mission/:missionId/task/:taskId" element={<BlockView />} />
