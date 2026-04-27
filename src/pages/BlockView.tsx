@@ -40,7 +40,7 @@ export default function BlockView() {
   const [editDesc, setEditDesc] = useState("");
   const [editStatus, setEditStatus] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
-  const [editRecurrence, setEditRecurrence] = useState("");
+  const [editRecurrence, setEditRecurrence] = useState("none");
   const navigate = useNavigate();
   const { missionId, blockId, taskId } = useParams<{ missionId: string; blockId?: string; taskId?: string }>();
   const resolvedBlockId = blockId || taskId || "";
@@ -290,7 +290,7 @@ export default function BlockView() {
           setEditDesc(block.description || "");
           setEditStatus(block.status || "pending");
           setEditDeadline((block as any).deadline_at ? new Date((block as any).deadline_at).toISOString().slice(0, 16) : "");
-          setEditRecurrence((block as any).recurrence_interval || "");
+          setEditRecurrence((block as any).recurrence_interval || "none");
         }}}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -321,7 +321,7 @@ export default function BlockView() {
                 <Select value={editRecurrence} onValueChange={setEditRecurrence}>
                   <SelectTrigger className="text-xs h-8"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     <SelectItem value="daily">Daily</SelectItem>
                     <SelectItem value="weekly">Weekly</SelectItem>
                     <SelectItem value="biweekly">Every 2 weeks</SelectItem>
@@ -339,7 +339,7 @@ export default function BlockView() {
                 if (editStatus !== (block.status || "pending")) updates.status = editStatus;
                 const newDeadline = editDeadline ? new Date(editDeadline).toISOString() : null;
                 if (newDeadline !== ((block as any).deadline_at || null)) updates.deadline_at = newDeadline;
-                const newRecurrence = editRecurrence || null;
+                const newRecurrence = editRecurrence === "none" ? null : editRecurrence;
                 if (newRecurrence !== ((block as any).recurrence_interval || null)) updates.recurrence_interval = newRecurrence;
                 if (Object.keys(updates).length > 0) {
                   updateBlock.mutate({ id: block.id, goalId: goal.id, updates }, {

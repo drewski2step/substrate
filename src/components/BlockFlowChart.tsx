@@ -1211,7 +1211,7 @@ function EditBlockDialog({ block, goalId, open, onOpenChange }: {
   const [description, setDescription] = useState(block.description || "");
   const [status, setStatus] = useState(block.status || "pending");
   const [deadlineAt, setDeadlineAt] = useState((block as any).deadline_at ? new Date((block as any).deadline_at).toISOString().slice(0, 16) : "");
-  const [recurrenceInterval, setRecurrenceInterval] = useState((block as any).recurrence_interval || "");
+  const [recurrenceInterval, setRecurrenceInterval] = useState((block as any).recurrence_interval || "none");
   const updateBlock = useUpdateBlock();
   const deleteBlock = useDeleteBlock();
   const logEdit = useLogEdit();
@@ -1237,7 +1237,7 @@ function EditBlockDialog({ block, goalId, open, onOpenChange }: {
     const oldDeadline = (block as any).deadline_at || null;
     if (newDeadline !== oldDeadline) updates.deadline_at = newDeadline;
     
-    const newRecurrence = recurrenceInterval || null;
+    const newRecurrence = recurrenceInterval === "none" ? null : recurrenceInterval;
     const oldRecurrence = (block as any).recurrence_interval || null;
     if (newRecurrence !== oldRecurrence) updates.recurrence_interval = newRecurrence;
 
@@ -1295,7 +1295,7 @@ function EditBlockDialog({ block, goalId, open, onOpenChange }: {
                 <SelectValue placeholder="None" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 <SelectItem value="daily">Daily</SelectItem>
                 <SelectItem value="weekly">Weekly</SelectItem>
                 <SelectItem value="biweekly">Every 2 weeks</SelectItem>
