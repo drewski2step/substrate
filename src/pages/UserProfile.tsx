@@ -67,8 +67,6 @@ export default function UserProfile() {
     enabled: !!profile?.id,
   });
 
-  const { data: followedMissions } = useUserFollowedMissions(profile?.id);
-
   const updateUsername = useMutation({
     mutationFn: async (uname: string) => {
       const { data: existing } = await supabase
