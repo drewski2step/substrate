@@ -168,15 +168,31 @@ function BlockCard({
   const voteBlock = useVoteBlock();
   const userVote = votes?.find((v) => v.user_id === user?.id)?.vote ?? null;
 
-  // Generate star positions for night sky
-  const stars = useMemo(() =>
-    Array.from({ length: 14 }, (_, i) => ({
-      left: `${Math.random() * 90 + 5}%`,
-      top: `${Math.random() * 80 + 5}%`,
-      delay: `${Math.random() * 3}s`,
-      duration: `${1.5 + Math.random() * 1.5}s`,
-    })),
-  []);
+  // Generate star positions for night sky — 4×4 grid with fixed jitter for even spread
+  const stars = useMemo(() => {
+    const COLS_STAR = 4;
+    const ROWS_STAR = 4;
+    // Small deterministic jitter per cell so stars aren't perfectly aligned
+    const jitter = [
+      -3, 4, -2, 5, 3, -4, 1, -5,
+      2, -3, 4, -1, -4, 3, -2, 5,
+    ];
+    const result: { left: string; top: string; delay: string; duration: string }[] = [];
+    for (let r = 0; r < ROWS_STAR; r++) {
+      for (let c = 0; c < COLS_STAR; c++) {
+        const idx = r * COLS_STAR + c;
+        const baseLeft = (c + 0.5) * (100 / COLS_STAR); // 12.5, 37.5, 62.5, 87.5
+        const baseTop = (r + 0.5) * (100 / ROWS_STAR);
+        result.push({
+          left: `${baseLeft + jitter[idx % jitter.length]}%`,
+          top: `${baseTop + jitter[(idx + 7) % jitter.length]}%`,
+          delay: `${(idx * 0.13) % 2}s`,
+          duration: `${1.5 + (idx % 5) * 0.3}s`,
+        });
+      }
+    }
+    return result;
+  }, []);
 
   const handleGripMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -343,8 +359,7 @@ function BlockCard({
                   top: s.top,
                   animationDelay: s.delay,
                   animationDuration: s.duration,
-                  backgroundColor: '#FFD700',
-                  boxShadow: '0 0 4px 2px rgba(255, 215, 0, 0.7)',
+                  backgroundColor: '#92400E',
                 }}
               />
             ))}
