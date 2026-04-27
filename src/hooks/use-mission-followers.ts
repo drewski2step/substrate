@@ -65,7 +65,8 @@ export function useUserFollowedMissions(userId: string | undefined) {
         .from("goals")
         .select("*")
         .in("id", goalIds)
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .neq("visibility", "private");
       return goals ?? [];
     },
     enabled: !!userId,

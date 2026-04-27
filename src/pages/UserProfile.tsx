@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useUserFollowedMissions } from "@/hooks/use-mission-followers";
 import { getAvatarUrl } from "@/hooks/use-auth";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,13 +40,13 @@ export default function UserProfile() {
     queryKey: ["profile-stats", profile?.id],
     queryFn: async () => {
       const [missions, blocks, posts, completed] = await Promise.all([
-        supabase.from("goals").select("id", { count: "exact", head: true }).eq("created_by", profile!.id),
+        Promise.resolve({ count: 0 }), // missions count replaced by useUserFollowedMissions
         supabase.from("blocks").select("id", { count: "exact", head: true }).eq("created_by", profile!.id).is("deleted_at", null),
         supabase.from("discussions").select("id", { count: "exact", head: true }).eq("user_id", profile!.id).is("parent_id", null),
         supabase.from("blocks").select("id", { count: "exact", head: true }).eq("completed_by", profile!.id).is("deleted_at", null),
       ]);
       return {
-        missions: missions.count ?? 0,
+        missions: 0, // overridden below
         blocks: blocks.count ?? 0,
         posts: posts.count ?? 0,
         completed: completed.count ?? 0,
@@ -53,6 +54,9 @@ export default function UserProfile() {
     },
     enabled: !!profile?.id,
   });
+
+  const { data: followedMissions } = useUserFollowedMissions(profile?.id);
+  const missionsCount = followedMissions?.length ?? 0;
 
   const { data: pledgeCount } = useQuery({
     queryKey: ["profile-pledge-count", profile?.id],
@@ -142,7 +146,7 @@ export default function UserProfile() {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           {[
-            { label: "Missions", value: stats?.missions ?? 0, to: `/profile/${profile.username}/missions` },
+            { label: "Missions", value: missionsCount, to: `/profile/${profile.username}/missions` },
             { label: "Discussions", value: stats?.posts ?? 0, to: `/profile/${profile.username}/discussions` },
             { label: "Completed", value: stats?.completed ?? 0, to: `/profile/${profile.username}/completed` },
             { label: "Pledged", value: pledgeCount ?? 0, to: `/profile/${profile.username}/pledged` },
