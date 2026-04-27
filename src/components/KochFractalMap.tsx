@@ -55,14 +55,11 @@ interface Bar {
   generation: number;
 }
 
-const MIN_LENGTH = 12;
-const MIN_THICKNESS = 2;
-const SPREAD_ANGLE = (60 * Math.PI) / 180; // 60° between siblings
-const BASE_LENGTH = 200;
-const BASE_THICKNESS = 14;
-const CANVAS_CENTER: Pt = { x: 0, y: 0 }; // mutated by layoutRoots
+const MIN_LENGTH = 10;
+const BASE_LENGTH = 180;
+const BASE_THICKNESS = 16;
 
-// --- Helpers ---
+// --- Vector helpers ---
 function vecSub(a: Pt, b: Pt): Pt {
   return { x: a.x - b.x, y: a.y - b.y };
 }
@@ -77,53 +74,57 @@ function vecLen(v: Pt): number {
 }
 function vecNorm(v: Pt): Pt {
   const l = vecLen(v);
-  return l === 0 ? { x: 0, y: 0 } : { x: v.x / l, y: v.y / l };
+  return l === 0 ? { x: 0, y: -1 } : { x: v.x / l, y: v.y / l };
 }
+function vecDot(a: Pt, b: Pt): number {
+  return a.x * b.x + a.y * b.y;
+}
+
 /**
- * Children sprout from the MIDPOINT of the parent bar, fanning outward
- * perpendicular to the parent, away from the canvas center.
+ * Build fractal edges using (N+1)-gon polygon construction.
  *
- * childLength = parentLength * 0.55
- * Children are spaced 60° apart, centered on the outward perpendicular.
+ * Each parent edge A->B with N children forms an (N+1)-gon where:
+ * - The parent edge is one side of the polygon
+ * - The N children are the remaining N sides
+ * - The polygon grows outward (away from incomingDir)
  */
-function layoutChildren(
+function buildFractalEdges(
   a: Pt,
   b: Pt,
-  children: TreeNode[],
+  incomingDir: Pt,
+  node: TreeNode,
   generation: number,
   thickness: number,
   bars: Bar[]
 ): void {
-  const N = children.length;
+  const N = node.children.length;
   if (N === 0) return;
 
   const parentLength = vecLen(vecSub(b, a));
   const childLength = parentLength * 0.55;
-  if (childLength < MIN_LENGTH) return; // too small to render
+  if (childLength < MIN_LENGTH) return;
 
-  const childThickness = Math.max(MIN_THICKNESS, thickness * 0.7);
+  const childThickness = Math.max(2, thickness * 0.75);
 
-  // Midpoint of parent bar
-  const M: Pt = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  // Determine outward normal of AB (perpendicular, pointing away from incomingDir)
+  const abVec = vecSub(b, a);
+  const perp1: Pt = { x: -abVec.y, y: abVec.x }; // 90 deg CCW
+  const perp2: Pt = { x: abVec.y, y: -abVec.x }; // 90 deg CW
+  const awayDir = vecScale(incomingDir, -1); // opposite of incoming
+  const outwardNormal = vecDot(perp1, awayDir) >= vecDot(perp2, awayDir)
+    ? vecNorm(perp1)
+    : vecNorm(perp2);
 
-  // Outward direction: from canvas center toward midpoint
-  const outward = vecNorm(vecSub(M, CANVAS_CENTER));
-  // Fallback if midpoint is exactly at canvas center
-  const perpAngle =
-    outward.x === 0 && outward.y === 0
-      ? Math.atan2(b.y - a.y, b.x - a.x) + Math.PI / 2
-      : Math.atan2(outward.y, outward.x);
+  if (N === 1) {
+    // Special case: N=1 -> digon is degenerate
+    // Single child extends from B in the outward perpendicular direction
+    const childA = b;
+    const childB = vecAdd(b, vecScale(outwardNormal, childLength));
 
-  for (let i = 0; i < N; i++) {
-    const offset = (-(N - 1) / 2 + i) * SPREAD_ANGLE;
-    const childAngle = perpAngle + offset;
-    const childDir: Pt = { x: Math.cos(childAngle), y: Math.sin(childAngle) };
-    const childEnd: Pt = vecAdd(M, vecScale(childDir, childLength));
-
-    const child = children[i];
+    const child = node.children[0];
     bars.push({
-      a: M,
-      b: childEnd,
+      a: childA,
+      b: childB,
       thickness: childThickness,
       color: getHeatHex(child.block.heat || 0),
       blockId: child.block.id,
@@ -131,22 +132,134 @@ function layoutChildren(
       generation,
     });
 
-    // Recurse with the child bar
-    layoutChildren(M, childEnd, child.children, generation + 1, childThickness, bars);
+    // Recurse: incoming direction for child is from B toward childB's start = normalize(B - A)
+    const childIncoming = vecNorm(vecSub(childA, a));
+    buildFractalEdges(childA, childB, childIncoming, child, generation + 1, childThickness, bars);
+    return;
+  }
+
+  // N >= 2: Build an (N+1)-gon with AB as one side, children as remaining N sides
+  const sides = N + 1;
+  const L = childLength; // side length for child edges
+  const R = L / (2 * Math.sin(Math.PI / sides)); // circumradius
+
+  // Midpoint of AB
+  const M: Pt = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+
+  // Distance from midpoint of AB to polygon center along perpendicular bisector
+  // The parent edge AB has length parentLength, but the polygon sides have length childLength
+  // We need the polygon center such that all vertices are at distance R from center
+  // and vertex[0]=A, vertex[1]=B... but A and B have distance parentLength apart,
+  // while the polygon has side length childLength.
+  //
+  // Actually: the polygon's sides all have length childLength, but AB (the parent) is not
+  // necessarily equal to childLength. We construct the (N+1)-gon with side = childLength,
+  // positioned so that its first edge starts at B and the polygon closes back to A.
+  //
+  // Better approach: compute polygon vertices directly by stepping angles from B around
+  // the polygon center, where the center is positioned on the perpendicular bisector of AB
+  // on the outward side.
+  //
+  // Since the parent edge AB may differ in length from childLength, we position the
+  // polygon center based on AB as a chord of the circumscribed circle of the (N+1)-gon.
+  // But this only works if parentLength <= 2R. Let's use the approach where:
+  // - The polygon center lies on the perpendicular bisector of AB
+  // - At distance d from M, where d = sqrt(R^2 - (parentLength/2)^2)
+  //   (treating AB as a chord of the circumcircle)
+  // If parentLength > 2R (chord longer than diameter), we clamp.
+
+  const halfParent = parentLength / 2;
+  const dSquared = R * R - halfParent * halfParent;
+  const d = dSquared > 0 ? Math.sqrt(dSquared) : 0;
+
+  // Polygon center on the outward side
+  const center: Pt = vecAdd(M, vecScale(outwardNormal, d));
+
+  // Compute angles from center to A and B
+  const thetaA = Math.atan2(a.y - center.y, a.x - center.x);
+  const thetaB = Math.atan2(b.y - center.y, b.x - center.x);
+
+  // Angular step for the polygon
+  const step = (2 * Math.PI) / sides;
+
+  // Determine rotation direction: we want to go from B toward the new vertices
+  // on the OUTWARD side (away from A going the long way around).
+  // Test both directions and pick the one where vertex[2] is on the outward side.
+  const testCW = thetaB - step;
+  const testCCW = thetaB + step;
+  const ptCW: Pt = { x: center.x + R * Math.cos(testCW), y: center.y + R * Math.sin(testCW) };
+  const ptCCW: Pt = { x: center.x + R * Math.cos(testCCW), y: center.y + R * Math.sin(testCCW) };
+
+  // The correct direction is the one where the first new vertex is NOT near A
+  // (i.e., we go the long way around from B back to A)
+  const distCW_A = vecLen(vecSub(ptCW, a));
+  const distCCW_A = vecLen(vecSub(ptCCW, a));
+
+  // If N+1 = 2 sides, both directions lead back to A immediately, so pick outward
+  let stepDir: number;
+  if (sides === 2) {
+    // Shouldn't reach here (handled by N=1 above), but safety
+    stepDir = step;
+  } else {
+    // Pick direction where first new vertex is farther from A (going the long way)
+    stepDir = distCW_A > distCCW_A ? -step : step;
+  }
+
+  // Build polygon vertices: vertex[0] = A, vertex[1] = B, vertex[2..N] = new
+  const vertices: Pt[] = [a, b];
+  const actualR = vecLen(vecSub(b, center)); // use actual radius from center to B
+  for (let k = 1; k <= N - 1; k++) {
+    const angle = thetaB + k * stepDir;
+    vertices.push({
+      x: center.x + actualR * Math.cos(angle),
+      y: center.y + actualR * Math.sin(angle),
+    });
+  }
+  // The last child edge goes from vertex[N] back to A, so we don't need vertex[N+1]
+
+  // Create child edges:
+  // Child 0: B -> vertex[2]
+  // Child 1: vertex[2] -> vertex[3]
+  // ...
+  // Child N-1: vertex[N] -> A
+  for (let i = 0; i < N; i++) {
+    const child = node.children[i];
+    let edgeA: Pt, edgeB: Pt;
+    if (i === 0) {
+      edgeA = b;
+      edgeB = vertices[2];
+    } else if (i === N - 1) {
+      edgeA = vertices[i + 1];
+      edgeB = a;
+    } else {
+      edgeA = vertices[i + 1];
+      edgeB = vertices[i + 2];
+    }
+
+    bars.push({
+      a: edgeA,
+      b: edgeB,
+      thickness: childThickness,
+      color: getHeatHex(child.block.heat || 0),
+      blockId: child.block.id,
+      title: child.block.title,
+      generation,
+    });
+
+    // Recurse: incoming direction = from polygon center through edgeA (outward from center)
+    const childIncoming = vecNorm(vecSub(edgeA, center));
+    buildFractalEdges(edgeA, edgeB, childIncoming, child, generation + 1, childThickness, bars);
   }
 }
 
 /**
  * Arrange M root blocks as edges of a regular M-gon centered at (cx, cy).
+ * For each root edge, the incoming direction points toward canvas center (inward),
+ * so children grow outward.
  */
 function layoutRoots(roots: TreeNode[], cx: number, cy: number): Bar[] {
   const bars: Bar[] = [];
   const M = roots.length;
-
-  // Update canvas center for outward direction calculation
-  CANVAS_CENTER.x = cx;
-  CANVAS_CENTER.y = cy;
-
   if (M === 0) return bars;
 
   if (M === 1) {
@@ -163,7 +276,10 @@ function layoutRoots(roots: TreeNode[], cx: number, cy: number): Bar[] {
       title: root.block.title,
       generation: 0,
     });
-    layoutChildren(a, b, root.children, 1, BASE_THICKNESS, bars);
+    // Incoming direction for single root: pointing down (toward canvas center from above)
+    // so children grow upward
+    const incomingDir: Pt = { x: 0, y: 1 };
+    buildFractalEdges(a, b, incomingDir, root, 1, BASE_THICKNESS, bars);
     return bars;
   }
 
@@ -191,7 +307,10 @@ function layoutRoots(roots: TreeNode[], cx: number, cy: number): Bar[] {
       title: root.block.title,
       generation: 0,
     });
-    layoutChildren(a, b, root.children, 1, BASE_THICKNESS, bars);
+    // Incoming direction: from edge midpoint toward canvas center (inward)
+    const mid: Pt = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const incomingDir = vecNorm(vecSub({ x: cx, y: cy }, mid));
+    buildFractalEdges(a, b, incomingDir, root, 1, BASE_THICKNESS, bars);
   }
 
   return bars;
@@ -292,7 +411,6 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (e.button !== 0) return;
-      // Only start pan if not clicking on a bar
       const target = e.target as SVGElement;
       if (target.closest("[data-bar]")) return;
       setIsPanning(true);
@@ -319,40 +437,38 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
     setIsPanning(false);
   }, []);
 
-  // Compute bar corners as a polygon for each bar (rotated rectangle)
+  // Render a bar as a rotated <rect> centered on edge midpoint
   const renderBar = useCallback(
     (bar: Bar, i: number) => {
-      const dir = vecNorm(vecSub(bar.b, bar.a));
-      const perp = { x: -dir.y, y: dir.x };
-      const halfT = bar.thickness / 2;
-      const corners = [
-        vecAdd(bar.a, vecScale(perp, halfT)),
-        vecAdd(bar.b, vecScale(perp, halfT)),
-        vecAdd(bar.b, vecScale(perp, -halfT)),
-        vecAdd(bar.a, vecScale(perp, -halfT)),
-      ];
-      const points = corners.map((c) => `${c.x},${c.y}`).join(" ");
+      const dx = bar.b.x - bar.a.x;
+      const dy = bar.b.y - bar.a.y;
+      const barLen = Math.sqrt(dx * dx + dy * dy);
+      const midX = (bar.a.x + bar.b.x) / 2;
+      const midY = (bar.a.y + bar.b.y) / 2;
+      const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
 
-      // Label: centered on bar, rotated along bar direction
-      const mid = { x: (bar.a.x + bar.b.x) / 2, y: (bar.a.y + bar.b.y) / 2 };
-      const barLen = vecLen(vecSub(bar.b, bar.a));
-      let angle = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
-      // Keep text readable (not upside-down)
-      if (angle > 90 || angle < -90) angle += 180;
+      // Text label: only show when zoom scale >= 1.5
+      const showLabel = transform.scale >= 1.5;
       const fontSize = Math.max(8, Math.min(12, bar.thickness * 0.7));
-      // Truncate title based on bar length
       const maxChars = Math.max(3, Math.floor(barLen / (fontSize * 0.55)));
       const label =
         bar.title.length > maxChars ? bar.title.slice(0, maxChars - 1) + "\u2026" : bar.title;
+      // Keep text readable (not upside-down)
+      let textAngle = angle;
+      if (textAngle > 90 || textAngle < -90) textAngle += 180;
 
       return (
         <g key={i} data-bar="true" style={{ cursor: "pointer" }}>
-          <polygon
-            points={points}
+          <rect
+            x={midX - barLen / 2}
+            y={midY - bar.thickness / 2}
+            width={barLen}
+            height={bar.thickness}
+            transform={`rotate(${angle}, ${midX}, ${midY})`}
             fill={bar.color}
             stroke="rgba(0,0,0,0.25)"
             strokeWidth={0.5}
-            rx={2}
+            rx={bar.thickness / 2}
             onClick={() => navigate(`/block/${bar.blockId}`)}
             onMouseEnter={(e) => {
               const rect = svgRef.current?.getBoundingClientRect();
@@ -366,13 +482,13 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
             }}
             onMouseLeave={() => setTooltip(null)}
           />
-          {barLen > 30 && (
+          {showLabel && barLen > 30 && (
             <text
-              x={mid.x}
-              y={mid.y}
+              x={midX}
+              y={midY}
               textAnchor="middle"
               dominantBaseline="central"
-              transform={`rotate(${angle}, ${mid.x}, ${mid.y})`}
+              transform={`rotate(${textAngle}, ${midX}, ${midY})`}
               fontSize={fontSize}
               fontFamily="ui-monospace, monospace"
               fill="white"
@@ -388,7 +504,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
         </g>
       );
     },
-    [navigate]
+    [navigate, transform.scale]
   );
 
   if (isLoading) {
