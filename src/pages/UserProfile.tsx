@@ -167,10 +167,11 @@ export default function UserProfile() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
             { label: "Missions", value: stats?.missions ?? 0 },
             { label: "Blocks", value: stats?.blocks ?? 0 },
+            { label: "Completed", value: stats?.completed ?? 0 },
             { label: "Posts", value: stats?.posts ?? 0 },
           ].map((s) => (
             <Card key={s.label}>
@@ -180,6 +181,36 @@ export default function UserProfile() {
               </CardContent>
             </Card>
           ))}
+        </div>
+
+        {/* Completed blocks */}
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold font-mono uppercase tracking-wide text-muted-foreground mb-3">Completed Blocks</h2>
+          {completedBlocks && completedBlocks.length > 0 ? (
+            <div className="space-y-2">
+              {completedBlocks.map((b) => (
+                <Link
+                  key={b.id}
+                  to={`/mission/${b.goal_id}/block/${b.id}`}
+                  className="flex items-center justify-between rounded-lg border bg-card p-3 hover:bg-muted/50 transition-colors group border-l-4"
+                  style={{ borderLeftColor: b.brick_color || "hsl(var(--primary))" }}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium font-mono truncate">{b.title}</div>
+                    <div className="text-xs text-muted-foreground font-mono truncate mt-0.5">
+                      {b.mission_title}
+                      {b.completed_at && (
+                        <span> · {new Date(b.completed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                      )}
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0 ml-3" />
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground font-mono">No completed blocks yet.</p>
+          )}
         </div>
 
         {/* Pledged blocks */}
