@@ -15,7 +15,7 @@ import { toast } from "sonner";
 
 export default function UserProfile() {
   const { username } = useParams<{ username: string }>();
-  const { user, profile: authProfile } = useAuthContext();
+  const { user } = useAuthContext();
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [newUsername, setNewUsername] = useState("");
