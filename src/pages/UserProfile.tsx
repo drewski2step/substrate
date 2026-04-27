@@ -319,8 +319,9 @@ export default function UserProfile() {
   function getSocialHref(key: string, val: string) {
     const cfg = socialLinks.find((s) => s.key === key);
     if (!cfg) return val;
-    // Full URL — pass through as-is
+    // Full URL or www. URL — ensure https:// prefix
     if (val.startsWith("http://") || val.startsWith("https://")) return val;
+    if (val.startsWith("www.")) return `https://${val}`;
     // YouTube: strip leading @ so we always add exactly one
     if (key === "social_youtube") {
       const handle = val.startsWith("@") ? val.slice(1) : val;
