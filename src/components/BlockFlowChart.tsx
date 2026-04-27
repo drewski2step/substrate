@@ -294,6 +294,40 @@ function BlockCard({
           <GripVertical className="w-4 h-4 text-muted-foreground/50" />
         </div>
 
+        {/* Vote buttons — vertical column on right edge */}
+        {user && (
+          <div
+            className="absolute right-1 top-1/2 -translate-y-1/2 flex flex-col items-center rounded border border-border/50 overflow-hidden z-20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); voteBlock.mutate({ blockId: block.id, userId: user.id, vote: 1, goalId, currentVote: userVote, currentHeat: heat }); }}
+              disabled={voteBlock.isPending}
+              className={cn(
+                "px-1 py-1 flex items-center transition-colors",
+                userVote === 1 ? "text-orange-400 bg-orange-500/20" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+              title="Upvote"
+            >
+              <ArrowUp className="w-2.5 h-2.5" />
+            </button>
+            <div className="h-px w-full bg-border/50" />
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); voteBlock.mutate({ blockId: block.id, userId: user.id, vote: -1, goalId, currentVote: userVote, currentHeat: heat }); }}
+              disabled={voteBlock.isPending}
+              className={cn(
+                "px-1 py-1 flex items-center transition-colors",
+                userVote === -1 ? "text-blue-400 bg-blue-500/20" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+              title="Downvote"
+            >
+              <ArrowDown className="w-2.5 h-2.5" />
+            </button>
+          </div>
+        )}
+
         {/* Night sky stars for pledged blocks */}
         {isPledged && stars.map((s, i) => (
           <span
@@ -430,38 +464,7 @@ function BlockCard({
           <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums", isPledged ? "text-amber-300" : getFlameColor(heat))}>
             <Flame className="w-3 h-3" />{heat}
           </span>
-          {user && (
-            <div
-              className="inline-flex items-center rounded border border-border/50 overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => { e.stopPropagation(); voteBlock.mutate({ blockId: block.id, userId: user.id, vote: 1, goalId, currentVote: userVote, currentHeat: heat }); }}
-                disabled={voteBlock.isPending}
-                className={cn(
-                  "px-1 py-0.5 flex items-center transition-colors",
-                  userVote === 1 ? "text-orange-400 bg-orange-500/20" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-                title="Upvote"
-              >
-                <ArrowUp className="w-2.5 h-2.5" />
-              </button>
-              <div className="w-px h-3 bg-border/50" />
-              <button
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => { e.stopPropagation(); voteBlock.mutate({ blockId: block.id, userId: user.id, vote: -1, goalId, currentVote: userVote, currentHeat: heat }); }}
-                disabled={voteBlock.isPending}
-                className={cn(
-                  "px-1 py-0.5 flex items-center transition-colors",
-                  userVote === -1 ? "text-blue-400 bg-blue-500/20" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-                title="Downvote"
-              >
-                <ArrowDown className="w-2.5 h-2.5" />
-              </button>
-            </div>
-          )}
+
           {counts?.openQuestions && counts.openQuestions > 0 ? (
             <span className="flex items-center gap-0.5 text-[10px] text-blue-400 font-mono">
               <HelpCircle className="w-3 h-3" />{counts.openQuestions}
