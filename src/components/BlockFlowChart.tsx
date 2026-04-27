@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen, Pencil, Trash2, Star, GripVertical, Undo2, Clock, Calendar, Maximize2, ArrowUp, ArrowDown } from "lucide-react";
+import { Check, CheckCircle2, Plus, Flame, FolderOpen, Pencil, Trash2, Star, GripVertical, Undo2, Clock, Calendar, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,23 +23,27 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
+// ROYGBIV: red=lowest heat → violet=highest
 function getHeatColor(heat: number): string {
-  if (heat <= 0) return "border-border bg-card";
-  if (heat <= 20) return "border-blue-300 bg-blue-50";
-  if (heat <= 50) return "border-teal-300 bg-teal-50";
-  if (heat <= 100) return "border-yellow-400 bg-yellow-50";
-  if (heat <= 150) return "border-orange-400 bg-orange-50";
-  if (heat < 200) return "border-red-500 bg-red-50";
-  return "border-red-500 bg-red-50 animate-flame-rim";
+  if (heat <= 0)   return "border-border bg-card";
+  if (heat <= 10)  return "border-red-400 bg-red-50 dark:bg-red-950/40";
+  if (heat <= 25)  return "border-orange-400 bg-orange-50 dark:bg-orange-950/40";
+  if (heat <= 50)  return "border-yellow-400 bg-yellow-50 dark:bg-yellow-950/40";
+  if (heat <= 80)  return "border-green-400 bg-green-50 dark:bg-green-950/40";
+  if (heat <= 120) return "border-teal-400 bg-teal-50 dark:bg-teal-950/40";
+  if (heat <= 170) return "border-blue-500 bg-blue-50 dark:bg-blue-950/40";
+  return "border-violet-500 bg-violet-50 dark:bg-violet-950/40";
 }
 
 function getFlameColor(heat: number): string {
-  if (heat <= 0) return "text-muted-foreground";
-  if (heat <= 20) return "text-blue-500";
-  if (heat <= 50) return "text-teal-500";
-  if (heat <= 100) return "text-yellow-500";
-  if (heat <= 150) return "text-orange-500";
-  return "text-red-500";
+  if (heat <= 0)   return "text-muted-foreground";
+  if (heat <= 10)  return "text-red-500";
+  if (heat <= 25)  return "text-orange-500";
+  if (heat <= 50)  return "text-yellow-500";
+  if (heat <= 80)  return "text-green-500";
+  if (heat <= 120) return "text-teal-500";
+  if (heat <= 170) return "text-blue-500";
+  return "text-violet-500";
 }
 
 const DEFAULT_BLOCK_W = 192;
@@ -280,9 +284,8 @@ function BlockCard({
         onClick={() => { if (!didDragRef.current && !liveSize) onNavigate(block); }}
         className={cn(
           "relative border-2 rounded-lg px-4 py-3 cursor-pointer overflow-hidden h-full w-full flex flex-col",
-          isPledged ? "border-indigo-400/60 bg-[hsl(230,35%,12%)]" : getHeatColor(heat),
+          getHeatColor(heat),
           counts?.openBlockers && counts.openBlockers > 0 && "ring-2 ring-destructive/50",
-          heat >= 200 && !isPledged && "animate-flame-rim",
           "hover:shadow-lg"
         )}
       >
@@ -337,11 +340,11 @@ function BlockCard({
           />
         ))}
 
-        <div className={cn("flex items-start gap-2 pt-1 pr-5 relative z-10 min-w-0", isPledged && "text-indigo-100")}>
+        <div className={cn("flex items-start gap-2 pt-1 pr-5 relative z-10 min-w-0")}>
           <div className={cn(
             "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
             status === "complete" && "bg-primary border-primary",
-            status === "pending" && (isPledged ? "border-indigo-400/50 bg-indigo-400/10" : "border-muted-foreground/30 bg-muted/30"),
+            status === "pending" && "border-muted-foreground/30 bg-muted/30",
             status === "active" && "border-substrate-active bg-substrate-active/10",
             status === "stalled" && "border-substrate-blocked bg-substrate-blocked/10"
           )}>
@@ -351,7 +354,6 @@ function BlockCard({
             <span
               className={cn(
                 "text-xs font-semibold leading-tight block break-words",
-                isPledged && "text-indigo-50",
               )}
               style={{
                 display: "-webkit-box",
@@ -366,7 +368,7 @@ function BlockCard({
               <span
                 className={cn(
                   "text-[10px] leading-tight block mt-0.5 font-mono",
-                  isPledged ? "text-indigo-300/70" : "text-muted-foreground",
+                  "text-muted-foreground",
                 )}
                 style={{
                   display: "-webkit-box",
@@ -408,7 +410,7 @@ function BlockCard({
                   )}
                 </div>
                 {creatorName && !compactIndicators && (
-                  <span className={cn("text-[9px] leading-tight font-mono truncate", isPledged ? "text-indigo-400/60" : "text-muted-foreground/60")}>
+                  <span className={cn("text-[9px] leading-tight font-mono truncate", "text-muted-foreground/60")}>
                     {creatorName}
                   </span>
                 )}
@@ -445,11 +447,11 @@ function BlockCard({
         )}
 
         {/* Heat + discussion badges */}
-        <div className={cn("flex items-center gap-2 mt-auto pt-1.5 flex-wrap relative z-10", isPledged && "text-indigo-300")}>
+        <div className={cn("flex items-center gap-2 mt-auto pt-1.5 flex-wrap relative z-10")}>
           {/* Deadline badge */}
           {(block as any).deadline_at && (
             <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums",
-              new Date((block as any).deadline_at) < new Date() ? "text-red-500" : isPledged ? "text-indigo-300" : "text-muted-foreground"
+              new Date((block as any).deadline_at) < new Date() ? "text-red-500" : "text-muted-foreground"
             )}>
               <Calendar className="w-3 h-3" />
               {!compactIndicators && new Date((block as any).deadline_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
@@ -457,30 +459,14 @@ function BlockCard({
           )}
           {/* Recurrence badge */}
           {(block as any).recurrence_interval && (
-            <span className={cn("flex items-center gap-0.5 text-[10px] font-mono", isPledged ? "text-indigo-300" : "text-muted-foreground")}>
+            <span className={cn("flex items-center gap-0.5 text-[10px] font-mono", "text-muted-foreground")}>
               <Clock className="w-3 h-3" />{!compactIndicators && (block as any).recurrence_interval}
             </span>
           )}
-          <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums", isPledged ? "text-amber-300" : getFlameColor(heat))}>
+          <span className={cn("flex items-center gap-0.5 text-[10px] font-mono tabular-nums", getFlameColor(heat))}>
             <Flame className="w-3 h-3" />{heat}
           </span>
 
-          {counts?.openQuestions && counts.openQuestions > 0 ? (
-            <span className="flex items-center gap-0.5 text-[10px] text-blue-400 font-mono">
-              <HelpCircle className="w-3 h-3" />{counts.openQuestions}
-            </span>
-          ) : null}
-          {counts?.openBlockers && counts.openBlockers > 0 ? (
-            <span className="flex items-center gap-0.5 text-[10px] text-red-400 font-mono">
-              <AlertTriangle className="w-3 h-3" />{counts.openBlockers}
-            </span>
-          ) : null}
-          {block.dependencies.length > 0 && (
-            <span className="text-[10px] font-mono flex items-center gap-0.5">
-              <GitBranch className="w-3 h-3" />{block.dependencies.length}
-              {!compactIndicators && <> dep{block.dependencies.length > 1 ? "s" : ""}</>}
-            </span>
-          )}
         </div>
 
         {/* Resize handle — top left (hidden on Files Block) */}
@@ -515,9 +501,6 @@ function BlockCard({
         <button onClick={(e) => { e.stopPropagation(); onAddSuccessor(block); }}
           className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-accent text-[10px] font-medium text-accent-foreground shadow-sm hover:bg-accent/80 transition-colors"
         ><Plus className="w-3 h-3" /> Next</button>
-        <button onClick={(e) => { e.stopPropagation(); onEditDeps(block); }}
-          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/80 transition-colors"
-        ><GitBranch className="w-3 h-3" /> Deps</button>
         <button onClick={(e) => { e.stopPropagation(); onEdit(block); }}
           className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/80 transition-colors"
         ><Pencil className="w-3 h-3" /> Edit</button>
