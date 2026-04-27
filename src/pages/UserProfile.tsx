@@ -7,10 +7,10 @@ import { getAvatarUrl } from "@/hooks/use-auth";
 import { useUserFollowedMissions } from "@/hooks/use-mission-followers";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Pencil, ArrowRight, Globe, Lock, ChevronDown, ChevronUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Pencil, Globe, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 export default function UserProfile() {
@@ -19,7 +19,7 @@ export default function UserProfile() {
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [newUsername, setNewUsername] = useState("");
-  const [pledgesOpen, setPledgesOpen] = useState(false);
+
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", username],
@@ -55,71 +55,17 @@ export default function UserProfile() {
     enabled: !!profile?.id,
   });
 
-  const { data: completedBlocks } = useQuery({
-    queryKey: ["profile-completed", profile?.id],
+  const { data: pledgeCount } = useQuery({
+    queryKey: ["profile-pledge-count", profile?.id],
     queryFn: async () => {
-      const { data: blocks } = await supabase
-        .from("blocks")
-        .select("id, title, goal_id, heat, brick_color, completed_at")
-        .eq("completed_by", profile!.id)
-        .is("deleted_at", null)
-        .order("heat", { ascending: false });
-      if (!blocks?.length) return [];
-      const goalIds = Array.from(new Set(blocks.map((b) => b.goal_id).filter(Boolean) as string[]));
-      const { data: goals } = await supabase.from("goals").select("id, title").in("id", goalIds);
-      const goalMap = new Map((goals ?? []).map((g) => [g.id, g.title]));
-      return blocks.map((b) => ({ ...b, mission_title: goalMap.get(b.goal_id ?? "") ?? "Unknown mission" }));
-    },
-    enabled: !!profile?.id,
-  });
-
-  const { data: pledgedBlocks } = useQuery({
-    queryKey: ["profile-pledges", profile?.id],
-    queryFn: async () => {
-      const { data: pledges } = await supabase
+      const { count } = await supabase
         .from("block_pledges")
-        .select("id, block_id")
+        .select("id", { count: "exact", head: true })
         .eq("user_id", profile!.id)
         .eq("active", true);
-      if (!pledges?.length) return [];
-      const blockIds = pledges.map((p) => p.block_id);
-      const { data: blocks } = await supabase
-        .from("blocks")
-        .select("id, title, goal_id, heat, status")
-        .in("id", blockIds)
-        .is("deleted_at", null);
-      if (!blocks?.length) return [];
-      const goalIds = Array.from(new Set(blocks.map((b) => b.goal_id).filter(Boolean) as string[]));
-      const { data: goals } = await supabase.from("goals").select("id, title").in("id", goalIds);
-      const goalMap = new Map((goals ?? []).map((g) => [g.id, g.title]));
-      const { data: allPledges } = await supabase
-        .from("block_pledges").select("block_id").in("block_id", blockIds).eq("active", true);
-      const pledgeCount: Record<string, number> = {};
-      (allPledges ?? []).forEach((p) => { pledgeCount[p.block_id] = (pledgeCount[p.block_id] ?? 0) + 1; });
-      return blocks.map((b) => ({
-        ...b,
-        missionTitle: goalMap.get(b.goal_id ?? "") ?? "Unknown Mission",
-        pledgeCount: pledgeCount[b.id] ?? 1,
-        pledgeId: pledges.find((p) => p.block_id === b.id)?.id,
-      }));
+      return count ?? 0;
     },
     enabled: !!profile?.id,
-  });
-
-  const unpledge = useMutation({
-    mutationFn: async (pledgeId: string) => {
-      const { error } = await supabase
-        .from("block_pledges")
-        .update({ active: false, unpledged_at: new Date().toISOString() })
-        .eq("id", pledgeId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile-pledges", profile?.id] });
-      queryClient.invalidateQueries({ queryKey: ["profile-stats", profile?.id] });
-      toast.success("Unpledged");
-    },
-    onError: () => toast.error("Failed to unpledge"),
   });
 
   const { data: followedMissions } = useUserFollowedMissions(profile?.id);
@@ -199,112 +145,33 @@ export default function UserProfile() {
         {/* Stats */}
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-8">
           {[
-            { label: "Missions", value: stats?.missions ?? 0, clickable: false },
-            { label: "Blocks", value: stats?.blocks ?? 0, clickable: false },
-            { label: "Completed", value: stats?.completed ?? 0, clickable: false },
-            { label: "Posts", value: stats?.posts ?? 0, clickable: false },
-            { label: "Pledged", value: pledgedBlocks?.length ?? 0, clickable: true },
+            { label: "Missions", value: stats?.missions ?? 0, to: null },
+            { label: "Blocks", value: stats?.blocks ?? 0, to: null },
+            { label: "Posts", value: stats?.posts ?? 0, to: null },
+            { label: "Completed", value: stats?.completed ?? 0, to: `/profile/${profile.username}/completed` },
+            { label: "Pledged", value: pledgeCount ?? 0, to: `/profile/${profile.username}/pledged` },
           ].map((s) => (
-            <Card
-              key={s.label}
-              onClick={s.clickable ? () => setPledgesOpen((o) => !o) : undefined}
-              className={s.clickable ? "cursor-pointer hover:border-orange-400 transition-colors select-none" : ""}
-            >
-              <CardContent className="p-3 text-center">
-                <div className="text-2xl font-bold font-mono">{s.value}</div>
-                <div className="text-xs text-muted-foreground font-mono uppercase tracking-wide flex items-center justify-center gap-1">
-                  {s.label}
-                  {s.clickable && (pledgesOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                </div>
-              </CardContent>
-            </Card>
+            s.to ? (
+              <Link key={s.label} to={s.to}>
+                <Card className="cursor-pointer hover:border-orange-400 transition-colors">
+                  <CardContent className="p-3 text-center">
+                    <div className="text-2xl font-bold font-mono">{s.value}</div>
+                    <div className="text-xs text-muted-foreground font-mono uppercase tracking-wide">{s.label}</div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ) : (
+              <Card key={s.label}>
+                <CardContent className="p-3 text-center">
+                  <div className="text-2xl font-bold font-mono">{s.value}</div>
+                  <div className="text-xs text-muted-foreground font-mono uppercase tracking-wide">{s.label}</div>
+                </CardContent>
+              </Card>
+            )
           ))}
         </div>
 
-        {/* Completed blocks */}
-        <div className="mb-8">
-          <h2 className="text-sm font-semibold font-mono uppercase tracking-wide text-muted-foreground mb-3">Completed Blocks</h2>
-          {completedBlocks && completedBlocks.length > 0 ? (
-            <div className="space-y-2">
-              {completedBlocks.map((b) => (
-                <Link
-                  key={b.id}
-                  to={`/mission/${b.goal_id}/block/${b.id}`}
-                  className="flex items-center justify-between rounded-lg border bg-card p-3 hover:bg-muted/50 transition-colors group border-l-4"
-                  style={{ borderLeftColor: b.brick_color || "hsl(var(--primary))" }}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium font-mono truncate">{b.title}</div>
-                    <div className="text-xs text-muted-foreground font-mono truncate mt-0.5">
-                      {b.mission_title}
-                      {b.completed_at && (
-                        <span> · {new Date(b.completed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-                      )}
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0 ml-3" />
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground font-mono">No completed blocks yet.</p>
-          )}
-        </div>
 
-        {/* Pledged blocks panel */}
-        {pledgesOpen && (
-          <div className="mb-8 animate-fade-in-up">
-            <h2 className="text-sm font-semibold font-mono uppercase tracking-wide text-muted-foreground mb-3">Pledged Blocks</h2>
-            {pledgedBlocks && pledgedBlocks.length > 0 ? (
-              <div className="space-y-2">
-                {pledgedBlocks.map((b: any) => (
-                  <div
-                    key={b.id}
-                    className="relative overflow-hidden rounded-lg border border-slate-700 p-4"
-                    style={{ background: "#0a0f1e" }}
-                  >
-                    {/* star dots */}
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden>
-                      {Array.from({ length: 18 }, (_, i) => (
-                        <circle
-                          key={i}
-                          cx={`${(i * 137.5) % 100}%`}
-                          cy={`${(i * 79.3) % 100}%`}
-                          r={i % 3 === 0 ? 1.5 : 1}
-                          fill="white"
-                          opacity={0.3 + (i % 5) * 0.1}
-                        />
-                      ))}
-                    </svg>
-                    <div className="relative z-10 flex items-start justify-between gap-3">
-                      <Link to={`/mission/${b.goal_id}/block/${b.id}`} className="flex-1 min-w-0 group">
-                        <p className="text-sm font-semibold font-mono text-white truncate group-hover:text-orange-300 transition-colors">{b.title}</p>
-                        <p className="text-xs font-mono text-slate-400 mt-0.5 truncate">{b.missionTitle}</p>
-                        <div className="flex items-center gap-3 mt-2">
-                          <span className="text-xs font-mono text-slate-500">heat <span className="text-slate-300">{b.heat}</span></span>
-                          <span className="text-xs font-mono text-slate-500"><span className="text-slate-300">{b.pledgeCount}</span> pledging</span>
-                        </div>
-                      </Link>
-                      {isOwn && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-xs text-slate-400 hover:text-red-400 hover:bg-red-400/10 shrink-0 h-7 px-2"
-                          disabled={unpledge.isPending}
-                          onClick={() => b.pledgeId && unpledge.mutate(b.pledgeId)}
-                        >
-                          Unpledge
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground font-mono">No active pledges.</p>
-            )}
-          </div>
-        )}
 
         {/* Followed missions */}
         <div className="mt-8">
