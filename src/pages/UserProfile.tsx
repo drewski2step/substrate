@@ -38,16 +38,36 @@ export default function UserProfile() {
   const { data: stats } = useQuery({
     queryKey: ["profile-stats", profile?.id],
     queryFn: async () => {
-      const [missions, blocks, posts] = await Promise.all([
+      const [missions, blocks, posts, completed] = await Promise.all([
         supabase.from("goals").select("id", { count: "exact", head: true }).eq("created_by", profile!.id),
         supabase.from("blocks").select("id", { count: "exact", head: true }).eq("created_by", profile!.id).is("deleted_at", null),
         supabase.from("discussions").select("id", { count: "exact", head: true }).eq("user_id", profile!.id).is("parent_id", null),
+        supabase.from("blocks").select("id", { count: "exact", head: true }).eq("completed_by", profile!.id).is("deleted_at", null),
       ]);
       return {
         missions: missions.count ?? 0,
         blocks: blocks.count ?? 0,
         posts: posts.count ?? 0,
+        completed: completed.count ?? 0,
       };
+    },
+    enabled: !!profile?.id,
+  });
+
+  const { data: completedBlocks } = useQuery({
+    queryKey: ["profile-completed", profile?.id],
+    queryFn: async () => {
+      const { data: blocks } = await supabase
+        .from("blocks")
+        .select("id, title, goal_id, heat, brick_color, completed_at")
+        .eq("completed_by", profile!.id)
+        .is("deleted_at", null)
+        .order("heat", { ascending: false });
+      if (!blocks?.length) return [];
+      const goalIds = Array.from(new Set(blocks.map((b) => b.goal_id).filter(Boolean) as string[]));
+      const { data: goals } = await supabase.from("goals").select("id, title").in("id", goalIds);
+      const goalMap = new Map((goals ?? []).map((g) => [g.id, g.title]));
+      return blocks.map((b) => ({ ...b, mission_title: goalMap.get(b.goal_id ?? "") ?? "Unknown mission" }));
     },
     enabled: !!profile?.id,
   });
@@ -147,10 +167,11 @@ export default function UserProfile() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
             { label: "Missions", value: stats?.missions ?? 0 },
             { label: "Blocks", value: stats?.blocks ?? 0 },
+            { label: "Completed", value: stats?.completed ?? 0 },
             { label: "Posts", value: stats?.posts ?? 0 },
           ].map((s) => (
             <Card key={s.label}>
@@ -160,6 +181,36 @@ export default function UserProfile() {
               </CardContent>
             </Card>
           ))}
+        </div>
+
+        {/* Completed blocks */}
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold font-mono uppercase tracking-wide text-muted-foreground mb-3">Completed Blocks</h2>
+          {completedBlocks && completedBlocks.length > 0 ? (
+            <div className="space-y-2">
+              {completedBlocks.map((b) => (
+                <Link
+                  key={b.id}
+                  to={`/mission/${b.goal_id}/block/${b.id}`}
+                  className="flex items-center justify-between rounded-lg border bg-card p-3 hover:bg-muted/50 transition-colors group border-l-4"
+                  style={{ borderLeftColor: b.brick_color || "hsl(var(--primary))" }}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium font-mono truncate">{b.title}</div>
+                    <div className="text-xs text-muted-foreground font-mono truncate mt-0.5">
+                      {b.mission_title}
+                      {b.completed_at && (
+                        <span> · {new Date(b.completed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                      )}
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0 ml-3" />
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground font-mono">No completed blocks yet.</p>
+          )}
         </div>
 
         {/* Pledged blocks */}
