@@ -418,40 +418,26 @@ export default function UserProfile() {
 
         {/* ── Social links ─────────────────────────────────────────────── */}
         {(filledSocials.length > 0 || isOwn) && (
-          <div className="mb-6 rounded-lg border border-border overflow-hidden">
-            {filledSocials.map(({ key, icon: Icon, label }) => {
-              const val = (profile as any)[key] as string;
-              const href = getSocialHref(key, val);
-              const display = val.startsWith("http") ? val.replace(/^https?:\/\/(www\.)?/, "") : val;
-              return (
-                <a
-                  key={key}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted transition-colors group border-b border-border last:border-b-0"
-                >
-                  <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-mono">{label}</span>
-                    <span className="text-xs text-muted-foreground font-mono ml-2 truncate">{display}</span>
-                  </div>
-                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                </a>
-              );
-            })}
+          <div className="flex items-center gap-2 mb-6 flex-wrap">
+            {filledSocials.map(({ key, icon: Icon, label }) => (
+              <a
+                key={key}
+                href={getSocialHref(key, (profile as any)[key])}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={label}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Icon className="w-4 h-4" />
+              </a>
+            ))}
             {isOwn && (
               <button
                 onClick={openSocialDialog}
-                className="flex items-center justify-between w-full px-4 py-2.5 hover:bg-muted transition-colors group text-muted-foreground border-t border-border first:border-t-0"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed border-border text-xs font-mono text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <Plus className="w-4 h-4 shrink-0" />
-                  <span className="text-sm font-mono">
-                    {filledSocials.length > 0 ? "Edit links" : "Add socials"}
-                  </span>
-                </div>
-                <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                <Plus className="w-3.5 h-3.5" />
+                {filledSocials.length > 0 ? "Edit socials" : "Add socials"}
               </button>
             )}
           </div>
