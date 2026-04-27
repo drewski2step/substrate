@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Pencil, Globe, Lock } from "lucide-react";
+import { Pencil, Globe, Lock, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 export default function UserProfile() {
