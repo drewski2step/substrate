@@ -38,16 +38,36 @@ export default function UserProfile() {
   const { data: stats } = useQuery({
     queryKey: ["profile-stats", profile?.id],
     queryFn: async () => {
-      const [missions, blocks, posts] = await Promise.all([
+      const [missions, blocks, posts, completed] = await Promise.all([
         supabase.from("goals").select("id", { count: "exact", head: true }).eq("created_by", profile!.id),
         supabase.from("blocks").select("id", { count: "exact", head: true }).eq("created_by", profile!.id).is("deleted_at", null),
         supabase.from("discussions").select("id", { count: "exact", head: true }).eq("user_id", profile!.id).is("parent_id", null),
+        supabase.from("blocks").select("id", { count: "exact", head: true }).eq("completed_by", profile!.id).is("deleted_at", null),
       ]);
       return {
         missions: missions.count ?? 0,
         blocks: blocks.count ?? 0,
         posts: posts.count ?? 0,
+        completed: completed.count ?? 0,
       };
+    },
+    enabled: !!profile?.id,
+  });
+
+  const { data: completedBlocks } = useQuery({
+    queryKey: ["profile-completed", profile?.id],
+    queryFn: async () => {
+      const { data: blocks } = await supabase
+        .from("blocks")
+        .select("id, title, goal_id, heat, brick_color, completed_at")
+        .eq("completed_by", profile!.id)
+        .is("deleted_at", null)
+        .order("heat", { ascending: false });
+      if (!blocks?.length) return [];
+      const goalIds = Array.from(new Set(blocks.map((b) => b.goal_id).filter(Boolean) as string[]));
+      const { data: goals } = await supabase.from("goals").select("id, title").in("id", goalIds);
+      const goalMap = new Map((goals ?? []).map((g) => [g.id, g.title]));
+      return blocks.map((b) => ({ ...b, mission_title: goalMap.get(b.goal_id ?? "") ?? "Unknown mission" }));
     },
     enabled: !!profile?.id,
   });
