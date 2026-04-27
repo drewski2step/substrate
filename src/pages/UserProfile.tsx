@@ -417,45 +417,45 @@ export default function UserProfile() {
         </div>
 
         {/* ── Social links ─────────────────────────────────────────────── */}
-        <div className="mb-6">
-          {filledSocials.length > 0 && (
-            <div className="flex flex-col gap-1 mb-3">
-              {filledSocials.map(({ key, icon: Icon, label }) => {
-                const val = (profile as any)[key] as string;
-                const href = getSocialHref(key, val);
-                // Show just the handle/path portion as the subtitle
-                const display = val.startsWith("http") ? val.replace(/^https?:\/\/(www\.)?/, "") : val;
-                return (
-                  <a
-                    key={key}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted transition-colors group"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 group-hover:bg-muted-foreground/20 transition-colors">
-                      <Icon className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium font-mono leading-tight">{label}</p>
-                      <p className="text-xs text-muted-foreground font-mono truncate">{display}</p>
-                    </div>
-                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                  </a>
-                );
-              })}
-            </div>
-          )}
-          {isOwn && (
-            <button
-              onClick={openSocialDialog}
-              className="flex items-center gap-2 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted w-full"
-            >
-              <Plus className="w-4 h-4" />
-              {filledSocials.length > 0 ? "Edit links" : "Add social links"}
-            </button>
-          )}
-        </div>
+        {(filledSocials.length > 0 || isOwn) && (
+          <div className="mb-6 rounded-lg border border-border overflow-hidden">
+            {filledSocials.map(({ key, icon: Icon, label }) => {
+              const val = (profile as any)[key] as string;
+              const href = getSocialHref(key, val);
+              const display = val.startsWith("http") ? val.replace(/^https?:\/\/(www\.)?/, "") : val;
+              return (
+                <a
+                  key={key}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted transition-colors group border-b border-border last:border-b-0"
+                >
+                  <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-mono">{label}</span>
+                    <span className="text-xs text-muted-foreground font-mono ml-2 truncate">{display}</span>
+                  </div>
+                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </a>
+              );
+            })}
+            {isOwn && (
+              <button
+                onClick={openSocialDialog}
+                className="flex items-center justify-between w-full px-4 py-2.5 hover:bg-muted transition-colors group text-muted-foreground border-t border-border first:border-t-0"
+              >
+                <div className="flex items-center gap-3">
+                  <Plus className="w-4 h-4 shrink-0" />
+                  <span className="text-sm font-mono">
+                    {filledSocials.length > 0 ? "Edit links" : "Add socials"}
+                  </span>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* ── Stats ───────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
