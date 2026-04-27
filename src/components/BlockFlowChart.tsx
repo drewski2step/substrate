@@ -337,13 +337,14 @@ function BlockCard({
             {stars.map((s, i) => (
               <span
                 key={i}
-                className="absolute w-1.5 h-1.5 rounded-full bg-white animate-twinkle"
+                className="absolute w-1.5 h-1.5 rounded-full animate-twinkle"
                 style={{
                   left: s.left,
                   top: s.top,
                   animationDelay: s.delay,
                   animationDuration: s.duration,
-                  boxShadow: '0 0 3px 1px rgba(255,255,255,0.8)',
+                  backgroundColor: '#FFD700',
+                  boxShadow: '0 0 4px 2px rgba(255, 215, 0, 0.7)',
                 }}
               />
             ))}
