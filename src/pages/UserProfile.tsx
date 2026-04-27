@@ -63,11 +63,19 @@ export default function UserProfile() {
   const { data: pledgeCount } = useQuery({
     queryKey: ["profile-pledge-count", profile?.id],
     queryFn: async () => {
-      const { count } = await supabase
+      const { data: pledges } = await supabase
         .from("block_pledges")
-        .select("id", { count: "exact", head: true })
+        .select("block_id")
         .eq("user_id", profile!.id)
         .eq("active", true);
+      if (!pledges?.length) return 0;
+      const blockIds = pledges.map((p) => p.block_id);
+      const { count } = await supabase
+        .from("blocks")
+        .select("id", { count: "exact", head: true })
+        .in("id", blockIds)
+        .is("deleted_at", null)
+        .is("completed_at", null);
       return count ?? 0;
     },
     enabled: !!profile?.id,

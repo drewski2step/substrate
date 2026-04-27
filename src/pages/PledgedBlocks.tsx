@@ -37,7 +37,8 @@ export default function PledgedBlocks() {
         .from("blocks")
         .select("id, title, goal_id, heat, status")
         .in("id", blockIds)
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .is("completed_at", null);
       if (!blockData?.length) return [];
       const goalIds = Array.from(new Set(blockData.map((b) => b.goal_id).filter(Boolean) as string[]));
       const { data: goals } = await supabase.from("goals").select("id, title").in("id", goalIds);
