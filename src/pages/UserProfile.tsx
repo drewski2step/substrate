@@ -307,19 +307,25 @@ export default function UserProfile() {
 
   // ── Social links config ────────────────────────────────────────────────────
   const socialLinks = [
-    { key: "social_instagram", icon: Instagram, label: "Instagram", prefix: "https://instagram.com/" },
-    { key: "social_youtube", icon: Youtube, label: "YouTube", prefix: "https://youtube.com/@" },
-    { key: "social_twitter", icon: Twitter, label: "Twitter / X", prefix: "https://x.com/" },
-    { key: "social_linkedin", icon: Linkedin, label: "LinkedIn", prefix: "https://linkedin.com/in/" },
-    { key: "social_substack", icon: BookOpen, label: "Substack", prefix: "https://" },
-    { key: "social_github", icon: Github, label: "GitHub", prefix: "https://github.com/" },
-    { key: "social_website", icon: Globe, label: "Website", prefix: "https://" },
+    { key: "social_instagram", icon: Instagram, label: "Instagram", prefix: "https://instagram.com/", placeholder: "username" },
+    { key: "social_youtube", icon: Youtube, label: "YouTube", prefix: "https://youtube.com/@", placeholder: "username or @username" },
+    { key: "social_twitter", icon: Twitter, label: "Twitter / X", prefix: "https://x.com/", placeholder: "username" },
+    { key: "social_linkedin", icon: Linkedin, label: "LinkedIn", prefix: "https://linkedin.com/in/", placeholder: "Full URL or username" },
+    { key: "social_substack", icon: BookOpen, label: "Substack", prefix: "https://", placeholder: "yourname.substack.com" },
+    { key: "social_github", icon: Github, label: "GitHub", prefix: "https://github.com/", placeholder: "username" },
+    { key: "social_website", icon: Globe, label: "Website", prefix: "https://", placeholder: "https://yoursite.com" },
   ] as const;
 
   function getSocialHref(key: string, val: string) {
     const cfg = socialLinks.find((s) => s.key === key);
     if (!cfg) return val;
+    // Full URL — pass through as-is
     if (val.startsWith("http://") || val.startsWith("https://")) return val;
+    // YouTube: strip leading @ so we always add exactly one
+    if (key === "social_youtube") {
+      const handle = val.startsWith("@") ? val.slice(1) : val;
+      return `https://youtube.com/@${handle}`;
+    }
     return cfg.prefix + val;
   }
 
@@ -573,11 +579,11 @@ export default function UserProfile() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Social links</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
-            {socialLinks.map(({ key, icon: Icon, label }) => (
+            {socialLinks.map(({ key, icon: Icon, placeholder }) => (
               <div key={key} className="flex items-center gap-2">
                 <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
                 <Input
-                  placeholder={label}
+                  placeholder={placeholder}
                   value={socialForm[key as keyof typeof socialForm]}
                   onChange={(e) => setSocialForm((f) => ({ ...f, [key]: e.target.value }))}
                   className="font-mono text-sm"
