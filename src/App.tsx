@@ -18,6 +18,7 @@ import CompletedBlocks from "./pages/CompletedBlocks";
 import PledgedBlocks from "./pages/PledgedBlocks";
 import UserMissions from "./pages/UserMissions";
 import UserDiscussions from "./pages/UserDiscussions";
+import SearchPage from "./pages/Search";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/mission/:missionId" element={<MissionView />} />
             <Route path="/mission/:missionId/block/:blockId" element={<BlockView />} />
             <Route path="/mission/:missionId/task/:taskId" element={<BlockView />} />
+            <Route path="/search" element={<SearchPage />} />
             <Route path="/profile/:username" element={<UserProfile />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/login" element={<Login />} />

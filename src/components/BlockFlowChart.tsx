@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Check, CheckCircle2, Plus, GitBranch, Flame, AlertTriangle, HelpCircle, FolderOpen, Pencil, Trash2, Star, GripVertical, Undo2, Clock, Calendar, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -94,7 +95,7 @@ async function batchSavePositions(
 // --- Block card with heat ---
 function BlockCard({
   block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
-  onDragNearEdge, canvasWidth, canvasHeight, creatorName, creatorAvatarSeed, isAnimatingOut,
+  onDragNearEdge, canvasWidth, canvasHeight, creatorName, creatorAvatarSeed, creatorAvatarUrl, creatorUsername, isAnimatingOut,
   onResizeLive, onResizeEnd, parentLiveSize, parentLiveOffset,
 }: {
   block: BlockWithDeps;
@@ -102,6 +103,8 @@ function BlockCard({
   posY: number;
   creatorName?: string;
   creatorAvatarSeed?: string;
+  creatorAvatarUrl?: string | null;
+  creatorUsername?: string;
   isAnimatingOut?: boolean;
   onComplete: (id: string) => void;
   onAddSuccessor: (block: BlockWithDeps) => void;
@@ -147,7 +150,7 @@ function BlockCard({
     queryKey: ["pledger-profiles", block.id, pledgerIds.join(",")],
     queryFn: async () => {
       if (pledgerIds.length === 0) return [];
-      const { data } = await supabase.from("profiles").select("id, username, avatar_seed").in("id", pledgerIds);
+      const { data } = await supabase.from("profiles").select("id, username, avatar_seed, avatar_url").in("id", pledgerIds);
       return data || [];
     },
     enabled: pledgerIds.length > 0,
@@ -339,11 +342,26 @@ function BlockCard({
             {creatorAvatarSeed && (
               <div className="flex items-center gap-1 mt-0.5">
                 <div className="group/creator relative">
-                  <img
-                    src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${creatorAvatarSeed}`}
-                    alt={creatorName || "creator"}
-                    className="w-4 h-4 rounded-full border border-border/50"
-                  />
+                  {creatorUsername ? (
+                    <Link
+                      to={`/profile/${creatorUsername}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="block"
+                      title={creatorName}
+                    >
+                      <img
+                        src={creatorAvatarUrl || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${creatorAvatarSeed}`}
+                        alt={creatorName || "creator"}
+                        className="w-4 h-4 rounded-full border border-border/50 hover:scale-125 transition-transform object-cover"
+                      />
+                    </Link>
+                  ) : (
+                    <img
+                      src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${creatorAvatarSeed}`}
+                      alt={creatorName || "creator"}
+                      className="w-4 h-4 rounded-full border border-border/50 object-cover"
+                    />
+                  )}
                   {creatorName && (
                     <span className="absolute -top-5 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[8px] px-1 py-0.5 rounded opacity-0 group-hover/creator:opacity-100 whitespace-nowrap pointer-events-none z-30">
                       {creatorName}
@@ -365,11 +383,17 @@ function BlockCard({
           <div className="flex items-center gap-1 mt-1.5 relative z-10">
             {pledgerProfiles.slice(0, maxAvatars).map((p) => (
               <div key={p.id} className="group/avatar relative">
-                <img
-                  src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${p.avatar_seed}`}
-                  alt={p.username}
-                  className="w-5 h-5 rounded-full border border-indigo-400/40 hover:scale-125 transition-transform"
-                />
+                <Link
+                  to={`/profile/${p.username}`}
+                  onClick={(e) => e.stopPropagation()}
+                  title={p.username}
+                >
+                  <img
+                    src={(p as any).avatar_url || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${p.avatar_seed}`}
+                    alt={p.username}
+                    className="w-5 h-5 rounded-full border border-indigo-400/40 hover:scale-125 transition-transform block object-cover"
+                  />
+                </Link>
                 <span className="absolute -top-5 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[8px] px-1 py-0.5 rounded opacity-0 group-hover/avatar:opacity-100 whitespace-nowrap pointer-events-none">
                   {p.username}
                 </span>
@@ -724,14 +748,14 @@ export function BlockFlowChart({
     queryKey: ["block-creator-profiles", profileIds.join(",")],
     queryFn: async () => {
       if (profileIds.length === 0) return [];
-      const { data } = await supabase.from("profiles").select("id, username, avatar_seed").in("id", profileIds);
+      const { data } = await supabase.from("profiles").select("id, username, avatar_seed, avatar_url").in("id", profileIds);
       return data || [];
     },
     enabled: profileIds.length > 0,
   });
   const creatorMap = useMemo(() => {
-    const map = new Map<string, { username: string; avatar_seed: string }>();
-    creatorProfiles?.forEach((p) => map.set(p.id, { username: p.username, avatar_seed: p.avatar_seed }));
+    const map = new Map<string, { username: string; avatar_seed: string; avatar_url?: string | null }>();
+    creatorProfiles?.forEach((p) => map.set(p.id, { username: p.username, avatar_seed: p.avatar_seed, avatar_url: (p as any).avatar_url }));
     return map;
   }, [creatorProfiles]);
 
@@ -929,6 +953,8 @@ export function BlockFlowChart({
                   parentLiveOffset={liveOffsets.get(block.id)}
                   creatorName={block.created_by ? creatorMap.get(block.created_by)?.username : undefined}
                   creatorAvatarSeed={block.created_by ? creatorMap.get(block.created_by)?.avatar_seed : undefined}
+                  creatorAvatarUrl={block.created_by ? creatorMap.get(block.created_by)?.avatar_url : undefined}
+                  creatorUsername={block.created_by ? creatorMap.get(block.created_by)?.username : undefined}
                   isAnimatingOut={animatingOutId === block.id}
                   canvasWidth={containerWidth}
                   canvasHeight={containerHeight}

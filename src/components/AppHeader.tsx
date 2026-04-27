@@ -4,7 +4,7 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { getAvatarUrl } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export function AppHeader() {
@@ -28,7 +28,7 @@ export function AppHeader() {
           <span className="text-sm font-semibold tracking-tight font-mono uppercase">Substrate</span>
         </Link>
         <div className="flex items-center gap-4">
-          <nav className="flex items-center gap-6">
+          <nav className="flex items-center gap-4">
             <Link
               to="/"
               className={cn(
@@ -46,6 +46,16 @@ export function AppHeader() {
               )}
             >
               Discussions
+            </Link>
+            <Link
+              to="/search"
+              className={cn(
+                "p-1.5 rounded-md transition-colors",
+                location.pathname === "/search" ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+              aria-label="Search"
+            >
+              <Search className="w-4 h-4" />
             </Link>
           </nav>
           {user && profile ? (
