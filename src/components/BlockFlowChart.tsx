@@ -332,13 +332,23 @@ function BlockCard({
         )}
 
         {/* Night sky stars for pledged blocks */}
-        {isPledged && stars.map((s, i) => (
-          <span
-            key={i}
-            className="absolute w-1 h-1 rounded-full bg-white animate-twinkle"
-            style={{ left: s.left, top: s.top, animationDelay: s.delay, animationDuration: s.duration }}
-          />
-        ))}
+        {isPledged && (
+          <div className="absolute inset-0 pointer-events-none z-[5] overflow-hidden rounded-lg">
+            {stars.map((s, i) => (
+              <span
+                key={i}
+                className="absolute w-1.5 h-1.5 rounded-full bg-white animate-twinkle"
+                style={{
+                  left: s.left,
+                  top: s.top,
+                  animationDelay: s.delay,
+                  animationDuration: s.duration,
+                  boxShadow: '0 0 3px 1px rgba(255,255,255,0.8)',
+                }}
+              />
+            ))}
+          </div>
+        )}
 
         <div className={cn("flex items-start gap-2 pt-1 pr-5 relative z-10 min-w-0")}>
           <div className={cn(
