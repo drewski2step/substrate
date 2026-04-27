@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 
 export default function PledgedBlocks() {
@@ -55,6 +55,33 @@ export default function PledgedBlocks() {
       }));
     },
     enabled: !!profile?.id,
+  });
+
+  // Utah-inspired brick colors (same palette as BlockFlowChart)
+  function pickUtahColor() {
+    const colors = ["#c0392b","#e67e22","#d4a017","#7f8c8d","#8e44ad","#2980b9","#27ae60","#e74c3c","#f39c12","#16a085"];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  const completeBlock = useMutation({
+    mutationFn: async ({ blockId }: { blockId: string }) => {
+      const { error } = await supabase
+        .from("blocks")
+        .update({
+          status: "complete",
+          completed_by: user!.id,
+          completed_at: new Date().toISOString(),
+          brick_color: pickUtahColor(),
+        } as any)
+        .eq("id", blockId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pledged-blocks-page", profile?.id] });
+      queryClient.invalidateQueries({ queryKey: ["profile-pledge-count", profile?.id] });
+      toast.success("Block completed");
+    },
+    onError: () => toast.error("Failed to complete block"),
   });
 
   const unpledge = useMutation({
@@ -133,15 +160,27 @@ export default function PledgedBlocks() {
                     </div>
                   </Link>
                   {isOwn && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-xs text-slate-400 hover:text-red-400 hover:bg-red-400/10 shrink-0 h-7 px-2"
-                      disabled={unpledge.isPending}
-                      onClick={() => b.pledgeId && unpledge.mutate(b.pledgeId)}
-                    >
-                      Unpledge
-                    </Button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 h-7 px-2 gap-1"
+                        disabled={completeBlock.isPending || unpledge.isPending}
+                        onClick={() => completeBlock.mutate({ blockId: b.id })}
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        Complete
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs text-slate-400 hover:text-red-400 hover:bg-red-400/10 h-7 px-2"
+                        disabled={unpledge.isPending || completeBlock.isPending}
+                        onClick={() => b.pledgeId && unpledge.mutate(b.pledgeId)}
+                      >
+                        Unpledge
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
