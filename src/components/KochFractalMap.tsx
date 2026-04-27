@@ -55,12 +55,12 @@ interface Bar {
   generation: number;
 }
 
-const DECAY_LENGTH = 0.65;
-const DECAY_THICKNESS = 0.75;
+const MIN_LENGTH = 8;
 const MIN_THICKNESS = 2;
-const GOLDEN_ANGLE = (137.5 * Math.PI) / 180;
+const SPREAD_ANGLE = (60 * Math.PI) / 180; // 60° between siblings
 const BASE_LENGTH = 200;
 const BASE_THICKNESS = 14;
+const CANVAS_CENTER: Pt = { x: 0, y: 0 }; // mutated by layoutRoots
 
 // --- Helpers ---
 function vecSub(a: Pt, b: Pt): Pt {
@@ -79,24 +79,16 @@ function vecNorm(v: Pt): Pt {
   const l = vecLen(v);
   return l === 0 ? { x: 0, y: 0 } : { x: v.x / l, y: v.y / l };
 }
-function rotate(v: Pt, angle: number): Pt {
-  const c = Math.cos(angle);
-  const s = Math.sin(angle);
-  return { x: v.x * c - v.y * s, y: v.x * s + v.y * c };
-}
-function cross2d(a: Pt, b: Pt): number {
-  return a.x * b.y - a.y * b.x;
-}
-
 /**
- * Given a parent edge AB (drawn from incomingDir), produce the child edges
- * for `children` as edges of a regular (N+1)-gon where AB is the base,
- * built on the outward side (away from incomingDir).
+ * Children sprout from the MIDPOINT of the parent bar, fanning outward
+ * perpendicular to the parent, away from the canvas center.
+ *
+ * childLength = parentLength / (3 * N)
+ * Children are spaced 60° apart, centered on the outward perpendicular.
  */
 function layoutChildren(
   a: Pt,
   b: Pt,
-  incomingDir: Pt,
   children: TreeNode[],
   generation: number,
   thickness: number,
@@ -105,59 +97,33 @@ function layoutChildren(
   const N = children.length;
   if (N === 0) return;
 
-  const edgeLen = vecLen(vecSub(b, a)) * DECAY_LENGTH;
-  const childThickness = Math.max(MIN_THICKNESS, thickness * DECAY_THICKNESS);
+  const parentLength = vecLen(vecSub(b, a));
+  const childLength = parentLength / (3 * N);
+  if (childLength < MIN_LENGTH) return; // too small to render
 
-  if (N === 1) {
-    // Single child: golden-angle spiral from point B
-    const parentDir = vecNorm(vecSub(b, a));
-    const childDir = rotate(parentDir, -GOLDEN_ANGLE); // clockwise
-    const childB: Pt = vecAdd(b, vecScale(childDir, edgeLen));
+  const childThickness = Math.max(MIN_THICKNESS, thickness * 0.7);
 
-    const child = children[0];
-    bars.push({
-      a: b,
-      b: childB,
-      thickness: childThickness,
-      color: getHeatHex(child.block.heat || 0),
-      blockId: child.block.id,
-      title: child.block.title,
-      generation,
-    });
-    // Recurse — incoming direction is from a→b
-    layoutChildren(b, childB, parentDir, child.children, generation + 1, childThickness, bars);
-    return;
-  }
+  // Midpoint of parent bar
+  const M: Pt = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 
-  // N >= 2: Build a regular (N+1)-gon with AB as the base edge.
-  // The polygon has (N+1) vertices, (N+1) edges. AB is one edge; the other N edges are children.
-  const sides = N + 1;
-  const interiorAngle = ((sides - 2) * Math.PI) / sides;
-  // Exterior turn angle at each vertex
-  const turnAngle = Math.PI - interiorAngle;
-
-  // Determine winding: outward from incoming direction.
-  // Use cross product of incomingDir x AB_dir to decide CW vs CCW.
-  const abDir = vecNorm(vecSub(b, a));
-  const crossZ = cross2d(incomingDir, abDir);
-  // If crossZ > 0, wind counterclockwise (turn left); if < 0, wind clockwise (turn right).
-  // Default: if incomingDir is zero (root), wind CCW.
-  const windCCW = crossZ >= 0;
-
-  // Walk from B, turning at each vertex to build the remaining N edges.
-  let currentPt = b;
-  let currentDir = abDir; // direction of current edge (AB)
+  // Outward direction: from canvas center toward midpoint
+  const outward = vecNorm(vecSub(M, CANVAS_CENTER));
+  // Fallback if midpoint is exactly at canvas center
+  const perpAngle =
+    outward.x === 0 && outward.y === 0
+      ? Math.atan2(b.y - a.y, b.x - a.x) + Math.PI / 2
+      : Math.atan2(outward.y, outward.x);
 
   for (let i = 0; i < N; i++) {
-    // Turn at vertex
-    const angle = windCCW ? turnAngle : -turnAngle;
-    currentDir = rotate(currentDir, angle);
-    const nextPt = vecAdd(currentPt, vecScale(currentDir, edgeLen));
+    const offset = (-(N - 1) / 2 + i) * SPREAD_ANGLE;
+    const childAngle = perpAngle + offset;
+    const childDir: Pt = { x: Math.cos(childAngle), y: Math.sin(childAngle) };
+    const childEnd: Pt = vecAdd(M, vecScale(childDir, childLength));
 
     const child = children[i];
     bars.push({
-      a: currentPt,
-      b: nextPt,
+      a: M,
+      b: childEnd,
       thickness: childThickness,
       color: getHeatHex(child.block.heat || 0),
       blockId: child.block.id,
@@ -165,12 +131,8 @@ function layoutChildren(
       generation,
     });
 
-    // Recurse: incoming direction for the child is the direction along the parent polygon edge
-    // that leads into the child's starting vertex (currentDir of the previous edge segment)
-    const childIncoming = vecNorm(vecSub(currentPt, (i === 0 ? a : bars[bars.length - 2]?.b || a)));
-    layoutChildren(currentPt, nextPt, childIncoming, child.children, generation + 1, childThickness, bars);
-
-    currentPt = nextPt;
+    // Recurse with the child bar
+    layoutChildren(M, childEnd, child.children, generation + 1, childThickness, bars);
   }
 }
 
@@ -180,6 +142,10 @@ function layoutChildren(
 function layoutRoots(roots: TreeNode[], cx: number, cy: number): Bar[] {
   const bars: Bar[] = [];
   const M = roots.length;
+
+  // Update canvas center for outward direction calculation
+  CANVAS_CENTER.x = cx;
+  CANVAS_CENTER.y = cy;
 
   if (M === 0) return bars;
 
@@ -197,14 +163,11 @@ function layoutRoots(roots: TreeNode[], cx: number, cy: number): Bar[] {
       title: root.block.title,
       generation: 0,
     });
-    // Incoming direction: upward (so children grow downward/outward)
-    const incomingDir: Pt = { x: 0, y: -1 };
-    layoutChildren(a, b, incomingDir, root.children, 1, BASE_THICKNESS, bars);
+    layoutChildren(a, b, root.children, 1, BASE_THICKNESS, bars);
     return bars;
   }
 
   // M >= 2: arrange as edges of a regular M-gon
-  // Compute M vertices of a regular polygon
   const radius = BASE_LENGTH / (2 * Math.sin(Math.PI / M));
   const vertices: Pt[] = [];
   for (let i = 0; i < M; i++) {
@@ -228,12 +191,7 @@ function layoutRoots(roots: TreeNode[], cx: number, cy: number): Bar[] {
       title: root.block.title,
       generation: 0,
     });
-    // Incoming direction: from center to midpoint of edge (inward), so children grow outward
-    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    const incomingDir = vecNorm(vecSub(mid, { x: cx, y: cy }));
-    // We want children to grow outward, so incoming should point inward (from center)
-    const inwardDir = vecNorm(vecSub({ x: cx, y: cy }, mid));
-    layoutChildren(a, b, inwardDir, root.children, 1, BASE_THICKNESS, bars);
+    layoutChildren(a, b, root.children, 1, BASE_THICKNESS, bars);
   }
 
   return bars;
