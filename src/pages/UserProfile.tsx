@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,15 +10,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
+import { Pencil, Camera } from "lucide-react";
 import { toast } from "sonner";
 
 export default function UserProfile() {
   const { username } = useParams<{ username: string }>();
-  const { user } = useAuthContext();
+  const { user, refreshProfile } = useAuthContext();
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [newUsername, setNewUsername] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
 
   const { data: profile, isLoading } = useQuery({
@@ -71,6 +73,37 @@ export default function UserProfile() {
     enabled: !!profile?.id,
   });
 
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setAvatarUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/avatar.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      // Bust cache by appending timestamp
+      const urlWithBust = `${publicUrl}?t=${Date.now()}`;
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: urlWithBust })
+        .eq("id", user.id);
+      if (updateError) throw updateError;
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      refreshProfile();
+      toast.success("Profile photo updated");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload photo");
+    } finally {
+      setAvatarUploading(false);
+      // Reset input so same file can be re-selected
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  }
+
   const updateUsername = useMutation({
     mutationFn: async (uname: string) => {
       const { data: existing } = await supabase
@@ -118,11 +151,34 @@ export default function UserProfile() {
       <main className="mx-auto max-w-3xl px-6 py-10 animate-fade-in-up">
         {/* Header */}
         <div className="flex items-center gap-5 mb-8">
-          <img
-            src={profile.avatar_url || getAvatarUrl(profile.avatar_seed)}
-            alt={profile.username}
-            className="w-20 h-20 rounded-full bg-muted"
-          />
+          <div className="relative shrink-0 group">
+            <img
+              src={profile.avatar_url || getAvatarUrl(profile.avatar_seed)}
+              alt={profile.username}
+              className="w-20 h-20 rounded-full bg-muted object-cover"
+            />
+            {isOwn && (
+              <>
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Change profile photo"
+                >
+                  {avatarUploading
+                    ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    : <Camera className="w-5 h-5 text-white" />}
+                </button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                />
+              </>
+            )}
+          </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold font-mono truncate">{profile.username}</h1>

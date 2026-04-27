@@ -83,7 +83,11 @@ export function useAuth() {
     if (error) throw error;
   };
 
-  return { user, session, profile, loading, signUp, signIn, signOut };
+  const refreshProfile = useCallback(() => {
+    if (user) fetchProfile(user.id);
+  }, [user, fetchProfile]);
+
+  return { user, session, profile, loading, signUp, signIn, signOut, refreshProfile };
 }
 
 /** Get a DiceBear avatar URL from a seed */

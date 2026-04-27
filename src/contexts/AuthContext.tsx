@@ -10,6 +10,7 @@ type AuthContextType = {
   signUp: (email: string, password: string, username: string) => Promise<any>;
   signIn: (email: string, password: string) => Promise<any>;
   signOut: () => Promise<void>;
+  refreshProfile: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
