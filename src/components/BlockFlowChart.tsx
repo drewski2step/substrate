@@ -35,6 +35,18 @@ function getHeatColor(heat: number): string {
   return "border-violet-500 bg-violet-50 dark:bg-violet-950/40";
 }
 
+// Return the hex color of the border ring for each heat tier (matches getHeatColor thresholds)
+function getHeatBorderColor(heat: number): string {
+  if (heat <= 0)   return '#D1D5DB'; // gray-300
+  if (heat <= 10)  return '#EF4444'; // red-500
+  if (heat <= 25)  return '#F97316'; // orange-500
+  if (heat <= 50)  return '#EAB308'; // yellow-500
+  if (heat <= 80)  return '#22C55E'; // green-500
+  if (heat <= 120) return '#14B8A6'; // teal-500
+  if (heat <= 170) return '#3B82F6'; // blue-500
+  return '#8B5CF6';                  // violet-500
+}
+
 function getFlameColor(heat: number): string {
   if (heat <= 0)   return "text-muted-foreground";
   if (heat <= 10)  return "text-red-500";
@@ -168,31 +180,25 @@ function BlockCard({
   const voteBlock = useVoteBlock();
   const userVote = votes?.find((v) => v.user_id === user?.id)?.vote ?? null;
 
-  // Generate star positions for night sky — 4×4 grid with fixed jitter for even spread
-  const stars = useMemo(() => {
-    const COLS_STAR = 4;
-    const ROWS_STAR = 4;
-    // Small deterministic jitter per cell so stars aren't perfectly aligned
-    const jitter = [
-      -3, 4, -2, 5, 3, -4, 1, -5,
-      2, -3, 4, -1, -4, 3, -2, 5,
-    ];
-    const result: { left: string; top: string; delay: string; duration: string }[] = [];
-    for (let r = 0; r < ROWS_STAR; r++) {
-      for (let c = 0; c < COLS_STAR; c++) {
-        const idx = r * COLS_STAR + c;
-        const baseLeft = (c + 0.5) * (100 / COLS_STAR); // 12.5, 37.5, 62.5, 87.5
-        const baseTop = (r + 0.5) * (100 / ROWS_STAR);
-        result.push({
-          left: `${baseLeft + jitter[idx % jitter.length]}%`,
-          top: `${baseTop + jitter[(idx + 7) % jitter.length]}%`,
-          delay: `${(idx * 0.13) % 2}s`,
-          duration: `${1.5 + (idx % 5) * 0.3}s`,
-        });
-      }
-    }
-    return result;
-  }, []);
+  // Pseudo-random star positions for pledged blocks — deterministic so they don't shift on re-render
+  const starPositions = useMemo(() => [
+    { top: '8%', left: '15%' }, { top: '22%', left: '72%' },
+    { top: '35%', left: '38%' }, { top: '48%', left: '88%' },
+    { top: '61%', left: '55%' }, { top: '74%', left: '20%' },
+    { top: '85%', left: '65%' }, { top: '12%', left: '50%' },
+    { top: '55%', left: '10%' }, { top: '30%', left: '90%' },
+    { top: '70%', left: '42%' }, { top: '18%', left: '30%' },
+    { top: '42%', left: '60%' }, { top: '78%', left: '80%' },
+    { top: '90%', left: '35%' }, { top: '5%', left: '80%' },
+  ], []);
+  const stars = useMemo(() =>
+    starPositions.map((pos, i) => ({
+      left: pos.left,
+      top: pos.top,
+      delay: `${(i * 0.167).toFixed(2)}s`,
+      duration: `${1.5 + (i % 5) * 0.3}s`,
+    })),
+  [starPositions]);
 
   const handleGripMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -347,7 +353,7 @@ function BlockCard({
           </div>
         )}
 
-        {/* Night sky stars for pledged blocks */}
+        {/* Night sky stars for pledged blocks — color matches border ring */}
         {isPledged && (
           <div className="absolute inset-0 pointer-events-none z-[5] overflow-hidden rounded-lg">
             {stars.map((s, i) => (
@@ -359,7 +365,7 @@ function BlockCard({
                   top: s.top,
                   animationDelay: s.delay,
                   animationDuration: s.duration,
-                  backgroundColor: '#92400E',
+                  backgroundColor: getHeatBorderColor(heat),
                 }}
               />
             ))}
