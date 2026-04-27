@@ -55,7 +55,7 @@ interface Bar {
   generation: number;
 }
 
-const MIN_LENGTH = 8;
+const MIN_LENGTH = 12;
 const MIN_THICKNESS = 2;
 const SPREAD_ANGLE = (60 * Math.PI) / 180; // 60° between siblings
 const BASE_LENGTH = 200;
@@ -83,7 +83,7 @@ function vecNorm(v: Pt): Pt {
  * Children sprout from the MIDPOINT of the parent bar, fanning outward
  * perpendicular to the parent, away from the canvas center.
  *
- * childLength = parentLength / (3 * N)
+ * childLength = parentLength * 0.55
  * Children are spaced 60° apart, centered on the outward perpendicular.
  */
 function layoutChildren(
@@ -98,7 +98,7 @@ function layoutChildren(
   if (N === 0) return;
 
   const parentLength = vecLen(vecSub(b, a));
-  const childLength = parentLength / (3 * N);
+  const childLength = parentLength * 0.55;
   if (childLength < MIN_LENGTH) return; // too small to render
 
   const childThickness = Math.max(MIN_THICKNESS, thickness * 0.7);
