@@ -49,7 +49,13 @@ const EMPTY_EXP = {
 
 function formatDate(dateStr: string) {
   const [y, m] = dateStr.split("-");
-  return new Date(Number(y), Number(m) - 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+// Convert YYYY-MM-DD from DB back to YYYY-MM for the month input
+function toMonthInput(dateStr: string | null | undefined) {
+  if (!dateStr) return "";
+  return dateStr.slice(0, 7); // "2026-03-01" → "2026-03"
 }
 
 export default function UserProfile() {
@@ -252,8 +258,8 @@ export default function UserProfile() {
       title: exp.title,
       organization: exp.organization,
       experience_type: exp.experience_type,
-      start_date: exp.start_date,
-      end_date: exp.end_date ?? "",
+      start_date: toMonthInput(exp.start_date),
+      end_date: toMonthInput(exp.end_date),
       description: exp.description ?? "",
     });
     setExpDialogOpen(true);
@@ -261,13 +267,14 @@ export default function UserProfile() {
 
   const saveExp = useMutation({
     mutationFn: async () => {
+      const toDate = (val: string) => val ? `${val}-01` : null;
       const payload = {
         user_id: user!.id,
         title: expForm.title.trim(),
         organization: expForm.organization.trim(),
         experience_type: expForm.experience_type,
-        start_date: expForm.start_date,
-        end_date: expForm.end_date || null,
+        start_date: toDate(expForm.start_date),
+        end_date: toDate(expForm.end_date),
         description: expForm.description.trim() || null,
       };
       if (editingExp) {
