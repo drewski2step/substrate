@@ -14,7 +14,6 @@ import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import UserProfile from "./pages/UserProfile";
 import Discussions from "./pages/Discussions";
-import GraphView from "./pages/GraphView";
 import CompletedBlocks from "./pages/CompletedBlocks";
 import PledgedBlocks from "./pages/PledgedBlocks";
 import UserMissions from "./pages/UserMissions";
@@ -33,7 +32,6 @@ const App = () => (
           <Routes>
             <Route path="/" element={<MissionBoard />} />
             <Route path="/discussions" element={<Discussions />} />
-            <Route path="/graph" element={<GraphView />} />
             <Route path="/profile/:username/completed" element={<CompletedBlocks />} />
             <Route path="/profile/:username/pledged" element={<PledgedBlocks />} />
             <Route path="/profile/:username/missions" element={<UserMissions />} />
