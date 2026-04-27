@@ -225,9 +225,9 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
   const [hasAutoFit, setHasAutoFit] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Filter out deleted and files blocks
+  // Filter out deleted, completed, and files blocks
   const blocks = useMemo(
-    () => (allBlocks || []).filter((b) => !b.deleted_at && !(b as any).is_files_block),
+    () => (allBlocks || []).filter((b) => !b.deleted_at && !(b as any).is_files_block && !(b as any).completed_at),
     [allBlocks]
   );
 
