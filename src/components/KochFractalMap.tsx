@@ -27,6 +27,8 @@ interface TreeNode {
 
 // --- Build tree from flat block list ---
 function buildBlockTree(blocks: BlockWithDeps[]): TreeNode[] {
+  // Index ALL blocks so we can distinguish "no parent" from "completed parent"
+  const allBlockIds = new Set(blocks.map((b) => b.id));
   const active = blocks.filter((b) => !b.completed_at);
   const map = new Map<string, TreeNode>();
   active.forEach((b) =>
@@ -43,10 +45,14 @@ function buildBlockTree(blocks: BlockWithDeps[]): TreeNode[] {
   active.forEach((b) => {
     const node = map.get(b.id)!;
     if (b.parent_block_id && map.has(b.parent_block_id)) {
+      // Parent is active — attach as child
       map.get(b.parent_block_id)!.children.push(node);
-    } else {
+    } else if (!b.parent_block_id || !allBlockIds.has(b.parent_block_id)) {
+      // Truly top-level (no parent) or parent was deleted — treat as root
       roots.push(node);
     }
+    // Otherwise parent exists but is completed — skip this block
+    // (it belongs to a completed subtree)
   });
   return roots;
 }
