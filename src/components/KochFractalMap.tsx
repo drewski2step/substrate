@@ -241,7 +241,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
     const my = e.clientY - rect.top;
     const factor = Math.pow(0.999, e.deltaY);
     setTransform((t) => {
-      const newScale = Math.max(0.0005, Math.min(5, t.scale * factor));
+      const newScale = Math.max(0.0005, Math.min(1000, t.scale * factor));
       return {
         x: mx - (mx - t.x) * (newScale / t.scale),
         y: my - (my - t.y) * (newScale / t.scale),
@@ -366,7 +366,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
 
           {/* Block bars */}
           {bars.map((bar, i) => {
-            const fontSize = Math.min(bar.height * 0.55, 13 / transform.scale);
+            const fontSize = bar.height * 0.45;
             const maxChars = Math.max(
               3,
               Math.floor(bar.width / (fontSize * 0.6))
@@ -402,23 +402,21 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
                   }}
                   onMouseLeave={() => setTooltip(null)}
                 />
-                {bar.height * transform.scale >= 10 && (
-                  <text
-                    x={bar.x + bar.width / 2}
-                    y={bar.y + bar.height / 2 + fontSize / 3}
-                    textAnchor="middle"
-                    fontSize={fontSize}
-                    fontFamily="ui-monospace, monospace"
-                    fill="white"
-                    stroke="rgba(0,0,0,0.4)"
-                    strokeWidth={0.3}
-                    paintOrder="stroke"
-                    pointerEvents="none"
-                    style={{ userSelect: "none" }}
-                  >
-                    {label}
-                  </text>
-                )}
+                <text
+                  x={bar.x + bar.width / 2}
+                  y={bar.y + bar.height / 2 + fontSize / 3}
+                  textAnchor="middle"
+                  fontSize={fontSize}
+                  fontFamily="ui-monospace, monospace"
+                  fill="white"
+                  stroke="rgba(0,0,0,0.4)"
+                  strokeWidth={0.3}
+                  paintOrder="stroke"
+                  pointerEvents="none"
+                  style={{ userSelect: "none" }}
+                >
+                  {label}
+                </text>
               </g>
             );
           })}
@@ -446,7 +444,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
           onClick={() =>
             setTransform((t) => ({
               ...t,
-              scale: Math.min(5, t.scale * 1.3),
+              scale: Math.min(1000, t.scale * 1.3),
             }))
           }
         >
