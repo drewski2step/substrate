@@ -30,6 +30,10 @@ function buildBlockTree(blocks: BlockWithDeps[]): TreeNode[] {
   // Index ALL blocks so we can distinguish "no parent" from "completed parent"
   const allBlockIds = new Set(blocks.map((b) => b.id));
   const active = blocks.filter((b) => !b.completed_at);
+  // Debug: log first 3 blocks to verify parent_block_id is present
+  console.log("[buildBlockTree] first 3 blocks:", blocks.slice(0, 3).map(b => ({
+    id: b.id, title: b.title, parent_block_id: b.parent_block_id, completed_at: b.completed_at, heat: b.heat,
+  })));
   const map = new Map<string, TreeNode>();
   active.forEach((b) =>
     map.set(b.id, {
@@ -141,14 +145,13 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
   const zoomRef = useRef(1);
   zoomRef.current = transform.scale;
 
-  // Filter to active blocks only
+  // Filter to displayable blocks (not deleted, not file blocks)
   const blocks = useMemo(
     () =>
       (allBlocks || []).filter(
         (b) =>
           !b.deleted_at &&
-          !(b as any).is_files_block &&
-          !(b as any).completed_at
+          !(b as any).is_files_block
       ),
     [allBlocks]
   );
