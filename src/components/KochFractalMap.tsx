@@ -232,6 +232,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
   }, []);
 
   // Wheel zoom (cursor-anchored)
+  const MAX_PAN = 1e8;
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const svg = svgRef.current;
@@ -241,12 +242,10 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
     const my = e.clientY - rect.top;
     const factor = Math.pow(0.999, e.deltaY);
     setTransform((t) => {
-      const newScale = Math.max(0.0005, Math.min(1000, t.scale * factor));
-      return {
-        x: mx - (mx - t.x) * (newScale / t.scale),
-        y: my - (my - t.y) * (newScale / t.scale),
-        scale: newScale,
-      };
+      const newScale = Math.max(0.0005, Math.min(200, t.scale * factor));
+      const newX = Math.max(-MAX_PAN, Math.min(MAX_PAN, mx - (mx - t.x) * (newScale / t.scale)));
+      const newY = Math.max(-MAX_PAN, Math.min(MAX_PAN, my - (my - t.y) * (newScale / t.scale)));
+      return { x: newX, y: newY, scale: newScale };
     });
   }, []);
 
@@ -274,8 +273,8 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
         const dy = e.clientY - panStart.current.y;
         setTransform((t) => ({
           ...t,
-          x: panStart.current.tx + dx,
-          y: panStart.current.ty + dy,
+          x: Math.max(-MAX_PAN, Math.min(MAX_PAN, panStart.current.tx + dx)),
+          y: Math.max(-MAX_PAN, Math.min(MAX_PAN, panStart.current.ty + dy)),
         }));
       }
       // Update tooltip position on mouse move over bars
@@ -335,7 +334,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
         onMouseLeave={handleMouseUp}
       >
         <g
-          transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}
+          transform={`translate(${isFinite(transform.x) ? transform.x : 0}, ${isFinite(transform.y) ? transform.y : 0}) scale(${isFinite(transform.scale) && transform.scale > 0 ? transform.scale : 1})`}
         >
           {/* Mission bar (row 0) — decorative, not clickable */}
           {missionBar && (
@@ -367,17 +366,12 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
           {/* Block bars */}
           {bars.map((bar, i) => {
             const fontSize = bar.height * 0.45;
-            const maxChars = Math.max(
-              3,
-              Math.floor(bar.width / (fontSize * 0.6))
-            );
-            const label =
-              bar.title.length > maxChars
-                ? bar.title.slice(0, maxChars - 1) + "\u2026"
-                : bar.title;
 
             return (
               <g key={bar.blockId + "-" + i} data-bar="true" style={{ cursor: "pointer" }}>
+                <clipPath id={`clip-${bar.blockId}`}>
+                  <rect x={bar.x} y={bar.y} width={bar.width} height={bar.height} />
+                </clipPath>
                 <rect
                   x={bar.x}
                   y={bar.y}
@@ -403,19 +397,22 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
                   onMouseLeave={() => setTooltip(null)}
                 />
                 <text
+                  clipPath={`url(#clip-${bar.blockId})`}
                   x={bar.x + bar.width / 2}
-                  y={bar.y + bar.height / 2 + fontSize / 3}
+                  y={bar.y + bar.height / 2}
                   textAnchor="middle"
+                  dominantBaseline="middle"
                   fontSize={fontSize}
                   fontFamily="ui-monospace, monospace"
                   fill="white"
                   stroke="rgba(0,0,0,0.4)"
                   strokeWidth={fontSize * 0.04}
                   paintOrder="stroke"
+                  fontWeight="600"
                   pointerEvents="none"
                   style={{ userSelect: "none" }}
                 >
-                  {label}
+                  {bar.title}
                 </text>
               </g>
             );
@@ -444,7 +441,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
           onClick={() =>
             setTransform((t) => ({
               ...t,
-              scale: Math.min(1000, t.scale * 1.3),
+              scale: Math.min(200, t.scale * 1.3),
             }))
           }
         >
