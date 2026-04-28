@@ -72,13 +72,14 @@ interface BarData {
   height: number;
 }
 
-// --- Recursive Cantor layout ---
+// --- Recursive Smith-Volterra-Cantor (fat Cantor) layout ---
 function layoutTree(
   node: TreeNode,
   x: number,
   y: number,
   width: number,
-  bars: BarData[]
+  bars: BarData[],
+  depth: number
 ): void {
   const height = Math.max(1, width / 6);
   bars.push({
@@ -95,12 +96,15 @@ function layoutTree(
   const N = children.length;
   if (N === 0) return;
 
-  const childWidth = N === 1 ? width : width / (2 * N - 1);
+  const totalGapFraction = 1 / Math.pow(4, depth + 1);
+  const totalGap = width * totalGapFraction;
+  const gutterWidth = N > 1 ? totalGap / (N - 1) : 0;
+  const childWidth = (width - totalGap) / N;
   const childY = y + height + height * 0.75;
 
   children.forEach((child, i) => {
-    const childX = x + i * 2 * childWidth;
-    layoutTree(child, childX, childY, childWidth, bars);
+    const childX = x + i * (childWidth + gutterWidth);
+    layoutTree(child, childX, childY, childWidth, bars, depth + 1);
   });
 }
 
@@ -173,18 +177,20 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
     };
 
     const allBars: BarData[] = [];
-    const N = roots.length;
+    const M = roots.length;
 
-    if (N === 0) return { bars: allBars, missionBar: mBar };
+    if (M === 0) return { bars: allBars, missionBar: mBar };
 
-    const childWidth =
-      N === 1 ? CANVAS_WIDTH : CANVAS_WIDTH / (2 * N - 1);
+    const totalGapFraction = 1 / Math.pow(4, 1);
+    const totalGap = CANVAS_WIDTH * totalGapFraction;
+    const gutterWidth = M > 1 ? totalGap / (M - 1) : 0;
+    const rootWidth = (CANVAS_WIDTH - totalGap) / M;
     const childY =
       MISSION_BAR_HEIGHT + MISSION_BAR_HEIGHT * 0.75;
 
     roots.forEach((root, i) => {
-      const childX = i * 2 * childWidth;
-      layoutTree(root, childX, childY, childWidth, allBars);
+      const x = i * (rootWidth + gutterWidth);
+      layoutTree(root, x, childY, rootWidth, allBars, 1);
     });
 
     return { bars: allBars, missionBar: mBar };
