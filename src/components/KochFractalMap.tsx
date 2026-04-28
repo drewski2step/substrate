@@ -326,7 +326,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
     <div
       ref={containerRef}
       className="relative w-full border border-dashed border-muted-foreground/20 rounded-lg overflow-hidden bg-background"
-      style={{ height: "calc(100vh - 200px)" }}
+      style={{ height: "calc(100vh - 160px)" }}
     >
       <svg
         ref={svgRef}
