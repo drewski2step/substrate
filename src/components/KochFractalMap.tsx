@@ -385,8 +385,8 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
                   height={bar.height}
                   fill={getHeatHex(bar.heat)}
                   stroke="rgba(0,0,0,0.15)"
-                  strokeWidth={0.5}
-                  rx={Math.min(3, bar.height / 4)}
+                  strokeWidth={bar.height * 0.02}
+                  rx={Math.min(bar.height * 0.2, bar.width * 0.02)}
                   onClick={() =>
                     navigate(`/mission/${missionId}/block/${bar.blockId}`)
                   }
@@ -410,7 +410,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
                   fontFamily="ui-monospace, monospace"
                   fill="white"
                   stroke="rgba(0,0,0,0.4)"
-                  strokeWidth={0.3}
+                  strokeWidth={fontSize * 0.04}
                   paintOrder="stroke"
                   pointerEvents="none"
                   style={{ userSelect: "none" }}
