@@ -4,6 +4,12 @@ import { useBlocks, BlockWithDeps } from "@/hooks/use-blocks";
 import { useGoal } from "@/hooks/use-goals";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// --- Constants ---
+const NODE_WIDTH = 180;
+const NODE_HEIGHT = 60;
+const H_GAP = 40;
+const V_GAP = 80;
+
 // --- Heat color (ROYGBIV) ---
 function getHeatHex(heat: number): string {
   if (heat === 0) return "#D1D5DB";
@@ -27,13 +33,8 @@ interface TreeNode {
 
 // --- Build tree from flat block list ---
 function buildBlockTree(blocks: BlockWithDeps[]): TreeNode[] {
-  // Index ALL blocks so we can distinguish "no parent" from "completed parent"
   const allBlockIds = new Set(blocks.map((b) => b.id));
   const active = blocks.filter((b) => !b.completed_at);
-  // Debug: log first 3 blocks to verify parent_block_id is present
-  console.log("[buildBlockTree] first 3 blocks:", blocks.slice(0, 3).map(b => ({
-    id: b.id, title: b.title, parent_block_id: b.parent_block_id, completed_at: b.completed_at, heat: b.heat,
-  })));
   const map = new Map<string, TreeNode>();
   active.forEach((b) =>
     map.set(b.id, {
@@ -49,87 +50,74 @@ function buildBlockTree(blocks: BlockWithDeps[]): TreeNode[] {
   active.forEach((b) => {
     const node = map.get(b.id)!;
     if (b.parent_block_id && map.has(b.parent_block_id)) {
-      // Parent is active — attach as child
       map.get(b.parent_block_id)!.children.push(node);
     } else if (!b.parent_block_id || !allBlockIds.has(b.parent_block_id)) {
-      // Truly top-level (no parent) or parent was deleted — treat as root
       roots.push(node);
     }
-    // Otherwise parent exists but is completed — skip this block
-    // (it belongs to a completed subtree)
   });
   return roots;
 }
 
-// --- Bar data for rendering ---
-interface BarData {
-  blockId: string;
-  title: string;
-  heat: number;
+// --- Layout algorithm (Reingold-Tilford simplified) ---
+function computeSubtreeWidth(node: TreeNode): number {
+  if (node.children.length === 0) return NODE_WIDTH;
+  const childrenWidth =
+    node.children.reduce((sum, c) => sum + computeSubtreeWidth(c), 0) +
+    H_GAP * (node.children.length - 1);
+  return Math.max(NODE_WIDTH, childrenWidth);
+}
+
+interface NodePosition {
   x: number;
   y: number;
-  width: number;
-  height: number;
 }
 
-// --- Recursive Smith-Volterra-Cantor (fat Cantor) layout ---
-function layoutTree(
+function assignPositions(
   node: TreeNode,
-  x: number,
+  centerX: number,
   y: number,
-  width: number,
-  bars: BarData[],
-  depth: number
+  positions: Map<string, NodePosition>
 ): void {
-  const height = Math.max(1, width / 6);
-  bars.push({
-    blockId: node.id,
-    title: node.title,
-    heat: node.heat,
-    x,
-    y,
-    width,
-    height,
-  });
-
-  const children = node.children.filter((c) => !c.completedAt);
-  const N = children.length;
+  positions.set(node.id, { x: centerX, y });
+  const N = node.children.length;
   if (N === 0) return;
 
-  const totalGapFraction = 1 / Math.pow(4, depth + 1);
-  const totalGap = width * totalGapFraction;
-  const gutterWidth = N > 1 ? totalGap / (N - 1) : 0;
-  const childWidth = (width - totalGap) / N;
-  const childY = y + height + height * 0.75;
+  const totalWidth =
+    node.children.reduce((sum, c) => sum + computeSubtreeWidth(c), 0) +
+    H_GAP * (N - 1);
+  let startX = centerX - totalWidth / 2;
 
-  children.forEach((child, i) => {
-    const childX = x + i * (childWidth + gutterWidth);
-    layoutTree(child, childX, childY, childWidth, bars, depth + 1);
+  node.children.forEach((child) => {
+    const childSubtreeWidth = computeSubtreeWidth(child);
+    assignPositions(
+      child,
+      startX + childSubtreeWidth / 2,
+      y + NODE_HEIGHT + V_GAP,
+      positions
+    );
+    startX += childSubtreeWidth + H_GAP;
   });
 }
 
-// --- Compute bounding box ---
-function computeBounds(bars: BarData[]): {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-} {
-  let minX = Infinity,
-    minY = Infinity,
-    maxX = -Infinity,
-    maxY = -Infinity;
-  for (const bar of bars) {
-    minX = Math.min(minX, bar.x);
-    minY = Math.min(minY, bar.y);
-    maxX = Math.max(maxX, bar.x + bar.width);
-    maxY = Math.max(maxY, bar.y + bar.height);
-  }
-  return { minX, minY, maxX, maxY };
+// --- Collect all edges (parent→child) ---
+interface Edge {
+  parentId: string;
+  childId: string;
 }
 
-const CANVAS_WIDTH = 120000;
-const MISSION_BAR_HEIGHT = 3000;
+function collectEdges(node: TreeNode, edges: Edge[]): void {
+  node.children.forEach((child) => {
+    edges.push({ parentId: node.id, childId: child.id });
+    collectEdges(child, edges);
+  });
+}
+
+// --- Truncate text to fit node ---
+const MAX_CHARS = Math.floor(NODE_WIDTH / 8);
+function truncateTitle(title: string): string {
+  if (title.length <= MAX_CHARS) return title;
+  return title.slice(0, MAX_CHARS - 3) + "...";
+}
 
 export function KochFractalMap({ missionId }: { missionId: string }) {
   const navigate = useNavigate();
@@ -137,108 +125,130 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
   const { data: allBlocks, isLoading } = useBlocks(missionId);
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
-  const panStart = useRef({ x: 0, y: 0, tx: 0, ty: 0 });
+  const panStart = useRef({ x: 0, y: 0, px: 0, py: 0 });
   const [tooltip, setTooltip] = useState<{
     text: string;
     x: number;
     y: number;
   } | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [hasAutoFit, setHasAutoFit] = useState(false);
-  const zoomRef = useRef(1);
-  zoomRef.current = transform.scale;
 
-  // Filter to displayable blocks (not deleted, not file blocks)
+  // Filter to displayable blocks
   const blocks = useMemo(
     () =>
       (allBlocks || []).filter(
-        (b) =>
-          !b.deleted_at &&
-          !(b as any).is_files_block
+        (b) => !b.deleted_at && !(b as any).is_files_block
       ),
     [allBlocks]
   );
 
-  // Build tree and compute all bar positions
-  const { bars, missionBar } = useMemo(() => {
-    if (blocks.length === 0)
-      return { bars: [] as BarData[], missionBar: null };
+  // Build tree, compute positions and edges
+  const { positions, edges, roots, totalTreeWidth, totalTreeHeight } =
+    useMemo(() => {
+      const empty = {
+        positions: new Map<string, NodePosition>(),
+        edges: [] as Edge[],
+        roots: [] as TreeNode[],
+        totalTreeWidth: 0,
+        totalTreeHeight: 0,
+      };
+      if (blocks.length === 0) return empty;
 
-    const roots = buildBlockTree(blocks);
-    const mBar: BarData = {
-      blockId: "",
-      title: goal?.title ?? "Mission",
-      heat: -1,
-      x: 0,
-      y: 0,
-      width: CANVAS_WIDTH,
-      height: MISSION_BAR_HEIGHT,
-    };
+      const roots = buildBlockTree(blocks);
+      if (roots.length === 0) return empty;
 
-    const allBars: BarData[] = [];
-    const M = roots.length;
+      // Compute total width of all root subtrees
+      const rootWidths = roots.map((r) => computeSubtreeWidth(r));
+      const totalTreeWidth =
+        rootWidths.reduce((sum, w) => sum + w, 0) +
+        H_GAP * (roots.length - 1);
 
-    if (M === 0) return { bars: allBars, missionBar: mBar };
+      // Mission node position
+      const missionY = 40;
+      const missionCenterX = totalTreeWidth / 2;
 
-    const totalGapFraction = 1 / Math.pow(4, 1);
-    const totalGap = CANVAS_WIDTH * totalGapFraction;
-    const gutterWidth = M > 1 ? totalGap / (M - 1) : 0;
-    const rootWidth = (CANVAS_WIDTH - totalGap) / M;
-    const childY =
-      MISSION_BAR_HEIGHT + MISSION_BAR_HEIGHT * 0.75;
+      // Assign positions for each root subtree
+      const positions = new Map<string, NodePosition>();
+      let startX = 0;
+      roots.forEach((root, i) => {
+        const rootSubtreeWidth = rootWidths[i];
+        assignPositions(
+          root,
+          startX + rootSubtreeWidth / 2,
+          missionY + NODE_HEIGHT + V_GAP,
+          positions
+        );
+        startX += rootSubtreeWidth + H_GAP;
+      });
 
-    roots.forEach((root, i) => {
-      const x = i * (rootWidth + gutterWidth);
-      layoutTree(root, x, childY, rootWidth, allBars, 1);
-    });
+      // Collect all parent→child edges
+      const edges: Edge[] = [];
+      roots.forEach((root) => collectEdges(root, edges));
 
-    return { bars: allBars, missionBar: mBar };
-  }, [blocks, goal]);
+      // Add mission→root edges (using special id)
+      roots.forEach((root) => {
+        edges.push({ parentId: "__mission__", childId: root.id });
+      });
+
+      // Store mission node position
+      positions.set("__mission__", { x: missionCenterX, y: missionY });
+
+      // Compute total tree height
+      let maxY = missionY + NODE_HEIGHT;
+      positions.forEach((pos) => {
+        maxY = Math.max(maxY, pos.y + NODE_HEIGHT);
+      });
+
+      return {
+        positions,
+        edges,
+        roots,
+        totalTreeWidth,
+        totalTreeHeight: maxY + 40,
+      };
+    }, [blocks]);
 
   // Auto-fit on load
   useEffect(() => {
-    if ((!bars.length && !missionBar) || hasAutoFit) return;
+    if (positions.size === 0 || hasAutoFit) return;
     const container = containerRef.current;
     if (!container) return;
 
-    const allItems = missionBar ? [missionBar, ...bars] : bars;
-    if (allItems.length === 0) return;
-
-    const { minX, minY, maxX, maxY } = computeBounds(allItems);
-    const bw = maxX - minX;
-    const bh = maxY - minY;
-    if (bw === 0 || bh === 0) return;
-
     const cw = container.clientWidth;
     const ch = container.clientHeight;
-    const padding = 20;
+    const padding = 40;
+
+    const tw = totalTreeWidth + NODE_WIDTH;
+    const th = totalTreeHeight;
+    if (tw === 0 || th === 0) return;
+
     const scale = Math.min(
-      cw / (bw + padding * 2),
-      ch / (bh + padding * 2)
+      (cw - padding * 2) / tw,
+      (ch - padding * 2) / th
     );
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
-    setTransform({
-      x: cw / 2 - cx * scale,
-      y: ch / 2 - cy * scale,
-      scale,
-    });
+    const fitZoom = Math.max(0.05, Math.min(20, scale));
+    const fitPanX = (cw - tw * fitZoom) / 2;
+    const fitPanY = (ch - th * fitZoom) / 2;
+
+    setZoom(fitZoom);
+    setPan({ x: fitPanX, y: fitPanY });
     setHasAutoFit(true);
-  }, [bars, missionBar, hasAutoFit]);
+  }, [positions, totalTreeWidth, totalTreeHeight, hasAutoFit]);
 
   // Reset auto-fit on mission change
   useEffect(() => {
     setHasAutoFit(false);
   }, [missionId]);
 
-  // Fit button handler
   const handleFit = useCallback(() => {
     setHasAutoFit(false);
   }, []);
 
   // Wheel zoom (cursor-anchored)
-  const MAX_PAN = 1e8;
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const svg = svgRef.current;
@@ -247,11 +257,14 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
     const factor = Math.pow(0.999, e.deltaY);
-    setTransform((t) => {
-      const newScale = Math.max(0.0005, Math.min(200, t.scale * factor));
-      const newX = Math.max(-MAX_PAN, Math.min(MAX_PAN, mx - (mx - t.x) * (newScale / t.scale)));
-      const newY = Math.max(-MAX_PAN, Math.min(MAX_PAN, my - (my - t.y) * (newScale / t.scale)));
-      return { x: newX, y: newY, scale: newScale };
+
+    setZoom((prevZoom) => {
+      const newZoom = Math.max(0.05, Math.min(20, prevZoom * factor));
+      setPan((prevPan) => ({
+        x: mx - (mx - prevPan.x) * (newZoom / prevZoom),
+        y: my - (my - prevPan.y) * (newZoom / prevZoom),
+      }));
+      return newZoom;
     });
   }, []);
 
@@ -260,16 +273,16 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
     (e: React.MouseEvent) => {
       if (e.button !== 0) return;
       const target = e.target as SVGElement;
-      if (target.closest("[data-bar]")) return;
+      if (target.closest("[data-node]")) return;
       setIsPanning(true);
       panStart.current = {
         x: e.clientX,
         y: e.clientY,
-        tx: transform.x,
-        ty: transform.y,
+        px: pan.x,
+        py: pan.y,
       };
     },
-    [transform]
+    [pan]
   );
 
   const handleMouseMove = useCallback(
@@ -277,13 +290,11 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
       if (isPanning) {
         const dx = e.clientX - panStart.current.x;
         const dy = e.clientY - panStart.current.y;
-        setTransform((t) => ({
-          ...t,
-          x: Math.max(-MAX_PAN, Math.min(MAX_PAN, panStart.current.tx + dx)),
-          y: Math.max(-MAX_PAN, Math.min(MAX_PAN, panStart.current.ty + dy)),
-        }));
+        setPan({
+          x: panStart.current.px + dx,
+          y: panStart.current.py + dy,
+        });
       }
-      // Update tooltip position on mouse move over bars
       if (tooltip) {
         const rect = svgRef.current?.getBoundingClientRect();
         if (rect) {
@@ -322,6 +333,9 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
     );
   }
 
+  const missionPos = positions.get("__mission__");
+  const missionTitle = goal?.title ?? "Mission";
+
   return (
     <div
       ref={containerRef}
@@ -339,90 +353,121 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        <g
-          transform={`translate(${isFinite(transform.x) ? transform.x : 0}, ${isFinite(transform.y) ? transform.y : 0}) scale(${isFinite(transform.scale) && transform.scale > 0 ? transform.scale : 1})`}
-        >
-          {/* Mission bar (row 0) — decorative, not clickable */}
-          {missionBar && (
+        <g transform={`translate(${pan.x},${pan.y}) scale(${zoom})`}>
+          {/* Connector lines (drawn first so nodes appear on top) */}
+          {edges.map((edge, i) => {
+            const parentPos = positions.get(edge.parentId);
+            const childPos = positions.get(edge.childId);
+            if (!parentPos || !childPos) return null;
+
+            const x1 = parentPos.x;
+            const y1 = parentPos.y + NODE_HEIGHT / 2;
+            const x2 = childPos.x;
+            const y2 = childPos.y - NODE_HEIGHT / 2;
+            const midY = (y1 + y2) / 2;
+
+            return (
+              <path
+                key={`edge-${i}`}
+                d={`M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`}
+                fill="none"
+                stroke="#CBD5E1"
+                strokeWidth={1.5}
+              />
+            );
+          })}
+
+          {/* Mission node */}
+          {missionPos && (
             <g>
               <rect
-                x={missionBar.x}
-                y={missionBar.y}
-                width={missionBar.width}
-                height={missionBar.height}
+                x={missionPos.x - NODE_WIDTH / 2}
+                y={missionPos.y - NODE_HEIGHT / 2}
+                width={NODE_WIDTH}
+                height={NODE_HEIGHT}
                 fill="#6B7280"
-                rx={MISSION_BAR_HEIGHT / 10}
+                rx={8}
               />
               <text
-                x={missionBar.x + missionBar.width / 2}
-                y={missionBar.y + missionBar.height / 2 + MISSION_BAR_HEIGHT * 0.12}
+                x={missionPos.x}
+                y={missionPos.y}
                 textAnchor="middle"
-                fontSize={MISSION_BAR_HEIGHT * 0.35}
+                dominantBaseline="central"
+                fontSize={13}
                 fontFamily="ui-sans-serif, system-ui, sans-serif"
                 fontWeight={600}
                 fill="white"
                 pointerEvents="none"
                 style={{ userSelect: "none" }}
               >
-                {missionBar.title}
+                {truncateTitle(missionTitle)}
               </text>
             </g>
           )}
 
-          {/* Block bars */}
-          {bars.map((bar, i) => {
-            const fontSize = bar.height * 0.45;
+          {/* Block nodes */}
+          {Array.from(positions.entries())
+            .filter(([id]) => id !== "__mission__")
+            .map(([id, pos]) => {
+              const block = blocks.find((b) => b.id === id);
+              if (!block) return null;
+              const heat = block.heat ?? 0;
+              const fillColor = getHeatHex(heat);
+              const isHovered = hoveredId === id;
 
-            return (
-              <g key={bar.blockId + "-" + i} data-bar="true" style={{ cursor: "pointer" }}>
-                <clipPath id={`clip-${bar.blockId}`}>
-                  <rect x={bar.x} y={bar.y} width={bar.width} height={bar.height} />
-                </clipPath>
-                <rect
-                  x={bar.x}
-                  y={bar.y}
-                  width={bar.width}
-                  height={bar.height}
-                  fill={getHeatHex(bar.heat)}
-                  stroke="rgba(0,0,0,0.15)"
-                  strokeWidth={bar.height * 0.02}
-                  rx={Math.min(bar.height * 0.2, bar.width * 0.02)}
+              return (
+                <g
+                  key={id}
+                  data-node="true"
+                  style={{ cursor: "pointer" }}
                   onClick={() =>
-                    navigate(`/mission/${missionId}/block/${bar.blockId}`)
+                    navigate(`/mission/${missionId}/block/${id}`)
                   }
                   onMouseEnter={(e) => {
+                    setHoveredId(id);
                     const rect = svgRef.current?.getBoundingClientRect();
                     if (rect) {
                       setTooltip({
-                        text: bar.title,
+                        text: block.title,
                         x: e.clientX - rect.left,
                         y: e.clientY - rect.top - 10,
                       });
                     }
                   }}
-                  onMouseLeave={() => setTooltip(null)}
-                />
-                <text
-                  clipPath={`url(#clip-${bar.blockId})`}
-                  x={bar.x + bar.width / 2}
-                  y={bar.y + bar.height / 2}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize={fontSize}
-                  fontFamily="ui-monospace, monospace"
-                  fill="white"
-                  stroke="rgba(0,0,0,0.4)"
-                  strokeWidth={fontSize * 0.04}
-                  paintOrder="stroke"
-                  fontWeight="600"
-                  pointerEvents="none"
-                  style={{ userSelect: "none" }}
+                  onMouseLeave={() => {
+                    setHoveredId(null);
+                    setTooltip(null);
+                  }}
                 >
-                  {bar.title}
-                </text>
-              </g>
-            );
-          })}
+                  <rect
+                    x={pos.x - NODE_WIDTH / 2}
+                    y={pos.y - NODE_HEIGHT / 2}
+                    width={NODE_WIDTH}
+                    height={NODE_HEIGHT}
+                    fill={fillColor}
+                    rx={8}
+                    stroke="#ffffff"
+                    strokeWidth={1.5}
+                    strokeOpacity={0.4}
+                    opacity={isHovered ? 0.85 : 1}
+                  />
+                  <text
+                    x={pos.x}
+                    y={pos.y}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize={12}
+                    fontFamily="ui-sans-serif, system-ui, sans-serif"
+                    fontWeight={500}
+                    fill="white"
+                    pointerEvents="none"
+                    style={{ userSelect: "none" }}
+                  >
+                    {truncateTitle(block.title)}
+                  </text>
+                </g>
+              );
+            })}
         </g>
       </svg>
 
@@ -445,10 +490,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
         <button
           className="w-7 h-7 rounded bg-muted/80 hover:bg-muted text-foreground flex items-center justify-center text-sm font-mono border border-border/50"
           onClick={() =>
-            setTransform((t) => ({
-              ...t,
-              scale: Math.min(200, t.scale * 1.3),
-            }))
+            setZoom((z) => Math.min(20, z * 1.3))
           }
         >
           +
@@ -456,10 +498,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
         <button
           className="w-7 h-7 rounded bg-muted/80 hover:bg-muted text-foreground flex items-center justify-center text-sm font-mono border border-border/50"
           onClick={() =>
-            setTransform((t) => ({
-              ...t,
-              scale: Math.max(0.0005, t.scale / 1.3),
-            }))
+            setZoom((z) => Math.max(0.05, z / 1.3))
           }
         >
           -
