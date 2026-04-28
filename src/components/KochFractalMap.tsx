@@ -239,7 +239,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
     const rect = svg.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    const factor = Math.pow(0.999, e.deltaY);
     setTransform((t) => {
       const newScale = Math.max(0.05, Math.min(20, t.scale * factor));
       return {
@@ -317,8 +317,6 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
     );
   }
 
-  const showLabels = transform.scale >= 1.5;
-
   return (
     <div
       ref={containerRef}
@@ -368,7 +366,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
 
           {/* Block bars */}
           {bars.map((bar, i) => {
-            const fontSize = Math.min(bar.height * 0.6, 14);
+            const fontSize = Math.min(bar.height * 0.55, 13 / transform.scale);
             const maxChars = Math.max(
               3,
               Math.floor(bar.width / (fontSize * 0.6))
@@ -404,7 +402,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
                   }}
                   onMouseLeave={() => setTooltip(null)}
                 />
-                {showLabels && bar.width > 20 && (
+                {bar.height * transform.scale >= 10 && (
                   <text
                     x={bar.x + bar.width / 2}
                     y={bar.y + bar.height / 2 + fontSize / 3}
