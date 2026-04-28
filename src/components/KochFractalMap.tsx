@@ -124,8 +124,8 @@ function computeBounds(bars: BarData[]): {
   return { minX, minY, maxX, maxY };
 }
 
-const CANVAS_WIDTH = 1200;
-const MISSION_BAR_HEIGHT = 40;
+const CANVAS_WIDTH = 120000;
+const MISSION_BAR_HEIGHT = 3000;
 
 export function KochFractalMap({ missionId }: { missionId: string }) {
   const navigate = useNavigate();
@@ -241,7 +241,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
     const my = e.clientY - rect.top;
     const factor = Math.pow(0.999, e.deltaY);
     setTransform((t) => {
-      const newScale = Math.max(0.05, Math.min(20, t.scale * factor));
+      const newScale = Math.max(0.0005, Math.min(5, t.scale * factor));
       return {
         x: mx - (mx - t.x) * (newScale / t.scale),
         y: my - (my - t.y) * (newScale / t.scale),
@@ -346,13 +346,13 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
                 width={missionBar.width}
                 height={missionBar.height}
                 fill="#6B7280"
-                rx={3}
+                rx={MISSION_BAR_HEIGHT / 10}
               />
               <text
                 x={missionBar.x + missionBar.width / 2}
-                y={missionBar.y + missionBar.height / 2 + 5}
+                y={missionBar.y + missionBar.height / 2 + MISSION_BAR_HEIGHT * 0.12}
                 textAnchor="middle"
-                fontSize={14}
+                fontSize={MISSION_BAR_HEIGHT * 0.35}
                 fontFamily="ui-sans-serif, system-ui, sans-serif"
                 fontWeight={600}
                 fill="white"
@@ -446,7 +446,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
           onClick={() =>
             setTransform((t) => ({
               ...t,
-              scale: Math.min(20, t.scale * 1.3),
+              scale: Math.min(5, t.scale * 1.3),
             }))
           }
         >
@@ -457,7 +457,7 @@ export function KochFractalMap({ missionId }: { missionId: string }) {
           onClick={() =>
             setTransform((t) => ({
               ...t,
-              scale: Math.max(0.05, t.scale / 1.3),
+              scale: Math.max(0.0005, t.scale / 1.3),
             }))
           }
         >
