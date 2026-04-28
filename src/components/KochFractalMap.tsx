@@ -27,8 +27,9 @@ interface TreeNode {
 
 // --- Build tree from flat block list ---
 function buildBlockTree(blocks: BlockWithDeps[]): TreeNode[] {
+  const active = blocks.filter((b) => !b.completed_at);
   const map = new Map<string, TreeNode>();
-  blocks.forEach((b) =>
+  active.forEach((b) =>
     map.set(b.id, {
       id: b.id,
       title: b.title,
@@ -39,7 +40,7 @@ function buildBlockTree(blocks: BlockWithDeps[]): TreeNode[] {
   );
 
   const roots: TreeNode[] = [];
-  blocks.forEach((b) => {
+  active.forEach((b) => {
     const node = map.get(b.id)!;
     if (b.parent_block_id && map.has(b.parent_block_id)) {
       map.get(b.parent_block_id)!.children.push(node);
