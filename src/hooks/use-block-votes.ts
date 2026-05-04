@@ -10,7 +10,7 @@ export function useBlockVotes(blockId: string) {
         .select("id, user_id, vote")
         .eq("block_id", blockId);
       if (error) throw error;
-      return (data ?? []) as { id: string; user_id: string; vote: 1 | -1 }[];
+      return (data ?? []) as unknown as { id: string; user_id: string; vote: 1 | -1 }[];
     },
     enabled: !!blockId,
   });
