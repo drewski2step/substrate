@@ -41,7 +41,7 @@ const EXP_TYPE_LABELS: Record<string, string> = {
 const EMPTY_EXP = {
   title: "",
   organization: "",
-  experience_type: "work" as const,
+  experience_type: "work" as Experience["experience_type"],
   start_date: "",
   end_date: "",
   description: "",
@@ -144,7 +144,7 @@ export default function UserProfile() {
         .select("*")
         .eq("user_id", profile!.id)
         .order("start_date", { ascending: false });
-      return (data ?? []) as Experience[];
+      return (data ?? []) as unknown as Experience[];
     },
     enabled: !!profile?.id,
   });
