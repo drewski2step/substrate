@@ -1,8 +1,16 @@
 import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useBlocks, BlockWithDeps } from "@/hooks/use-blocks";
@@ -33,56 +41,48 @@ function collectDescendantIds(blockId: string, blocks: BlockWithDeps[]): Set<str
   return descendants;
 }
 
-/** DFS traversal from root nodes to produce blocks in hierarchy order with depth. */
-function buildHierarchyOrder(blocks: BlockWithDeps[]): { block: BlockWithDeps; depth: number }[] {
-  const childrenMap = new Map<string | null, BlockWithDeps[]>();
-  for (const b of blocks) {
-    const key = b.parent_block_id;
-    if (!childrenMap.has(key)) childrenMap.set(key, []);
-    childrenMap.get(key)!.push(b);
-  }
-
-  const result: { block: BlockWithDeps; depth: number }[] = [];
-  function dfs(parentId: string | null, depth: number) {
-    const children = childrenMap.get(parentId) || [];
-    for (const child of children) {
-      result.push({ block: child, depth });
-      dfs(child.id, depth + 1);
-    }
-  }
-  dfs(null, 0);
-  return result;
-}
-
 export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId, onClose, onMoved }: MoveBlockModalProps) {
   const { data: allBlocks } = useBlocks(missionId);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  // path: array of block ids from root toward current folder. Empty = root ("Mission").
+  const [path, setPath] = useState<BlockWithDeps[]>([]);
   const [moving, setMoving] = useState(false);
 
-  const descendantIds = useMemo(() => {
-    if (!allBlocks) return new Set<string>();
-    return collectDescendantIds(blockId, allBlocks);
-  }, [allBlocks, blockId]);
+  const blocks = allBlocks ?? [];
 
-  const destinations = useMemo(() => {
-    if (!allBlocks) return [];
-    const eligible = allBlocks.filter(
-      (b) => b.id !== blockId && !descendantIds.has(b.id) && !(b as any).is_files_block
+  const descendantIds = useMemo(
+    () => collectDescendantIds(blockId, blocks),
+    [blocks, blockId]
+  );
+
+  const currentFolderId = path.length > 0 ? path[path.length - 1].id : null;
+
+  const visibleChildren = useMemo(() => {
+    return blocks.filter(
+      (b) => b.parent_block_id === currentFolderId && !(b as any).is_files_block
     );
-    return buildHierarchyOrder(eligible);
-  }, [allBlocks, blockId, descendantIds]);
+  }, [blocks, currentFolderId]);
 
-  const filteredDestinations = useMemo(() => {
-    if (!search.trim()) return destinations;
-    const q = search.toLowerCase();
-    return destinations.filter((d) => d.block.title.toLowerCase().includes(q));
-  }, [destinations, search]);
+  const isBlocked = (id: string) => id === blockId || descendantIds.has(id);
+
+  const handleNavigateInto = (block: BlockWithDeps) => {
+    if (isBlocked(block.id)) return;
+    setPath([...path, block]);
+  };
+
+  const handleBack = () => {
+    if (path.length === 0) return;
+    setPath(path.slice(0, -1));
+  };
+
+  const handleBreadcrumbClick = (index: number) => {
+    // index = -1 means Mission root
+    if (index < 0) setPath([]);
+    else setPath(path.slice(0, index + 1));
+  };
 
   const handleMove = async () => {
-    if (selected === null) return;
     setMoving(true);
-    const newParentId = selected === "root" ? null : selected;
+    const newParentId = currentFolderId; // null at root
     const { error } = await supabase
       .from("blocks")
       .update({ parent_block_id: newParentId } as any)
@@ -96,6 +96,11 @@ export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId
     onMoved();
   };
 
+  const moveButtonLabel =
+    currentFolderId === null
+      ? "Move to top level"
+      : `Move into ${path[path.length - 1].title}`;
+
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-md">
@@ -103,58 +108,87 @@ export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId
           <DialogTitle className="text-sm">Move '{blockTitle}' to...</DialogTitle>
         </DialogHeader>
 
-        <Input
-          placeholder="Filter destinations..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="text-sm"
-        />
+        <div className="flex items-center gap-2">
+          {path.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={handleBack} className="h-7 px-2">
+              <ChevronLeft className="h-4 w-4" />
+              Back
+            </Button>
+          )}
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                {path.length === 0 ? (
+                  <BreadcrumbPage className="text-xs">Mission</BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink
+                    className="text-xs cursor-pointer"
+                    onClick={() => handleBreadcrumbClick(-1)}
+                  >
+                    Mission
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+              {path.map((b, i) => (
+                <BreadcrumbItem key={b.id}>
+                  <BreadcrumbSeparator />
+                  {i === path.length - 1 ? (
+                    <BreadcrumbPage className="text-xs">{b.title}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink
+                      className="text-xs cursor-pointer"
+                      onClick={() => handleBreadcrumbClick(i)}
+                    >
+                      {b.title}
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              ))}
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
 
         <ScrollArea className="h-64 border rounded-md">
           <div className="p-1">
-            {/* Top level (no parent) option */}
-            <button
-              onClick={() => setSelected("root")}
-              className={cn(
-                "w-full text-left px-3 py-2 rounded text-xs hover:bg-muted/60 transition-colors",
-                selected === "root" && "bg-primary/10 ring-1 ring-primary",
-                currentParentId === null && "text-muted-foreground"
-              )}
-            >
-              <span className="font-medium">↑ Top level (no parent)</span>
-              {currentParentId === null && (
-                <span className="ml-2 text-[10px] text-muted-foreground">(current)</span>
-              )}
-            </button>
-
-            {filteredDestinations.map(({ block: dest, depth }) => (
-              <button
-                key={dest.id}
-                onClick={() => setSelected(dest.id)}
-                className={cn(
-                  "w-full text-left px-3 py-2 rounded text-xs hover:bg-muted/60 transition-colors",
-                  selected === dest.id && "bg-primary/10 ring-1 ring-primary",
-                  currentParentId === dest.id && "text-muted-foreground"
-                )}
-                style={{ paddingLeft: `${12 + depth * 16}px` }}
-              >
-                <span className="font-medium">{dest.title}</span>
-                {currentParentId === dest.id && (
-                  <span className="ml-2 text-[10px] text-muted-foreground">(current parent)</span>
-                )}
-              </button>
-            ))}
-
-            {filteredDestinations.length === 0 && search.trim() && (
-              <p className="text-xs text-muted-foreground p-3">No matching blocks.</p>
+            {visibleChildren.length === 0 && (
+              <p className="text-xs text-muted-foreground p-3">No sub-blocks at this level</p>
             )}
+            {visibleChildren.map((b) => {
+              const blocked = isBlocked(b.id);
+              return (
+                <div
+                  key={b.id}
+                  className={cn(
+                    "flex items-center justify-between px-3 py-2 rounded text-xs transition-colors",
+                    blocked ? "opacity-40 cursor-not-allowed" : "hover:bg-muted/60",
+                    currentParentId === b.id && !blocked && "text-muted-foreground"
+                  )}
+                >
+                  <span className="font-medium truncate">
+                    {b.title}
+                    {currentParentId === b.id && (
+                      <span className="ml-2 text-[10px] text-muted-foreground">(current parent)</span>
+                    )}
+                  </span>
+                  {!blocked && (
+                    <button
+                      onClick={() => handleNavigateInto(b)}
+                      className="p-1 rounded hover:bg-muted"
+                      aria-label={`Open ${b.title}`}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </ScrollArea>
 
         <DialogFooter className="flex justify-between">
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
-          <Button size="sm" onClick={handleMove} disabled={selected === null || moving}>
-            {moving ? "Moving..." : "Move here"}
+          <Button size="sm" onClick={handleMove} disabled={moving}>
+            {moving ? "Moving..." : moveButtonLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
