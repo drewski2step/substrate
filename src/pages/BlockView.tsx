@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Trash2, ChevronLeft, Flame, Star, FolderOpen, Pencil, Calendar, Clock, ArrowUp, ArrowDown } from "lucide-react";
+import { Trash2, ChevronLeft, Flame, Star, FolderOpen, Pencil, Calendar, Clock, ArrowUp, ArrowDown, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGoal } from "@/hooks/use-goals";
 import { useBlocks, useUpdateBlock, useDeleteBlock, pickUtahColor } from "@/hooks/use-blocks";
@@ -25,6 +25,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useBlockVotes, useVoteBlock } from "@/hooks/use-block-votes";
+import { MoveBlockModal } from "@/components/MoveBlockModal";
+import { useQueryClient } from "@tanstack/react-query";
 
 const statusLabel: Record<string, string> = { pending: "Pending", active: "Active", complete: "Complete", stalled: "Stalled" };
 const statusColor: Record<string, string> = {
@@ -36,6 +38,7 @@ const statusColor: Record<string, string> = {
 
 export default function BlockView() {
   const [editingBlock, setEditingBlock] = useState(false);
+  const [movingBlock, setMovingBlock] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editStatus, setEditStatus] = useState("");
@@ -54,6 +57,7 @@ export default function BlockView() {
   const pledgeBlock = usePledgeBlock();
   const unpledgeBlock = useUnpledgeBlock();
   const userPledged = pledges?.some((p) => p.user_id === user?.id);
+  const queryClient = useQueryClient();
   const deleteBlock = useDeleteBlock();
   const { data: votes } = useBlockVotes(resolvedBlockId);
   const voteBlock = useVoteBlock();
@@ -330,6 +334,16 @@ export default function BlockView() {
                 </Select>
               </div>
             </div>
+            <div className="border-t border-dashed pt-3 mt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => { setEditingBlock(false); setMovingBlock(true); }}
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5" /> Move block
+              </Button>
+            </div>
             <DialogFooter>
               <Button size="sm" disabled={!editTitle.trim()} onClick={async () => {
                 if (!user || !editTitle.trim()) return;
@@ -353,6 +367,22 @@ export default function BlockView() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Move block modal */}
+        {movingBlock && missionId && (
+          <MoveBlockModal
+            blockId={resolvedBlockId}
+            blockTitle={block.title}
+            missionId={missionId}
+            currentParentId={block.parent_block_id}
+            onClose={() => setMovingBlock(false)}
+            onMoved={() => {
+              setMovingBlock(false);
+              queryClient.invalidateQueries({ queryKey: ["blocks", missionId] });
+              navigate(`/mission/${missionId}`);
+            }}
+          />
+        )}
       </main>
     </div>
   );

@@ -1,7 +1,8 @@
 import { useMemo, useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Check, CheckCircle2, Plus, Flame, FolderOpen, Pencil, Trash2, Star, GripVertical, Undo2, Clock, Calendar, ArrowUp, ArrowDown } from "lucide-react";
+import { Check, CheckCircle2, Plus, Flame, FolderOpen, Pencil, Trash2, Star, GripVertical, Undo2, Clock, Calendar, ArrowUp, ArrowDown, ArrowRightLeft } from "lucide-react";
+import { MoveBlockModal } from "@/components/MoveBlockModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // ROYGBIV: red=lowest heat → violet=highest
 function getHeatColor(heat: number): string {
@@ -111,7 +112,7 @@ async function batchSavePositions(
 
 // --- Block card with heat ---
 function BlockCard({
-  block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onDragEnd,
+  block, posX, posY, onComplete, onAddSuccessor, onEditDeps, onNavigate, onEdit, onMove, onDragEnd,
   onDragNearEdge, canvasWidth, canvasHeight, goalId, creatorName, creatorAvatarSeed, creatorAvatarUrl, creatorUsername, isAnimatingOut,
   onResizeLive, onResizeEnd, parentLiveSize, parentLiveOffset,
 }: {
@@ -129,6 +130,7 @@ function BlockCard({
   onEditDeps: (block: BlockWithDeps) => void;
   onNavigate: (block: BlockWithDeps) => void;
   onEdit: (block: BlockWithDeps) => void;
+  onMove: (block: BlockWithDeps) => void;
   onDragEnd?: (id: string, x: number, y: number) => void;
   onDragNearEdge?: (id: string, direction: 'up' | 'down' | 'left' | 'right') => void;
   canvasWidth?: number;
@@ -536,6 +538,9 @@ function BlockCard({
         <button onClick={(e) => { e.stopPropagation(); onEdit(block); }}
           className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/80 transition-colors"
         ><Pencil className="w-3 h-3" /> Edit</button>
+        <button onClick={(e) => { e.stopPropagation(); onMove(block); }}
+          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground shadow-sm hover:bg-muted/80 transition-colors"
+        ><ArrowRightLeft className="w-3 h-3" /> Move</button>
         {user && (
           <button onClick={(e) => {
             e.stopPropagation();
@@ -732,6 +737,7 @@ export function BlockFlowChart({
   parentBlockTitle?: string;
   onNavigateToBlock: (block: BlockWithDeps) => void;
 }) {
+  const queryClient = useQueryClient();
   const { data: allGoalBlocks, isLoading } = useBlocks(goalId);
   const updateBlock = useUpdateBlock();
   const updatePosition = useUpdateBlockPosition();
@@ -747,6 +753,7 @@ export function BlockFlowChart({
   const [successorParent, setSuccessorParent] = useState<BlockWithDeps | null>(null);
   const [editDepsBlock, setEditDepsBlock] = useState<BlockWithDeps | null>(null);
   const [editBlock, setEditBlock] = useState<BlockWithDeps | null>(null);
+  const [moveBlock, setMoveBlock] = useState<BlockWithDeps | null>(null);
   const [filesOpen, setFilesOpen] = useState(false);
   const [animatingOutId, setAnimatingOutId] = useState<string | null>(null);
 
@@ -1086,6 +1093,7 @@ export function BlockFlowChart({
                   onEditDeps={setEditDepsBlock}
                   onNavigate={onNavigateToBlock}
                   onEdit={(b) => user ? setEditBlock(b) : toast.error("Sign in to edit")}
+                  onMove={(b) => setMoveBlock(b)}
                   onDragEnd={handleDragEndWithShrink}
                   onDragNearEdge={handleDragNearEdge}
                 />
@@ -1135,6 +1143,21 @@ export function BlockFlowChart({
         <EditBlockDialog
           block={editBlock} goalId={goalId}
           open={!!editBlock} onOpenChange={(o) => { if (!o) setEditBlock(null); }}
+        />
+      )}
+
+      {/* Move block modal */}
+      {moveBlock && (
+        <MoveBlockModal
+          blockId={moveBlock.id}
+          blockTitle={moveBlock.title}
+          missionId={goalId}
+          currentParentId={moveBlock.parent_block_id}
+          onClose={() => setMoveBlock(null)}
+          onMoved={() => {
+            setMoveBlock(null);
+            queryClient.invalidateQueries({ queryKey: ["blocks", goalId] });
+          }}
         />
       )}
     </div>
