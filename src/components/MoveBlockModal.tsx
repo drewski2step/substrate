@@ -43,10 +43,30 @@ function collectDescendantIds(blockId: string, blocks: BlockWithDeps[]): Set<str
 
 export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId, onClose, onMoved }: MoveBlockModalProps) {
   const { data: allBlocks } = useBlocks(missionId);
-  const [path, setPath] = useState<BlockWithDeps[]>([]);
+  const blocks = allBlocks ?? [];
+
+  const initialPath = useMemo(() => {
+    const chain: BlockWithDeps[] = [];
+    let id: string | null = currentParentId;
+    const guard = new Set<string>();
+    while (id && !guard.has(id)) {
+      guard.add(id);
+      const b = blocks.find((x) => x.id === id);
+      if (!b) break;
+      chain.unshift(b);
+      id = b.parent_block_id ?? null;
+    }
+    return chain;
+  }, [blocks, currentParentId]);
+
+  const [path, setPath] = useState<BlockWithDeps[]>(initialPath);
+  const [initialized, setInitialized] = useState(initialPath.length > 0);
   const [moving, setMoving] = useState(false);
 
-  const blocks = allBlocks ?? [];
+  if (!initialized && initialPath.length > 0) {
+    setPath(initialPath);
+    setInitialized(true);
+  }
 
   const descendantIds = useMemo(
     () => collectDescendantIds(blockId, blocks),
