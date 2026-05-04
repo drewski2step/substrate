@@ -152,6 +152,17 @@ export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId
 
         <ScrollArea className="h-64 border rounded-md">
           <div className="p-1 space-y-0.5">
+            {path.length > 0 && (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="w-11 h-9 flex items-center justify-center rounded hover:bg-muted transition-colors text-muted-foreground"
+                aria-label="Go up one level"
+                title="Go up one level"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
             {visibleChildren.length === 0 && (
               <p className="text-xs text-muted-foreground p-3">No sub-blocks at this level</p>
             )}
@@ -211,15 +222,8 @@ export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId
           </div>
         </ScrollArea>
 
-        <DialogFooter className="flex justify-between sm:justify-between">
+        <DialogFooter>
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
-          <Button
-            size="sm"
-            onClick={() => handleMoveTo(null)}
-            disabled={moving || currentParentId === null}
-          >
-            {moving ? "Moving..." : "Move to top level"}
-          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
