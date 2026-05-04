@@ -23,7 +23,7 @@ export default function SearchPage() {
         .select("id, username, avatar_url, avatar_seed, location, about")
         .ilike("username", `%${trimmed}%`)
         .limit(10);
-      return data ?? [];
+      return (data ?? []) as any[];
     },
     enabled: trimmed.length >= 1,
   });

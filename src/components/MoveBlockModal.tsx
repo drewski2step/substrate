@@ -43,7 +43,6 @@ function collectDescendantIds(blockId: string, blocks: BlockWithDeps[]): Set<str
 
 export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId, onClose, onMoved }: MoveBlockModalProps) {
   const { data: allBlocks } = useBlocks(missionId);
-  // path: array of block ids from root toward current folder. Empty = root ("Mission").
   const [path, setPath] = useState<BlockWithDeps[]>([]);
   const [moving, setMoving] = useState(false);
 
@@ -56,13 +55,17 @@ export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId
 
   const currentFolderId = path.length > 0 ? path[path.length - 1].id : null;
 
+  const isSelectable = (b: BlockWithDeps) =>
+    !(b as any).is_files_block && b.status !== "complete";
+
   const visibleChildren = useMemo(() => {
-    return blocks.filter(
-      (b) => b.parent_block_id === currentFolderId && !(b as any).is_files_block
-    );
+    return blocks.filter((b) => b.parent_block_id === currentFolderId && isSelectable(b));
   }, [blocks, currentFolderId]);
 
   const isBlocked = (id: string) => id === blockId || descendantIds.has(id);
+
+  const hasVisibleChildren = (parentId: string) =>
+    blocks.some((b) => b.parent_block_id === parentId && isSelectable(b));
 
   const handleNavigateInto = (block: BlockWithDeps) => {
     if (isBlocked(block.id)) return;
@@ -75,14 +78,18 @@ export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId
   };
 
   const handleBreadcrumbClick = (index: number) => {
-    // index = -1 means Mission root
     if (index < 0) setPath([]);
     else setPath(path.slice(0, index + 1));
   };
 
-  const handleMove = async () => {
+  const handleMoveTo = async (newParentId: string | null) => {
+    if (moving) return;
+    if (newParentId === currentParentId) {
+      toast.info("Block is already there");
+      onClose();
+      return;
+    }
     setMoving(true);
-    const newParentId = currentFolderId; // null at root
     const { error } = await supabase
       .from("blocks")
       .update({ parent_block_id: newParentId } as any)
@@ -95,11 +102,6 @@ export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId
     toast.success("Block moved");
     onMoved();
   };
-
-  const moveButtonLabel =
-    currentFolderId === null
-      ? "Move to top level"
-      : `Move into ${path[path.length - 1].title}`;
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -149,35 +151,59 @@ export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId
         </div>
 
         <ScrollArea className="h-64 border rounded-md">
-          <div className="p-1">
+          <div className="p-1 space-y-0.5">
             {visibleChildren.length === 0 && (
               <p className="text-xs text-muted-foreground p-3">No sub-blocks at this level</p>
             )}
             {visibleChildren.map((b) => {
               const blocked = isBlocked(b.id);
+              const showChevron = !blocked && hasVisibleChildren(b.id);
+              const isCurrent = currentParentId === b.id;
+
+              if (blocked) {
+                return (
+                  <div
+                    key={b.id}
+                    className="flex items-center px-3 py-2 rounded text-xs opacity-40 cursor-not-allowed"
+                  >
+                    <span className="font-medium truncate">{b.title}</span>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={b.id}
-                  className={cn(
-                    "flex items-center justify-between px-3 py-2 rounded text-xs transition-colors",
-                    blocked ? "opacity-40 cursor-not-allowed" : "hover:bg-muted/60",
-                    currentParentId === b.id && !blocked && "text-muted-foreground"
-                  )}
+                  className="flex items-stretch rounded overflow-hidden text-xs"
                 >
-                  <span className="font-medium truncate">
-                    {b.title}
-                    {currentParentId === b.id && (
+                  <button
+                    type="button"
+                    disabled={moving}
+                    onClick={() => handleMoveTo(b.id)}
+                    className={cn(
+                      "flex-1 text-left px-3 py-2 truncate hover:bg-muted/60 transition-colors disabled:opacity-50",
+                      isCurrent && "text-muted-foreground"
+                    )}
+                    title={`Move into ${b.title}`}
+                  >
+                    <span className="font-medium">{b.title}</span>
+                    {isCurrent && (
                       <span className="ml-2 text-[10px] text-muted-foreground">(current parent)</span>
                     )}
-                  </span>
-                  {!blocked && (
-                    <button
-                      onClick={() => handleNavigateInto(b)}
-                      className="p-1 rounded hover:bg-muted"
-                      aria-label={`Open ${b.title}`}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
+                  </button>
+                  {showChevron && (
+                    <>
+                      <div className="w-px bg-border" aria-hidden="true" />
+                      <button
+                        type="button"
+                        onClick={() => handleNavigateInto(b)}
+                        className="w-11 flex items-center justify-center hover:bg-muted transition-colors"
+                        aria-label={`Open ${b.title}`}
+                        title={`Show contents of ${b.title}`}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </>
                   )}
                 </div>
               );
@@ -185,10 +211,14 @@ export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId
           </div>
         </ScrollArea>
 
-        <DialogFooter className="flex justify-between">
+        <DialogFooter className="flex justify-between sm:justify-between">
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
-          <Button size="sm" onClick={handleMove} disabled={moving}>
-            {moving ? "Moving..." : moveButtonLabel}
+          <Button
+            size="sm"
+            onClick={() => handleMoveTo(null)}
+            disabled={moving || currentParentId === null}
+          >
+            {moving ? "Moving..." : "Move to top level"}
           </Button>
         </DialogFooter>
       </DialogContent>
