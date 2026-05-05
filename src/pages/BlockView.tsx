@@ -144,6 +144,12 @@ export default function BlockView() {
           <span className="text-foreground font-semibold">{block.title}</span>
         </div>
 
+        {/* Block container — visual reminder you're inside a block */}
+        <div className={cn("relative rounded-xl border-[1.5px] p-6 pt-7 mt-3", heatBorderClass)}>
+          <span className="absolute -top-2.5 left-4 px-2 py-0.5 bg-background text-[10px] font-mono text-muted-foreground rounded-md border border-border">
+            inside <Link to={backUrl} className="hover:text-foreground hover:underline">{backLabel}</Link>
+          </span>
+
         {/* Title row */}
         <div className="flex items-center gap-3 mb-2">
           <h1 className="text-2xl font-bold">{block.title}</h1>
