@@ -244,6 +244,9 @@ export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId
 
         <DialogFooter>
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button size="sm" disabled={moving} onClick={() => handleMoveTo(currentFolderId)}>
+            Move here
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
