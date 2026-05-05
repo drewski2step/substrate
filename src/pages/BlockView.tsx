@@ -302,6 +302,7 @@ export default function BlockView() {
             <DiscussionPanel blockId={block.id} goalId={goal.id} />
           </TabsContent>
         </Tabs>
+        </div>
 
         {/* Edit block dialog */}
         <Dialog open={editingBlock} onOpenChange={(o) => { if (!o) setEditingBlock(false); else {
