@@ -173,27 +173,15 @@ export function MoveBlockModal({ blockId, blockTitle, missionId, currentParentId
         <ScrollArea className="h-64 border rounded-md">
           <div className="p-1 space-y-0.5">
             {path.length > 0 && (
-              <div className="flex items-stretch rounded overflow-hidden text-xs">
-                <button
-                  type="button"
-                  disabled={moving || currentParentId === null}
-                  onClick={() => handleMoveTo(null)}
-                  className="flex-1 text-left px-3 py-2 truncate hover:bg-muted/60 transition-colors disabled:opacity-50"
-                  title="Move to mission level"
-                >
-                  <span className="font-medium">Move to mission level</span>
-                </button>
-                <div className="w-px bg-border" aria-hidden="true" />
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="w-11 flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
-                  aria-label="Go up one level"
-                  title="Go up one level"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleBack}
+                className="w-11 h-9 flex items-center justify-center rounded hover:bg-muted transition-colors text-muted-foreground"
+                aria-label="Go up one level"
+                title="Go up one level"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
             )}
             {visibleChildren.length === 0 && (
               <p className="text-xs text-muted-foreground p-3">No sub-blocks at this level</p>
