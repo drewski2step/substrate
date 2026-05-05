@@ -117,6 +117,15 @@ export default function BlockView() {
     ? ancestors?.find((a) => a.id === parentBlockId)?.title || "Parent Block"
     : goal.title;
 
+  // Heat-tier border color (matches existing heat color tiers)
+  const heatBorderClass =
+    heat <= 0 ? "border-border"
+    : heat <= 20 ? "border-blue-500/40"
+    : heat <= 50 ? "border-teal-500/40"
+    : heat <= 100 ? "border-amber-500/40"
+    : heat <= 200 ? "border-orange-500/40"
+    : "border-red-500/50";
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -134,6 +143,12 @@ export default function BlockView() {
           ))}
           <span className="text-foreground font-semibold">{block.title}</span>
         </div>
+
+        {/* Block container — visual reminder you're inside a block */}
+        <div className={cn("relative rounded-xl border-[1.5px] p-6 pt-7 mt-3", heatBorderClass)}>
+          <span className="absolute -top-2.5 left-4 px-2 py-0.5 bg-background text-[10px] font-mono text-muted-foreground rounded-md border border-border">
+            inside <Link to={backUrl} className="hover:text-foreground hover:underline">{backLabel}</Link>
+          </span>
 
         {/* Title row */}
         <div className="flex items-center gap-3 mb-2">
@@ -287,6 +302,7 @@ export default function BlockView() {
             <DiscussionPanel blockId={block.id} goalId={goal.id} />
           </TabsContent>
         </Tabs>
+        </div>
 
         {/* Edit block dialog */}
         <Dialog open={editingBlock} onOpenChange={(o) => { if (!o) setEditingBlock(false); else {
