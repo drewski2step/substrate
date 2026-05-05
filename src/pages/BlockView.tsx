@@ -117,6 +117,15 @@ export default function BlockView() {
     ? ancestors?.find((a) => a.id === parentBlockId)?.title || "Parent Block"
     : goal.title;
 
+  // Heat-tier border color (matches existing heat color tiers)
+  const heatBorderClass =
+    heat <= 0 ? "border-border"
+    : heat <= 20 ? "border-blue-500/40"
+    : heat <= 50 ? "border-teal-500/40"
+    : heat <= 100 ? "border-amber-500/40"
+    : heat <= 200 ? "border-orange-500/40"
+    : "border-red-500/50";
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
