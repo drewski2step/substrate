@@ -108,6 +108,21 @@ export function useDeleteBlock() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, goalId, userId }: { id: string; goalId: string; userId?: string }) => {
+      // New mission members (< 3 days as member, non-owner) can't delete blocks
+      if (userId && goalId) {
+        const { data: membership } = await supabase
+          .from("flow_members")
+          .select("role, joined_at")
+          .eq("user_id", userId)
+          .eq("goal_id", goalId)
+          .maybeSingle();
+        if (membership && membership.role !== "owner") {
+          const memberAge = Date.now() - new Date(membership.joined_at).getTime();
+          if (memberAge < 3 * 24 * 60 * 60 * 1000) {
+            throw new Error("New members must be on the mission for 3 days before deleting blocks.");
+          }
+        }
+      }
       // Rate-limit: new users (< 24h old) can't delete more than 5 blocks in 10 minutes
       if (userId) {
         const { data: profile } = await supabase.from("profiles").select("created_at").eq("id", userId).single();
