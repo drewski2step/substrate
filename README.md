@@ -1,13 +1,10 @@
 # Impossible Coordination
 ## Why the world has broken coordination and how to fix it
 
-A stout gentleman with glasses and greying hair stood at the front of the classroom. When Dr. Bernard Amadei began his guest lecture, his subtle French accent grabbed the class's attention. He started with something along the lines of “You know you're in a bad situation when you're measuring how much life you have left in minutes instead of years”. Dr. Amadei -the founder of Engineers without Borders USA- has spent a lifetime organizing humanitarian collaboration in the world’s most chaotic countries. After his lecture, I jogged to catch him outside the classroom and asked “why can't these countries escape poverty?”. The engineer in me expected that electrical infrastructure was the culprit. The answer Dr. Amadei provided, surprised me - “corruption”. 
-The misallocation of resources due to negligent information management is called a coordination failure- and corruption is the most extreme example. However, coordination failures are the normal operating state in nearly all organizations and will remain the standard until we surpass the need for direct communication. 
+The misallocation of resources due to negligent information management is called a coordination failure- and corruption is the most extreme example.
 
 ### Stigmergy
 The environment tells me the rules I abide by and what to do next. This is expert design and stigmergy. Stigmergy is an indirect coordination mechanism, by which traces in the environment (brake lights, stopsigns, etc.) stimulate the subsequent action (slow down, change lanes, etc.). Through stigmergy, coordination can occur without the need for centralized control, planning, or even communication. Stigmergy scales from the individual level to civilizational level complexities. As is the case with ant farms, which use stigmergic pheromone trails to coordinate the actions of billions of agents- imagine if people could do that- Github is the closest thing to it right now.  
-### Quote
-Look, here’s a table covered with red cloth. On it is a cage the size of a small fish aquarium. In the cage is a white rabbit with a pink nose and pink-rimmed eyes. On its back, clearly marked in blue ink, is the numeral 8. The most interesting thing here isn’t even the carrot-munching rabbit in the cage, but the number on its back. I never opened my mouth and you never opened yours. We’re not even in the same year together, let alone the same room... except we are together. We are close. We’re having a meeting of the minds. We’ve engaged in an act of telepathy.
 ### The Substrate
 We need your help to build The Substrate, a digital platform that enables civilizational collaboration. The majority of the world has always been stronger than the elite, we just havnt been able to organize, until now.  
 I invite individuals across all nations to mass collaboration. 
